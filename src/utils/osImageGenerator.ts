@@ -158,10 +158,22 @@ export function generateOsCanvas(order: ServiceOrder, info: WorkshopInfo = DEFAU
 
     ctx.fillStyle = '#A5A5A5'
     ctx.font = '11px sans-serif'
-    ctx.fillText('Estado dos Pneus:', 580, y + 28)
-    ctx.fillStyle = '#10B981'
+    ctx.fillText('Vistoria Visual:', 520, y + 28)
+    const visualIssues = order.inspection
+      ? [
+          order.inspection.headlights === 'avaria' ? 'Faróis' : '',
+          order.inspection.paintwork === 'avaria' ? 'Pintura' : '',
+          order.inspection.glass === 'avaria' ? 'Vidros' : '',
+          order.inspection.bumpers === 'avaria' ? 'Para-choques' : '',
+        ].filter(Boolean)
+      : []
+    ctx.fillStyle = visualIssues.length === 0 ? '#10B981' : '#F59E0B'
     ctx.font = 'bold 11px sans-serif'
-    ctx.fillText('VERIFICADOS ✓', 695, y + 28)
+    ctx.fillText(
+      visualIssues.length === 0 ? 'FARÓIS, PINTURA E PNEUS OK ✓' : `OBS: ${visualIssues.join(', ')}`,
+      608,
+      y + 28
+    )
 
     y += 70
 

@@ -1,194 +1,236 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useApp } from '../context/AppContext'
 import {
   BarChart3,
   TrendingUp,
   Users,
   Package,
-  DollarSign,
+  Wallet,
   Wrench,
   ChevronRight,
   Printer,
   Calendar,
-  CheckCircle2,
-  FileSpreadsheet
 } from 'lucide-react'
 
 export const ReportsView: React.FC = () => {
-  const { formatCurrency } = useApp()
+  const {
+    orders,
+    clients,
+    vehicles,
+    stock,
+    financial,
+    deferredPayments,
+    formatCurrency,
+  } = useApp()
   const [selectedReport, setSelectedReport] = useState<string>('faturamento')
 
   const reportItems = [
-    {
-      id: 'servicos',
-      title: 'Serviços realizados',
-      subtitle: 'Relatório detalhado de serviços prestados',
-      icon: Wrench,
-    },
-    {
-      id: 'faturamento',
-      title: 'Faturamento',
-      subtitle: 'Relatório mensal de faturamento e receitas',
-      icon: TrendingUp,
-    },
-    {
-      id: 'clientes',
-      title: 'Clientes',
-      subtitle: 'Relatório de clientes e frequência',
-      icon: Users,
-    },
-    {
-      id: 'estoque',
-      title: 'Estoque',
-      subtitle: 'Relatório de giro de peças e reposição',
-      icon: Package,
-    },
-    {
-      id: 'financeiro',
-      title: 'Financeiro',
-      subtitle: 'Relatório de DRE, despesas e margem',
-      icon: DollarSign,
-    }
+    { id: 'faturamento', title: 'Faturamento', subtitle: 'Receitas, despesas e margem líquida', icon: TrendingUp },
+    { id: 'servicos', title: 'Ordens de Serviço', subtitle: 'Volume de atendimentos e ticket médio', icon: Wrench },
+    { id: 'clientes', title: 'Clientes & Veículos', subtitle: 'Base de clientes e frota vinculada', icon: Users },
+    { id: 'fiado', title: 'Pagar Depois', subtitle: 'Contas a prazo, recebimentos e saldo', icon: Wallet },
+    { id: 'estoque', title: 'Estoque', subtitle: 'Peças cadastradas e itens em reposição', icon: Package },
   ]
 
+  const summary = useMemo(() => {
+    const totalRev = financial
+      .filter(f => f.type === 'receita')
+      .reduce((s, f) => s + f.amount, 0)
+    const totalExp = financial
+      .filter(f => f.type === 'despesa')
+      .reduce((s, f) => s + f.amount, 0)
+    const net = totalRev - totalExp
+    const margin = totalRev > 0 ? ((net / totalRev) * 100).toFixed(1) : '0.0'
+    const ordersTotal = orders.reduce((s, o) => s + o.totalAmount, 0)
+    const ticketMedio = orders.length > 0 ? ordersTotal / orders.length : 0
+    const deferredOpen = deferredPayments.reduce(
+      (s, d) => s + Math.max(0, d.totalAmount - d.paidAmount),
+      0
+    )
+    const stockValue = stock.reduce((s, it) => s + it.quantity * it.sellingPrice, 0)
+    return { totalRev, totalExp, net, margin, ordersTotal, ticketMedio, deferredOpen, stockValue }
+  }, [financial, orders, deferredPayments, stock])
+
+  const activeMeta = reportItems.find(r => r.id === selectedReport) || reportItems[0]
+
   return (
-    <div className="space-y-6 pb-12 max-w-[1440px] mx-auto select-none">
+    <div className="space-y-6 select-none">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#FFFFFF] flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-[#FF8500]" strokeWidth={1.75} />
+          <h2 className="text-lg font-bold text-wr-text flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-wr-orange" />
             Relatórios Gerenciais
           </h2>
-          <p className="text-xs text-[#A5A5A5] mt-0.5">
-            Acompanhe o desempenho, volume de serviços e indicadores financeiros da oficina
+          <p className="text-xs text-wr-muted mt-0.5">
+            Indicadores calculados em tempo real com base nos dados atuais da oficina
           </p>
         </div>
 
-        <button
-          onClick={() => window.print()}
-          className="flex items-center gap-2 rounded-xl border border-[#262626] bg-[#151515] px-4 py-2.5 text-xs font-semibold text-[#FFFFFF] hover:border-[#383838] transition-colors"
-        >
-          <Printer className="h-4 w-4 text-[#FF8500]" strokeWidth={1.75} />
+        <button onClick={() => window.print()} className="wr-btn-secondary no-print">
+          <Printer className="h-4 w-4 text-wr-orange" />
           Imprimir / Exportar PDF
         </button>
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
-        {/* Report List Navigation matching Image 1 Screen 7 (4 cols) */}
-        <div className="col-span-4 space-y-2.5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Navigation */}
+        <div className="lg:col-span-4 space-y-2.5 no-print">
           {reportItems.map(item => {
             const Icon = item.icon
             const isSelected = selectedReport === item.id
             return (
-              <div
+              <button
                 key={item.id}
+                type="button"
                 onClick={() => setSelectedReport(item.id)}
-                className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center justify-between ${
                   isSelected
-                    ? 'border-[#FF8500] bg-[#202020] shadow-sm'
-                    : 'border-[#262626] bg-[#151515] hover:border-[#383838]'
+                    ? 'border-wr-orange bg-wr-surface shadow-card ring-1 ring-wr-orange/25'
+                    : 'border-wr-border bg-wr-surface/70 hover:bg-wr-surface hover:border-wr-borderHover'
                 }`}
               >
-                <div className="flex items-center gap-3.5">
-                  <div className={`p-2.5 rounded-xl border ${
-                    isSelected
-                      ? 'bg-[#151515] text-[#FF8500] border-[#FF8500]/30'
-                      : 'bg-[#202020] text-[#A5A5A5] border-[#262626]'
-                  }`}>
-                    <Icon className="h-4 w-4" strokeWidth={1.75} />
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`p-2.5 rounded-xl border ${
+                      isSelected
+                        ? 'bg-wr-orange/15 text-wr-orange border-wr-orange/30'
+                        : 'bg-wr-elevated text-wr-muted border-wr-border'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-[#FFFFFF]">{item.title}</h4>
-                    <p className="text-[11px] text-[#A5A5A5]">{item.subtitle}</p>
+                    <h4 className="text-xs font-bold text-wr-text">{item.title}</h4>
+                    <p className="text-[11px] text-wr-muted">{item.subtitle}</p>
                   </div>
                 </div>
-                <ChevronRight className={`h-4 w-4 transition-transform ${
-                  isSelected ? 'text-[#FF8500] translate-x-1' : 'text-[#A5A5A5]'
-                }`} strokeWidth={1.75} />
-              </div>
+                <ChevronRight
+                  className={`h-4 w-4 transition-transform ${
+                    isSelected ? 'text-wr-orange translate-x-0.5' : 'text-wr-muted'
+                  }`}
+                />
+              </button>
             )
           })}
         </div>
 
-        {/* Selected Report Content (8 cols) */}
-        <div className="col-span-8 rounded-2xl border border-[#262626] bg-[#151515] p-6 shadow-xl space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-[#262626]">
+        {/* Right Analytical Content */}
+        <div className="lg:col-span-8 wr-card p-6 space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-wr-border">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF8500]">Visão Analítica</span>
-              <h3 className="text-base font-bold text-[#FFFFFF] mt-0.5">
-                {reportItems.find(r => r.id === selectedReport)?.title}
-              </h3>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-wr-orange">
+                Relatório Consolidado
+              </span>
+              <h3 className="text-base font-bold text-wr-text mt-0.5">{activeMeta.title}</h3>
             </div>
-            <div className="flex items-center gap-2 rounded-xl bg-[#202020] px-3 py-1.5 border border-[#262626] text-xs text-[#A5A5A5]">
-              <Calendar className="h-3.5 w-3.5 text-[#FF8500]" strokeWidth={1.75} />
-              <span>Novembro / 2025</span>
-            </div>
-          </div>
-
-          {/* Metrics summary */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="rounded-xl border border-[#262626] bg-[#202020] p-4">
-              <span className="text-[11px] text-[#A5A5A5] block">Total Consolidado</span>
-              <span className="text-xl font-bold text-[#FFFFFF] font-mono mt-1 block">R$ 18.750,00</span>
-              <span className="text-[10px] text-emerald-400 font-semibold mt-1 inline-block">+12% vs mês anterior</span>
-            </div>
-            <div className="rounded-xl border border-[#262626] bg-[#202020] p-4">
-              <span className="text-[11px] text-[#A5A5A5] block">Ticket Médio</span>
-              <span className="text-xl font-bold text-[#E5A51B] font-mono mt-1 block">R$ 670,00</span>
-              <span className="text-[10px] text-[#A5A5A5] mt-1 inline-block">28 ordens finalizadas</span>
-            </div>
-            <div className="rounded-xl border border-[#262626] bg-[#202020] p-4">
-              <span className="text-[11px] text-[#A5A5A5] block">Margem de Lucro</span>
-              <span className="text-xl font-bold text-emerald-400 font-mono mt-1 block">44.3%</span>
-              <span className="text-[10px] text-[#A5A5A5] mt-1 inline-block">R$ 8.320,00 lucro líquido</span>
+            <div className="inline-flex items-center gap-2 rounded-xl bg-wr-elevated px-3 py-1.5 border border-wr-border text-xs text-wr-muted">
+              <Calendar className="h-3.5 w-3.5 text-wr-orange" />
+              <span>{new Date().toLocaleDateString('pt-BR')}</span>
             </div>
           </div>
 
-          {/* Table breakdown */}
-          <div className="rounded-xl border border-[#262626] overflow-hidden">
+          {/* Metrics Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div className="wr-surface-muted p-4">
+              <span className="text-[11px] text-wr-muted block">Receitas Totais</span>
+              <span className="text-xl font-extrabold text-wr-text font-mono mt-1 block">
+                {formatCurrency(summary.totalRev)}
+              </span>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1 inline-block">
+                Margem: {summary.margin}%
+              </span>
+            </div>
+
+            <div className="wr-surface-muted p-4">
+              <span className="text-[11px] text-wr-muted block">Ticket Médio (OS)</span>
+              <span className="text-xl font-extrabold text-wr-gold font-mono mt-1 block">
+                {formatCurrency(summary.ticketMedio)}
+              </span>
+              <span className="text-[10px] text-wr-muted mt-1 inline-block">
+                {orders.length} ordens registradas
+              </span>
+            </div>
+
+            <div className="wr-surface-muted p-4">
+              <span className="text-[11px] text-wr-muted block">Pagar Depois (Em Aberto)</span>
+              <span className="text-xl font-extrabold text-wr-orange font-mono mt-1 block">
+                {formatCurrency(summary.deferredOpen)}
+              </span>
+              <span className="text-[10px] text-wr-muted mt-1 inline-block">
+                {deferredPayments.length} registro(s) a prazo
+              </span>
+            </div>
+          </div>
+
+          {/* Dynamic Table */}
+          <div className="rounded-xl border border-wr-border overflow-hidden">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#202020] text-[#A5A5A5] border-b border-[#262626]">
+              <thead className="bg-wr-elevated text-wr-muted border-b border-wr-border">
                 <tr>
-                  <th className="py-3 px-4 font-semibold">Categoria / Item</th>
-                  <th className="py-3 px-4 font-semibold">Qtd</th>
-                  <th className="py-3 px-4 font-semibold text-right">Valor Total</th>
-                  <th className="py-3 px-4 font-semibold text-right">Status</th>
+                  <th className="py-3 px-4 font-semibold">Indicador / Item</th>
+                  <th className="py-3 px-4 font-semibold">Quantidade</th>
+                  <th className="py-3 px-4 font-semibold text-right">Valor</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#262626] text-[#FFFFFF]">
-                <tr className="hover:bg-[#202020]/40 transition-colors">
-                  <td className="py-3 px-4 font-medium">Revisão Completa e Troca de Freios</td>
-                  <td className="py-3 px-4 font-mono text-[#A5A5A5]">12 OS</td>
-                  <td className="py-3 px-4 font-mono text-right font-bold text-emerald-400">R$ 7.200,00</td>
-                  <td className="py-3 px-4 text-right">
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">100% OK</span>
-                  </td>
-                </tr>
-                <tr className="hover:bg-[#202020]/40 transition-colors">
-                  <td className="py-3 px-4 font-medium">Troca de Óleo e Filtros</td>
-                  <td className="py-3 px-4 font-mono text-[#A5A5A5]">16 OS</td>
-                  <td className="py-3 px-4 font-mono text-right font-bold text-emerald-400">R$ 4.800,00</td>
-                  <td className="py-3 px-4 text-right">
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">100% OK</span>
-                  </td>
-                </tr>
-                <tr className="hover:bg-[#202020]/40 transition-colors">
-                  <td className="py-3 px-4 font-medium">Alinhamento e Balanceamento 3D</td>
-                  <td className="py-3 px-4 font-mono text-[#A5A5A5]">14 OS</td>
-                  <td className="py-3 px-4 font-mono text-right font-bold text-emerald-400">R$ 2.100,00</td>
-                  <td className="py-3 px-4 text-right">
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">100% OK</span>
-                  </td>
-                </tr>
-                <tr className="hover:bg-[#202020]/40 transition-colors">
-                  <td className="py-3 px-4 font-medium">Venda Avulsa de Peças de Balcão</td>
-                  <td className="py-3 px-4 font-mono text-[#A5A5A5]">9 Vendas</td>
-                  <td className="py-3 px-4 font-mono text-right font-bold text-emerald-400">R$ 4.650,00</td>
-                  <td className="py-3 px-4 text-right">
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">100% OK</span>
-                  </td>
-                </tr>
+              <tbody className="divide-y divide-wr-border text-wr-text">
+                {selectedReport === 'clientes' ? (
+                  clients.map(c => {
+                    const countVeh = vehicles.filter(v => v.clientId === c.id).length
+                    const sumOs = orders
+                      .filter(o => o.clientId === c.id)
+                      .reduce((s, o) => s + o.totalAmount, 0)
+                    return (
+                      <tr key={c.id} className="hover:bg-wr-elevated/50">
+                        <td className="py-3 px-4 font-semibold">{c.name}</td>
+                        <td className="py-3 px-4 font-mono text-wr-muted">
+                          {countVeh} veículo(s)
+                        </td>
+                        <td className="py-3 px-4 font-mono text-right font-bold text-emerald-600 dark:text-emerald-400">
+                          {formatCurrency(sumOs)}
+                        </td>
+                      </tr>
+                    )
+                  })
+                ) : selectedReport === 'fiado' ? (
+                  deferredPayments.map(d => (
+                    <tr key={d.id} className="hover:bg-wr-elevated/50">
+                      <td className="py-3 px-4 font-semibold">
+                        {d.clientName} — {d.description}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-wr-muted">
+                        Pago: {formatCurrency(d.paidAmount)}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-right font-bold text-wr-orange">
+                        Falta: {formatCurrency(Math.max(0, d.totalAmount - d.paidAmount))}
+                      </td>
+                    </tr>
+                  ))
+                ) : selectedReport === 'estoque' ? (
+                  stock.map(it => (
+                    <tr key={it.id} className="hover:bg-wr-elevated/50">
+                      <td className="py-3 px-4 font-semibold">
+                        {it.name} <span className="font-mono text-wr-muted">({it.code})</span>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-wr-muted">{it.quantity} un.</td>
+                      <td className="py-3 px-4 font-mono text-right font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatCurrency(it.quantity * it.sellingPrice)}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  orders.map(o => (
+                    <tr key={o.id} className="hover:bg-wr-elevated/50">
+                      <td className="py-3 px-4 font-semibold">
+                        {o.number} • {o.serviceDescription}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-wr-muted">{o.vehiclePlate}</td>
+                      <td className="py-3 px-4 font-mono text-right font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatCurrency(o.totalAmount)}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

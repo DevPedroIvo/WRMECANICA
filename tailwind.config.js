@@ -9,19 +9,26 @@ export default {
     extend: {
       colors: {
         wr: {
-          deep: '#080808',        // Preto profundo
-          graphite: '#151515',    // Grafite
-          graphite2: '#202020',   // Grafite secundário
-          border: '#262626',      // Bordas discretas
-          borderHover: '#383838', // Bordas em hover
-          orange: '#FF8500',      // Laranja principal
-          orangeDark: '#D96A00',  // Laranja escuro
-          gold: '#E5A51B',        // Dourado
-          muted: '#A5A5A5',       // Cinza secundário
+          bg: 'rgb(var(--wr-bg) / <alpha-value>)',
+          surface: 'rgb(var(--wr-surface) / <alpha-value>)',
+          elevated: 'rgb(var(--wr-elevated) / <alpha-value>)',
+          sidebar: 'rgb(var(--wr-sidebar) / <alpha-value>)',
+          border: 'rgb(var(--wr-border) / <alpha-value>)',
+          borderHover: 'rgb(var(--wr-border-hover) / <alpha-value>)',
+          text: 'rgb(var(--wr-text) / <alpha-value>)',
+          muted: 'rgb(var(--wr-muted) / <alpha-value>)',
+          orange: 'rgb(var(--wr-orange) / <alpha-value>)',
+          orangeDark: 'rgb(var(--wr-orange-dark) / <alpha-value>)',
+          gold: 'rgb(var(--wr-gold) / <alpha-value>)',
         }
       },
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+      },
+      boxShadow: {
+        card: 'var(--wr-shadow-card)',
+        elevated: 'var(--wr-shadow-elevated)',
       }
     },
   },

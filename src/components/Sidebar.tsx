@@ -6,87 +6,188 @@ import {
   CalendarDays,
   ClipboardList,
   Users,
-  Car,
+  Wallet,
   Package,
   DollarSign,
   BarChart3,
   Settings,
+  X,
+  Database,
 } from 'lucide-react'
 
 export const Sidebar: React.FC = () => {
-  const { activeTab, setActiveTab, orders, appointments } = useApp()
+  const {
+    activeTab,
+    setActiveTab,
+    orders,
+    appointments,
+    deferredPayments,
+    mobileMenuOpen,
+    setMobileMenuOpen,
+    storageMetrics,
+  } = useApp()
 
-  const pendingOrdersCount = orders.filter(o => o.status === 'andamento' || o.status === 'aguardando').length
-  const todayAppointmentsCount = appointments.filter(a => a.status === 'em_atendimento' || a.status === 'aguardando').length
+  const pendingOrdersCount = orders.filter(
+    o => o.status === 'andamento' || o.status === 'aguardando'
+  ).length
+  const todayAppointmentsCount = appointments.filter(
+    a => a.status === 'em_atendimento' || a.status === 'aguardando' || a.status === 'confirmado'
+  ).length
 
-  const menuItems: { id: TabType; label: string; icon: React.FC<{ className?: string; strokeWidth?: number }>; badge?: number }[] = [
-    { id: 'inicio', label: 'Visão geral', icon: LayoutDashboard },
-    { id: 'os', label: 'Ordens de serviço', icon: ClipboardList, badge: pendingOrdersCount },
-    { id: 'atendimentos', label: 'Agendamentos', icon: CalendarDays, badge: todayAppointmentsCount },
-    { id: 'clientes', label: 'Clientes', icon: Users },
-    { id: 'veiculos', label: 'Veículos', icon: Car },
-    { id: 'estoque', label: 'Estoque', icon: Package },
-    { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
-    { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
-    { id: 'configuracoes', label: 'Configurações', icon: Settings }
+  const todayISO = new Date().toISOString().slice(0, 10)
+  const openDeferredCount = deferredPayments.filter(d => d.totalAmount - d.paidAmount > 0.01).length
+  const overdueDeferredCount = deferredPayments.filter(
+    d => d.totalAmount - d.paidAmount > 0.01 && d.dueDate < todayISO
+  ).length
+
+  const menuGroups: {
+    label: string
+    items: {
+      id: TabType
+      label: string
+      icon: React.FC<{ className?: string; strokeWidth?: number }>
+      badge?: number
+      badgeDanger?: boolean
+    }[]
+  }[] = [
+    {
+      label: 'Operação',
+      items: [
+        { id: 'inicio', label: 'Visão Geral', icon: LayoutDashboard },
+        { id: 'os', label: 'Ordens de Serviço', icon: ClipboardList, badge: pendingOrdersCount },
+        { id: 'atendimentos', label: 'Agendamentos', icon: CalendarDays, badge: todayAppointmentsCount },
+        { id: 'clientes', label: 'Clientes', icon: Users },
+      ],
+    },
+    {
+      label: 'Gestão & Caixa',
+      items: [
+        {
+          id: 'fiado',
+          label: 'Pagar Depois',
+          icon: Wallet,
+          badge: openDeferredCount,
+          badgeDanger: overdueDeferredCount > 0,
+        },
+        { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
+        { id: 'estoque', label: 'Estoque', icon: Package },
+        { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
+      ],
+    },
+    {
+      label: 'Sistema',
+      items: [{ id: 'configuracoes', label: 'Configurações', icon: Settings }],
+    },
   ]
 
+  const handleNavClick = (id: TabType) => {
+    setActiveTab(id)
+    setMobileMenuOpen(false)
+  }
+
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-[#262626] bg-[#121316] select-none shadow-2xl">
-      {/* Logo WR Mecânica & Cia */}
-      <div className="flex flex-col items-center justify-center border-b border-[#262626] py-5 px-4 bg-[#0d0e12]">
-        <WrLogo size="md" showSubtitle={true} />
-      </div>
+    <>
+      {/* Backdrop mobile */}
+      {mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs lg:hidden"
+        />
+      )}
 
-      {/* Navigation List */}
-      <nav className="flex-1 space-y-1.5 px-3 py-5 overflow-y-auto">
-        {menuItems.map(item => {
-          const Icon = item.icon
-          const isActive = activeTab === item.id
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`group flex w-full items-center justify-between rounded-xl px-3.5 py-3 text-xs font-semibold transition-all ${
-                isActive
-                  ? 'bg-[#FF8500] text-[#080808] font-bold shadow-[0_4px_16px_rgba(255,133,0,0.35)] scale-[1.02]'
-                  : 'text-[#A5A5A5] hover:bg-[#202020] hover:text-[#FFFFFF]'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Icon
-                  className={`h-4 w-4 transition-colors ${
-                    isActive ? 'text-[#080808] stroke-[2.2]' : 'text-[#A5A5A5] group-hover:text-[#FF8500]'
-                  }`}
-                  strokeWidth={isActive ? 2.2 : 1.75}
-                />
-                <span className="tracking-wide">{item.label}</span>
-              </div>
-
-              {item.badge !== undefined && item.badge > 0 && (
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                  isActive
-                    ? 'bg-[#080808] text-[#FF8500]'
-                    : 'bg-[#202020] text-[#A5A5A5] group-hover:bg-[#262626]'
-                }`}>
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </nav>
-
-      {/* Status Footer */}
-      <div className="p-4 border-t border-[#262626] bg-[#0d0e12]">
-        <div className="flex items-center justify-between rounded-xl bg-[#1b1d24] px-3.5 py-2.5 text-xs border border-[#262626]">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-medium text-[#A5A5A5]">Sistema Online</span>
-          </div>
-          <span className="text-[10px] font-mono font-semibold text-[#FF8500]">DESKTOP</span>
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-wr-border bg-wr-sidebar select-none transition-transform duration-200 ease-out lg:translate-x-0 ${
+          mobileMenuOpen ? 'translate-x-0 shadow-elevated' : '-translate-x-full'
+        }`}
+      >
+        {/* Logo */}
+        <div className="relative flex flex-col items-center justify-center border-b border-wr-border py-5 px-4">
+          <WrLogo size="md" showSubtitle={true} />
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="absolute right-3 top-3 rounded-lg p-1.5 text-wr-muted hover:bg-wr-elevated hover:text-wr-text lg:hidden"
+            aria-label="Fechar menu"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-      </div>
-    </aside>
+
+        {/* Navigation Groups */}
+        <nav className="flex-1 space-y-5 px-3 py-5 overflow-y-auto">
+          {menuGroups.map(group => (
+            <div key={group.label} className="space-y-1">
+              <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-wr-muted/80">
+                {group.label}
+              </span>
+              <div className="space-y-1 pt-1">
+                {group.items.map(item => {
+                  const Icon = item.icon
+                  const isActive = activeTab === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNavClick(item.id)}
+                      className={`group flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
+                        isActive
+                          ? 'bg-wr-orange text-white dark:text-[#0B0C10] font-bold shadow-sm'
+                          : 'text-wr-muted hover:bg-wr-elevated hover:text-wr-text'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon
+                          className={`h-4 w-4 transition-colors ${
+                            isActive
+                              ? 'text-white dark:text-[#0B0C10]'
+                              : 'text-wr-muted group-hover:text-wr-orange'
+                          }`}
+                          strokeWidth={isActive ? 2.25 : 1.75}
+                        />
+                        <span>{item.label}</span>
+                      </div>
+
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            isActive
+                              ? 'bg-black/20 text-white dark:bg-[#0B0C10]/85 dark:text-wr-orange'
+                              : item.badgeDanger
+                              ? 'bg-rose-500/15 text-rose-500 dark:text-rose-400'
+                              : 'bg-wr-elevated text-wr-muted border border-wr-border'
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {/* Footer: Supabase Optimization Telemetry */}
+        <div className="p-3.5 border-t border-wr-border">
+          <button
+            onClick={() => handleNavClick('configuracoes')}
+            className="w-full flex items-center justify-between rounded-xl bg-wr-elevated px-3 py-2.5 text-xs border border-wr-border hover:border-wr-borderHover transition-colors"
+            title="Ver otimização de uso do Supabase"
+          >
+            <div className="flex items-center gap-2">
+              <Database className="h-3.5 w-3.5 text-emerald-500" />
+              <div className="text-left">
+                <span className="text-[11px] font-semibold text-wr-text block leading-tight">
+                  {storageMetrics.configured ? 'Supabase Econômico' : 'Modo Local Leve'}
+                </span>
+                <span className="text-[10px] text-wr-muted font-mono">
+                  {storageMetrics.localPayloadKB} KB • 0 fotos
+                </span>
+              </div>
+            </div>
+            <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+          </button>
+        </div>
+      </aside>
+    </>
   )
 }

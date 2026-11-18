@@ -1,11 +1,10 @@
 import React, { useState } from 'react'
 import { useApp } from '../context/AppContext'
-import { Appointment, AppointmentStatus } from '../types'
+import { AppointmentStatus } from '../types'
 import {
   CalendarDays,
   Clock,
   Car,
-  User,
   Wrench,
   CheckCircle2,
   AlertCircle,
@@ -13,138 +12,206 @@ import {
   Plus,
   Play,
   Check,
-  ChevronRight,
   X,
-  Phone
 } from 'lucide-react'
 
 export const AppointmentsView: React.FC = () => {
-  const { appointments, updateAppointmentStatus, sendWhatsApp, setActiveTab, setIsNewOrderModalOpen } = useApp()
+  const {
+    appointments,
+    clients,
+    vehicles,
+    addAppointment,
+    updateAppointmentStatus,
+    sendWhatsApp,
+  } = useApp()
+
   const [filterStatus, setFilterStatus] = useState<string>('todos')
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
 
   // New appointment form state
-  const [clientName, setClientName] = useState('')
-  const [clientPhone, setClientPhone] = useState('')
+  const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id || '')
+  const [clientName, setClientName] = useState(clients[0]?.name || '')
+  const [clientPhone, setClientPhone] = useState(clients[0]?.phone || '')
   const [vehicleModel, setVehicleModel] = useState('')
   const [vehiclePlate, setVehiclePlate] = useState('')
   const [serviceDescription, setServiceDescription] = useState('')
-  const [time, setTime] = useState('08:30')
-  const [box, setBox] = useState('Elevador 1')
+  const [mechanicName, setMechanicName] = useState('Roberto Silva')
+  const [time, setTime] = useState('09:00')
+  const [box, setBox] = useState('Box 01 (Elevador)')
 
   const filteredAppointments = appointments.filter(a => {
     if (filterStatus === 'todos') return true
+    if (filterStatus === 'aguardando') {
+      return a.status === 'aguardando' || a.status === 'confirmado'
+    }
     return a.status === filterStatus
   })
 
   const inProgressCount = appointments.filter(a => a.status === 'em_atendimento').length
-  const waitingCount = appointments.filter(a => a.status === 'aguardando' || a.status === 'confirmado').length
+  const waitingCount = appointments.filter(
+    a => a.status === 'aguardando' || a.status === 'confirmado'
+  ).length
   const completedCount = appointments.filter(a => a.status === 'concluido').length
+
+  const openNewModal = () => {
+    const first = clients[0]
+    setSelectedClientId(first?.id || '')
+    setClientName(first?.name || '')
+    setClientPhone(first?.phone || '')
+    const firstVeh = vehicles.find(v => v.clientId === first?.id)
+    setVehicleModel(firstVeh ? `${firstVeh.brand} ${firstVeh.model}` : '')
+    setVehiclePlate(firstVeh?.plate || '')
+    setServiceDescription('')
+    setTime('09:00')
+    setBox('Box 01 (Elevador)')
+    setIsNewModalOpen(true)
+  }
+
+  const handleClientPick = (cid: string) => {
+    setSelectedClientId(cid)
+    const c = clients.find(x => x.id === cid)
+    if (c) {
+      setClientName(c.name)
+      setClientPhone(c.phone)
+      const v = vehicles.find(veh => veh.clientId === cid)
+      if (v) {
+        setVehicleModel(`${v.brand} ${v.model}`)
+        setVehiclePlate(v.plate)
+      }
+    }
+  }
+
+  const handleCreateAppointment = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!clientName.trim() || !vehicleModel.trim() || !serviceDescription.trim()) return
+
+    addAppointment({
+      time,
+      date: new Date().toLocaleDateString('pt-BR'),
+      clientId: selectedClientId || undefined,
+      clientName: clientName.trim(),
+      clientPhone: clientPhone.trim() || '(63) 99999-0000',
+      vehicleModel: vehicleModel.trim(),
+      vehiclePlate: vehiclePlate.toUpperCase().trim() || 'SEM PLACA',
+      serviceDescription: serviceDescription.trim(),
+      mechanicName,
+      box,
+      status: 'confirmado',
+      estimatedDuration: '1h',
+    })
+
+    setIsNewModalOpen(false)
+  }
 
   const getStatusBadge = (status: AppointmentStatus) => {
     switch (status) {
       case 'em_atendimento':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FF8500]/15 border border-[#FF8500]/40 px-3 py-1 text-xs font-bold text-[#FF8500]">
-            <span className="h-2 w-2 rounded-full bg-[#FF8500] animate-pulse" />
-            Em Atendimento no Box
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-wr-orange/15 px-2.5 py-1 text-[11px] font-bold text-wr-orange">
+            <span className="h-2 w-2 rounded-full bg-wr-orange animate-pulse" />
+            Em Atendimento
           </span>
         )
       case 'confirmado':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/15 border border-blue-500/30 px-3 py-1 text-xs font-bold text-blue-400">
-            <Clock className="h-3 w-3" strokeWidth={1.75} />
-            Confirmado (Aguardando)
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/15 px-2.5 py-1 text-[11px] font-bold text-sky-600 dark:text-sky-400">
+            <Clock className="h-3 w-3" />
+            Confirmado
           </span>
         )
       case 'concluido':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 text-xs font-bold text-emerald-400">
-            <CheckCircle2 className="h-3 w-3" strokeWidth={1.75} />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="h-3 w-3" />
             Finalizado
           </span>
         )
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#202020] border border-[#262626] px-3 py-1 text-xs font-bold text-[#A5A5A5]">
-            <AlertCircle className="h-3 w-3" strokeWidth={1.75} />
-            Aguardando Chegada
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-wr-elevated border border-wr-border px-2.5 py-1 text-[11px] font-bold text-wr-muted">
+            <AlertCircle className="h-3 w-3" />
+            Aguardando
           </span>
         )
     }
   }
 
+  const clientVehicles = vehicles.filter(v => v.clientId === selectedClientId)
+
   return (
-    <div className="space-y-6 pb-12 max-w-[1440px] mx-auto select-none">
+    <div className="space-y-6 select-none">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#FFFFFF] flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-[#FF8500]" strokeWidth={1.75} />
-            Próximos Atendimentos &amp; Agendamentos
+          <h2 className="text-lg font-bold text-wr-text flex items-center gap-2">
+            <CalendarDays className="h-5 w-5 text-wr-orange" />
+            Agendamentos &amp; Boxes
           </h2>
-          <p className="text-xs text-[#A5A5A5] mt-0.5">
-            Controle de fluxo de entrada, agendamentos do dia e ocupação dos elevadores
+          <p className="text-xs text-wr-muted mt-0.5">
+            Controle de horários, entrada de veículos e status dos elevadores
           </p>
         </div>
 
-        <button
-          onClick={() => setIsNewModalOpen(true)}
-          className="flex items-center gap-2 rounded-xl bg-[#FF8500] hover:bg-[#D96A00] px-4 py-2.5 text-xs font-bold text-[#080808] transition-colors shadow-sm"
-        >
-          <Plus className="h-4 w-4 stroke-[2.5]" strokeWidth={2.5} />
+        <button onClick={openNewModal} className="wr-btn-primary">
+          <Plus className="h-4 w-4 stroke-[2.5]" />
           Novo Agendamento
         </button>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-3 gap-5">
-        <div className="rounded-2xl border border-[#262626] bg-[#151515] p-5 shadow-lg flex items-center justify-between">
+      {/* KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="wr-card p-5 flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-[#A5A5A5]">Em Atendimento nos Boxes</span>
-            <span className="text-2xl font-bold text-[#FF8500] font-mono mt-1 block">{inProgressCount}</span>
+            <span className="text-xs font-semibold text-wr-muted">Em Atendimento</span>
+            <span className="text-2xl font-extrabold font-mono text-wr-orange mt-1 block">
+              {inProgressCount}
+            </span>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-[#202020] border border-[#262626] flex items-center justify-center text-[#FF8500]">
-            <Wrench className="h-5 w-5" strokeWidth={1.75} />
+          <div className="h-10 w-10 rounded-xl bg-wr-orange/15 text-wr-orange flex items-center justify-center">
+            <Wrench className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[#262626] bg-[#151515] p-5 shadow-lg flex items-center justify-between">
+        <div className="wr-card p-5 flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-[#A5A5A5]">Aguardando Entrada Hoje</span>
-            <span className="text-2xl font-bold text-[#FFFFFF] font-mono mt-1 block">{waitingCount}</span>
+            <span className="text-xs font-semibold text-wr-muted">Aguardando / Confirmados</span>
+            <span className="text-2xl font-extrabold font-mono text-wr-text mt-1 block">
+              {waitingCount}
+            </span>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-[#202020] border border-[#262626] flex items-center justify-center text-blue-400">
-            <Clock className="h-5 w-5" strokeWidth={1.75} />
+          <div className="h-10 w-10 rounded-xl bg-sky-500/15 text-sky-500 flex items-center justify-center">
+            <Clock className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[#262626] bg-[#151515] p-5 shadow-lg flex items-center justify-between">
+        <div className="wr-card p-5 flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-[#A5A5A5]">Serviços Concluídos Hoje</span>
-            <span className="text-2xl font-bold text-emerald-400 font-mono mt-1 block">{completedCount}</span>
+            <span className="text-xs font-semibold text-wr-muted">Concluídos</span>
+            <span className="text-2xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400 mt-1 block">
+              {completedCount}
+            </span>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-[#202020] border border-[#262626] flex items-center justify-center text-emerald-400">
-            <CheckCircle2 className="h-5 w-5" strokeWidth={1.75} />
+          <div className="h-10 w-10 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
+            <CheckCircle2 className="h-5 w-5" />
           </div>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2 bg-[#151515] p-1.5 rounded-xl w-fit border border-[#262626]">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-wr-border bg-wr-surface p-1 w-fit">
         {[
           { id: 'todos', label: 'Todos' },
           { id: 'em_atendimento', label: 'Em Atendimento' },
           { id: 'aguardando', label: 'Aguardando' },
-          { id: 'concluido', label: 'Concluídos' }
+          { id: 'concluido', label: 'Concluídos' },
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setFilterStatus(tab.id)}
-            className={`rounded-lg px-5 py-2 text-xs font-bold transition-all ${
+            className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
               filterStatus === tab.id
-                ? 'bg-[#FF8500] text-[#080808] shadow-sm'
-                : 'text-[#A5A5A5] hover:text-[#FFFFFF]'
+                ? 'bg-wr-orange text-white dark:text-[#0B0C10]'
+                : 'text-wr-muted hover:text-wr-text'
             }`}
           >
             {tab.label}
@@ -152,50 +219,55 @@ export const AppointmentsView: React.FC = () => {
         ))}
       </div>
 
-      {/* Appointments List */}
+      {/* List */}
       <div className="space-y-3">
         {filteredAppointments.map(apt => (
           <div
             key={apt.id}
-            className="rounded-2xl border border-[#262626] bg-[#151515] p-5 shadow-lg flex items-center justify-between hover:border-[#383838] transition-colors"
+            className="wr-card p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-wr-borderHover transition-colors"
           >
-            <div className="flex items-center gap-4">
-              <div className="flex flex-col items-center justify-center rounded-xl bg-[#202020] border border-[#262626] h-14 w-16 text-center">
-                <Clock className="h-3.5 w-3.5 text-[#FF8500]" strokeWidth={1.75} />
-                <span className="text-xs font-mono font-bold text-[#FFFFFF] mt-0.5">{apt.time}</span>
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="flex flex-col items-center justify-center rounded-xl bg-wr-elevated border border-wr-border h-14 w-16 shrink-0">
+                <Clock className="h-3.5 w-3.5 text-wr-orange" />
+                <span className="text-xs font-mono font-bold text-wr-text mt-0.5">{apt.time}</span>
               </div>
 
               <div className="space-y-1">
-                <div className="flex items-center gap-3">
-                  <h4 className="text-sm font-bold text-[#FFFFFF]">{apt.clientName}</h4>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="text-sm font-bold text-wr-text">{apt.clientName}</h4>
                   {getStatusBadge(apt.status)}
                 </div>
-                <div className="flex items-center gap-4 text-xs text-[#A5A5A5]">
-                  <span className="flex items-center gap-1 font-mono text-[#E5A51B]">
-                    <Car className="h-3.5 w-3.5" strokeWidth={1.75} />
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-wr-muted">
+                  <span className="inline-flex items-center gap-1 font-mono font-semibold text-wr-gold">
+                    <Car className="h-3.5 w-3.5" />
                     {apt.vehicleModel} ({apt.vehiclePlate})
                   </span>
                   <span>•</span>
                   <span>{apt.serviceDescription}</span>
                   <span>•</span>
-                  <span className="text-[#FFFFFF]">{apt.box}</span>
+                  <span className="font-semibold text-wr-text">{apt.box}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 shrink-0">
               <button
-                onClick={() => sendWhatsApp(apt.clientPhone, `Olá ${apt.clientName}! Confirmamos seu atendimento na WR Mecânica & Cia.`)}
-                className="flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500 hover:text-black transition-colors"
+                onClick={() =>
+                  sendWhatsApp(
+                    apt.clientPhone,
+                    `Olá ${apt.clientName}! Confirmamos seu atendimento às ${apt.time} na WR Mecânica & Cia.`
+                  )
+                }
+                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white transition-colors"
               >
-                <MessageCircle className="h-4 w-4" strokeWidth={1.75} />
+                <MessageCircle className="h-3.5 w-3.5" />
                 WhatsApp
               </button>
 
-              {apt.status === 'aguardando' && (
+              {(apt.status === 'aguardando' || apt.status === 'confirmado') && (
                 <button
                   onClick={() => updateAppointmentStatus(apt.id, 'em_atendimento')}
-                  className="flex items-center gap-1.5 rounded-xl bg-[#FF8500] px-4 py-2 text-xs font-bold text-[#080808] hover:bg-[#D96A00] transition-colors"
+                  className="wr-btn-primary py-2 px-3.5"
                 >
                   <Play className="h-3.5 w-3.5 fill-current" />
                   Iniciar
@@ -205,9 +277,9 @@ export const AppointmentsView: React.FC = () => {
               {apt.status === 'em_atendimento' && (
                 <button
                   onClick={() => updateAppointmentStatus(apt.id, 'concluido')}
-                  className="flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-black hover:bg-emerald-400 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-bold text-white transition-colors"
                 >
-                  <Check className="h-4 w-4 stroke-[2.5]" />
+                  <Check className="h-3.5 w-3.5 stroke-[2.5]" />
                   Finalizar
                 </button>
               )}
@@ -215,6 +287,163 @@ export const AppointmentsView: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {/* Modal: Novo Agendamento (agora funcional!) */}
+      {isNewModalOpen && (
+        <div className="wr-modal-backdrop">
+          <div className="wr-modal-panel max-w-lg animate-fadeIn">
+            <div className="flex items-center justify-between pb-3.5 border-b border-wr-border">
+              <h3 className="text-sm font-bold text-wr-text">Novo Agendamento</h3>
+              <button
+                onClick={() => setIsNewModalOpen(false)}
+                className="rounded-lg p-1 text-wr-muted hover:text-wr-text"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateAppointment} className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-wr-muted font-semibold mb-1">
+                    Cliente Cadastrado
+                  </label>
+                  <select
+                    value={selectedClientId}
+                    onChange={e => handleClientPick(e.target.value)}
+                    className="wr-input"
+                  >
+                    <option value="">Informar manualmente</option>
+                    {clients.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-wr-muted font-semibold mb-1">Veículo</label>
+                  <select
+                    onChange={e => {
+                      const v = vehicles.find(x => x.id === e.target.value)
+                      if (v) {
+                        setVehicleModel(`${v.brand} ${v.model}`)
+                        setVehiclePlate(v.plate)
+                      }
+                    }}
+                    className="wr-input"
+                    disabled={clientVehicles.length === 0}
+                  >
+                    {clientVehicles.length === 0 ? (
+                      <option value="">Digite abaixo</option>
+                    ) : (
+                      clientVehicles.map(v => (
+                        <option key={v.id} value={v.id}>
+                          {v.brand} {v.model} • {v.plate}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  required
+                  value={clientName}
+                  onChange={e => setClientName(e.target.value)}
+                  placeholder="Nome do cliente *"
+                  className="wr-input"
+                />
+                <input
+                  type="text"
+                  value={clientPhone}
+                  onChange={e => setClientPhone(e.target.value)}
+                  placeholder="Telefone"
+                  className="wr-input font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  required
+                  value={vehicleModel}
+                  onChange={e => setVehicleModel(e.target.value)}
+                  placeholder="Modelo do veículo *"
+                  className="wr-input"
+                />
+                <input
+                  type="text"
+                  value={vehiclePlate}
+                  onChange={e => setVehiclePlate(e.target.value)}
+                  placeholder="Placa"
+                  className="wr-input font-mono uppercase"
+                />
+              </div>
+
+              <div>
+                <label className="block text-wr-muted font-semibold mb-1">
+                  Serviço Agendado *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={serviceDescription}
+                  onChange={e => setServiceDescription(e.target.value)}
+                  placeholder="Ex: Revisão geral e alinhamento"
+                  className="wr-input"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2.5">
+                <div>
+                  <label className="block text-wr-muted font-semibold mb-1">Horário</label>
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={e => setTime(e.target.value)}
+                    className="wr-input font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-wr-muted font-semibold mb-1">Box</label>
+                  <select value={box} onChange={e => setBox(e.target.value)} className="wr-input">
+                    <option>Box 01 (Elevador)</option>
+                    <option>Box 02 (Rampa)</option>
+                    <option>Box 03 (Diagnóstico)</option>
+                    <option>Box 04 (Rápido)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-wr-muted font-semibold mb-1">Mecânico</label>
+                  <input
+                    type="text"
+                    value={mechanicName}
+                    onChange={e => setMechanicName(e.target.value)}
+                    className="wr-input"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 pt-2">
+                <button type="submit" className="wr-btn-primary flex-1 py-3">
+                  Salvar Agendamento
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsNewModalOpen(false)}
+                  className="wr-btn-secondary py-3"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

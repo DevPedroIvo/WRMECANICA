@@ -128,7 +128,7 @@ export const WrLogo: React.FC<WrLogoProps> = ({
                C 218 20, 222 38, 198 38 
                L 162 38 
                Z"
-            fill="#151515"
+            fill="var(--wr-logo-cutout, #101217)"
             stroke="url(#wrGoldOutline)"
             strokeWidth="1"
           />

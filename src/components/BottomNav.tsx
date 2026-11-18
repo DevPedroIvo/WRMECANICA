@@ -4,124 +4,110 @@ import {
   Home,
   Wrench,
   Users,
+  Wallet,
+  MoreHorizontal,
+  CalendarDays,
   DollarSign,
-  Menu,
-  Car,
   Package,
   BarChart3,
   Settings,
-  CalendarDays,
-  X
+  X,
 } from 'lucide-react'
 
 export const BottomNav: React.FC = () => {
   const { activeTab, setActiveTab } = useApp()
-  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
 
-  const navItems = [
-    { id: 'inicio' as TabType, label: 'Início', icon: Home },
-    { id: 'atendimentos' as TabType, label: 'Agenda', icon: CalendarDays },
-    { id: 'os' as TabType, label: 'OS', icon: Wrench },
-    { id: 'financeiro' as TabType, label: 'Financeiro', icon: DollarSign },
+  const mainTabs: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
+    { id: 'inicio', label: 'Início', icon: Home },
+    { id: 'os', label: 'OS', icon: Wrench },
+    { id: 'clientes', label: 'Clientes', icon: Users },
+    { id: 'fiado', label: 'A Prazo', icon: Wallet },
   ]
 
-  const moreItems = [
-    { id: 'clientes' as TabType, label: 'Clientes', icon: Users },
-    { id: 'veiculos' as TabType, label: 'Veículos', icon: Car },
-    { id: 'estoque' as TabType, label: 'Estoque', icon: Package },
-    { id: 'relatorios' as TabType, label: 'Relatórios', icon: BarChart3 },
-    { id: 'configuracoes' as TabType, label: 'Configurações', icon: Settings },
+  const extraTabs: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
+    { id: 'atendimentos', label: 'Agendamentos', icon: CalendarDays },
+    { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
+    { id: 'estoque', label: 'Estoque', icon: Package },
+    { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
+    { id: 'configuracoes', label: 'Configurações', icon: Settings },
   ]
+
+  const isExtraActive = extraTabs.some(t => t.id === activeTab)
 
   return (
     <>
-      {showMoreMenu && (
-        <div 
-          onClick={() => setShowMoreMenu(false)}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 backdrop-blur-sm p-4 pb-20"
-        >
-          <div 
-            onClick={e => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#141820] p-5 shadow-2xl shadow-black animate-in fade-in slide-in-from-bottom duration-200"
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <span className="text-sm font-bold uppercase tracking-wider text-amber-400">Outros Recursos</span>
-              <button 
-                onClick={() => setShowMoreMenu(false)}
-                className="rounded-full p-1 text-slate-400 hover:bg-white/10 hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+      {moreOpen && (
+        <div
+          onClick={() => setMoreOpen(false)}
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs lg:hidden"
+        />
+      )}
 
-            <div className="grid grid-cols-2 gap-3 pt-4">
-              {moreItems.map(item => {
-                const Icon = item.icon
-                const isActive = activeTab === item.id
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setActiveTab(item.id)
-                      setShowMoreMenu(false)
-                    }}
-                    className={`flex flex-col items-center justify-center gap-2 rounded-2xl border p-4 text-center transition-all ${
-                      isActive
-                        ? 'border-amber-500 bg-amber-500/15 text-amber-400'
-                        : 'border-white/5 bg-[#181d26] text-slate-300 hover:border-amber-500/30'
-                    }`}
-                  >
-                    <Icon className="h-6 w-6 text-amber-400" />
-                    <span className="text-xs font-semibold">{item.label}</span>
-                  </button>
-                )
-              })}
-            </div>
+      {moreOpen && (
+        <div className="fixed bottom-20 left-3 right-3 z-50 rounded-2xl border border-wr-border bg-wr-surface p-3 shadow-elevated lg:hidden animate-fadeIn">
+          <div className="flex items-center justify-between px-2 pb-2 border-b border-wr-border mb-2">
+            <span className="text-xs font-bold text-wr-text">Mais opções</span>
+            <button onClick={() => setMoreOpen(false)} className="text-wr-muted hover:text-wr-text">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {extraTabs.map(tab => {
+              const Icon = tab.icon
+              const active = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id)
+                    setMoreOpen(false)
+                  }}
+                  className={`flex flex-col items-center gap-1 rounded-xl p-2.5 text-[11px] font-semibold transition-colors ${
+                    active
+                      ? 'bg-wr-orange text-white dark:text-[#0B0C10]'
+                      : 'bg-wr-elevated text-wr-muted hover:text-wr-text'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{tab.label}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#0d0f14]/95 backdrop-blur-xl px-2 py-1.5 lg:hidden">
-        <div className="flex items-center justify-around max-w-md mx-auto">
-          {navItems.map(item => {
-            const Icon = item.icon
-            const isActive = activeTab === item.id
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex flex-col items-center gap-1 py-1 px-3 transition-colors ${
-                  isActive ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <div className={`p-1 rounded-xl transition-all ${
-                  isActive ? 'bg-amber-500/15 text-amber-400' : ''
-                }`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <span className="text-[11px] font-medium tracking-tight">{item.label}</span>
-              </button>
-            )
-          })}
+      <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-wr-border bg-wr-surface/95 backdrop-blur-md py-2 px-2 lg:hidden">
+        {mainTabs.map(tab => {
+          const Icon = tab.icon
+          const active = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id)
+                setMoreOpen(false)
+              }}
+              className={`flex flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 text-[10px] font-semibold transition-colors ${
+                active ? 'text-wr-orange' : 'text-wr-muted'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
 
-          <button
-            onClick={() => setShowMoreMenu(true)}
-            className={`flex flex-col items-center gap-1 py-1 px-3 transition-colors ${
-              ['clientes', 'veiculos', 'estoque', 'relatorios', 'configuracoes'].includes(activeTab)
-                ? 'text-amber-400'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <div className={`p-1 rounded-xl transition-all ${
-              ['clientes', 'veiculos', 'estoque', 'relatorios', 'configuracoes'].includes(activeTab)
-                ? 'bg-amber-500/15 text-amber-400'
-                : ''
-            }`}>
-              <Menu className="h-5 w-5" />
-            </div>
-            <span className="text-[11px] font-medium tracking-tight">Mais</span>
-          </button>
-        </div>
+        <button
+          onClick={() => setMoreOpen(prev => !prev)}
+          className={`flex flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 text-[10px] font-semibold transition-colors ${
+            isExtraActive || moreOpen ? 'text-wr-orange' : 'text-wr-muted'
+          }`}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+          <span>Mais</span>
+        </button>
       </nav>
     </>
   )
