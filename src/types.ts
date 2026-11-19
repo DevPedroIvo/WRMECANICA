@@ -99,9 +99,37 @@ export interface FiscalInvoice {
   city?: string
   cityCodeIBGE?: string
   paymentMethodDescription?: string
+  discountValue?: number
 }
 
-export type UserRole = 'dono' | 'caixa'
+export type UserRole = 'dono' | 'funcionario'
+
+// Lembretes de manutenção do cliente (troca de óleo, revisão, etc.)
+export type ReminderType =
+  | 'troca_oleo'
+  | 'revisao'
+  | 'filtros'
+  | 'freios'
+  | 'correia'
+  | 'pneus'
+  | 'outro'
+
+export interface ClientReminder {
+  id: string
+  clientId: string
+  clientName?: string
+  vehicleId?: string
+  vehiclePlate?: string
+  vehicleModel?: string
+  type: ReminderType
+  title: string
+  description?: string
+  dueDate: string // YYYY-MM-DD
+  dueMileage?: number
+  notes?: string
+  done: boolean
+  createdAt: string
+}
 
 export interface CashMovement {
   id: string
@@ -113,7 +141,7 @@ export interface CashMovement {
   paymentMethod: PaymentMethod
   orderId?: string
   orderNumber?: string
-  operator: UserRole
+  operator: string
 }
 
 export interface DailyCashShift {
@@ -122,8 +150,8 @@ export interface DailyCashShift {
   openedAt: string
   closedAt?: string
   status: 'aberto' | 'fechado'
-  openedBy: UserRole
-  closedBy?: UserRole
+  openedBy: string
+  closedBy?: string
   initialAmount: number
   movements: CashMovement[]
   finalPhysicalCash?: number
@@ -161,7 +189,8 @@ export interface ServiceOrder {
   fiscalInvoice?: FiscalInvoice
   partsTotal: number
   laborTotal: number
-  totalAmount: number
+  discount?: number // Desconto concedido na finalização (R$)
+  totalAmount: number // Valor final (peças + mão de obra - desconto)
 }
 
 export interface DeferredPaymentEntry {

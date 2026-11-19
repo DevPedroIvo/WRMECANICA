@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useApp } from '../context/AppContext'
+import { WrLogo } from '../components/WrLogo'
 import {
   ServiceOrder,
   FuelStatus,
@@ -124,6 +125,11 @@ export const OrdersView: React.FC = () => {
   const [danfseModalOrder, setDanfseModalOrder] = useState<ServiceOrder | null>(null)
   const [finalizingOrder, setFinalizingOrder] = useState<ServiceOrder | null>(null)
   const [finalizingPaymentMethod, setFinalizingPaymentMethod] = useState<PaymentMethod>('pix')
+  const [finalizingInstallments, setFinalizingInstallments] = useState<number>(1)
+  const [finalizingDiscount, setFinalizingDiscount] = useState<number>(0)
+  const [finalizingDueDate, setFinalizingDueDate] = useState(() =>
+    new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  )
   const [finalizingEmitNfse, setFinalizingEmitNfse] = useState(true)
 
   // WhatsApp Image Generator State
@@ -847,9 +853,9 @@ export const OrdersView: React.FC = () => {
               </select>
             </div>
 
-            {/* Itens da OS */}
-            <div className="rounded-xl border border-wr-border overflow-hidden">
-              <table className="w-full text-left text-xs">
+            {/* Itens da OS - Adaptado com rolagem horizontal para celular */}
+            <div className="overflow-x-auto rounded-xl border border-wr-border">
+              <table className="w-full text-left text-xs min-w-[460px]">
                 <thead className="bg-wr-elevated text-wr-muted border-b border-wr-border">
                   <tr>
                     <th className="py-2.5 px-3.5 font-semibold">Serviço</th>
@@ -887,6 +893,16 @@ export const OrdersView: React.FC = () => {
                       {formatCurrency(selectedOrderForModal.totalAmount)}
                     </td>
                   </tr>
+                  {(selectedOrderForModal.discount || 0) > 0 && (
+                    <tr className="text-rose-500 font-bold">
+                      <td colSpan={3} className="py-2 px-3.5 text-right">
+                        Desconto Aplicado:
+                      </td>
+                      <td className="py-2 px-3.5 font-mono text-right">
+                        - {formatCurrency(selectedOrderForModal.discount || 0)}
+                      </td>
+                    </tr>
+                  )}
                 </tfoot>
               </table>
             </div>
@@ -1036,14 +1052,9 @@ export const OrdersView: React.FC = () => {
             <div className="rounded-2xl border border-slate-300 bg-white p-6 space-y-4 text-slate-900 shadow-md">
               <div className="flex items-start justify-between border-b border-slate-200 pb-4">
                 <div className="flex items-center gap-3">
-                  <img
-                    src="/assets/real-logo.jpg"
-                    alt="Logo WR Mecânica"
-                    className="h-14 w-auto object-contain rounded-lg border border-slate-200 bg-black/5 p-1"
-                    onError={e => {
-                      (e.target as HTMLElement).style.display = 'none'
-                    }}
-                  />
+                  <div className="h-14 w-auto flex items-center justify-center p-1 rounded-xl border border-slate-200 bg-slate-50">
+                    <WrLogo size="lg" variant="light" showSubtitle={true} />
+                  </div>
                   <div>
                     <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">{fiscalSettings.tradeName}</h2>
                     <p className="text-[11px] font-semibold text-slate-600">{fiscalSettings.companyName}</p>
@@ -1112,46 +1123,48 @@ export const OrdersView: React.FC = () => {
                 </div>
               )}
 
-              <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden bg-white">
-                <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 text-[11px] uppercase font-bold">
-                  <tr>
-                    <th className="p-2.5">Descrição do Serviço / Peça</th>
-                    <th className="p-2.5 text-right">Valor Peças</th>
-                    <th className="p-2.5 text-right">Mão de Obra</th>
-                    <th className="p-2.5 text-right">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 text-slate-800">
-                  {pdfModalOrder.items?.map(it => (
-                    <tr key={it.id}>
-                      <td className="p-2.5 font-medium">{it.serviceDescription}</td>
-                      <td className="p-2.5 font-mono text-right text-slate-600">
-                        {formatCurrency(it.partsCost)}
+              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                <table className="w-full text-left text-xs min-w-[440px]">
+                  <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 text-[11px] uppercase font-bold">
+                    <tr>
+                      <th className="p-2.5">Descrição do Serviço / Peça</th>
+                      <th className="p-2.5 text-right">Valor Peças</th>
+                      <th className="p-2.5 text-right">Mão de Obra</th>
+                      <th className="p-2.5 text-right">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 text-slate-800">
+                    {pdfModalOrder.items?.map(it => (
+                      <tr key={it.id}>
+                        <td className="p-2.5 font-medium">{it.serviceDescription}</td>
+                        <td className="p-2.5 font-mono text-right text-slate-600">
+                          {formatCurrency(it.partsCost)}
+                        </td>
+                        <td className="p-2.5 font-mono text-right text-slate-600">
+                          {formatCurrency(it.laborCost)}
+                        </td>
+                        <td className="p-2.5 font-mono text-right font-bold text-slate-900">
+                          {formatCurrency(it.total)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-slate-100 font-bold border-t border-slate-200">
+                    <tr>
+                      <td className="p-2.5 text-slate-800">TOTAL DA ORDEM DE SERVIÇO</td>
+                      <td className="p-2.5 font-mono text-right text-slate-700">
+                        {formatCurrency(pdfModalOrder.partsTotal || 0)}
                       </td>
-                      <td className="p-2.5 font-mono text-right text-slate-600">
-                        {formatCurrency(it.laborCost)}
+                      <td className="p-2.5 font-mono text-right text-slate-700">
+                        {formatCurrency(pdfModalOrder.laborTotal || 0)}
                       </td>
-                      <td className="p-2.5 font-mono text-right font-bold text-slate-900">
-                        {formatCurrency(it.total)}
+                      <td className="p-2.5 font-mono text-right text-sm text-amber-700 font-black">
+                        {formatCurrency(pdfModalOrder.totalAmount)}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-slate-100 font-bold border-t border-slate-200">
-                  <tr>
-                    <td className="p-2.5 text-slate-800">TOTAL DA ORDEM DE SERVIÇO</td>
-                    <td className="p-2.5 font-mono text-right text-slate-700">
-                      {formatCurrency(pdfModalOrder.partsTotal || 0)}
-                    </td>
-                    <td className="p-2.5 font-mono text-right text-slate-700">
-                      {formatCurrency(pdfModalOrder.laborTotal || 0)}
-                    </td>
-                    <td className="p-2.5 font-mono text-right text-sm text-amber-700 font-black">
-                      {formatCurrency(pdfModalOrder.totalAmount)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                  </tfoot>
+                </table>
+              </div>
 
               <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-200 text-[10px] text-slate-600 space-y-0.5">
                 <p>
@@ -1164,9 +1177,9 @@ export const OrdersView: React.FC = () => {
                 )}
               </div>
 
-              {/* Status de Aprovação Verbal (sem campos manuais de assinatura) */}
-              <div className="rounded-xl border border-emerald-500/40 bg-emerald-50 p-3 text-center text-xs font-bold text-emerald-800">
-                ✓ APROVAÇÃO VERBAL DO CLIENTE: O cliente autorizou expressamente a execução dos serviços e substituição das peças acima discriminadas para o início imediato dos trabalhos.
+              {/* Aviso para autorização do cliente antes do início dos trabalhos */}
+              <div className="rounded-xl border border-amber-500/30 bg-amber-50/70 p-3 text-center text-xs font-semibold text-amber-900">
+                Ordem de Serviço enviada para conferência e autorização prévia do cliente.
               </div>
             </div>
           </div>
@@ -1195,99 +1208,192 @@ export const OrdersView: React.FC = () => {
               </button>
             </div>
 
-            {/* Resumo Financeiro da OS */}
-            <div className="p-4 rounded-2xl bg-wr-surface border border-wr-border space-y-3">
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="p-2 rounded-xl bg-wr-elevated border border-wr-border">
-                  <span className="text-[10px] text-wr-muted block">Peças</span>
-                  <span className="font-mono font-bold text-wr-text">
-                    {formatCurrency(finalizingOrder.partsTotal || 0)}
-                  </span>
-                </div>
-                <div className="p-2 rounded-xl bg-wr-elevated border border-wr-border">
-                  <span className="text-[10px] text-wr-muted block">Mão de Obra</span>
-                  <span className="font-mono font-bold text-wr-text">
-                    {formatCurrency(finalizingOrder.laborTotal || 0)}
-                  </span>
-                </div>
-                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-                  <span className="text-[10px] text-emerald-500 font-bold block">TOTAL A COBRAR</span>
-                  <span className="font-mono text-base font-black text-emerald-500">
-                    {formatCurrency(finalizingOrder.totalAmount)}
-                  </span>
-                </div>
-              </div>
-            </div>
+            {/* Resumo Financeiro da OS & Descontos */}
+            {(() => {
+              const baseParts = finalizingOrder.partsTotal || 0
+              const baseLabor = finalizingOrder.laborTotal || 0
+              const baseSubtotal = baseParts + baseLabor
+              const currentDiscount = Math.min(Math.max(0, Number(finalizingDiscount) || 0), baseSubtotal)
+              const finalCalculatedTotal = Math.max(0, baseSubtotal - currentDiscount)
 
-            {/* Seleção da Forma de Pagamento */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-wr-orange">
-                Escolha a Forma de Pagamento do Cliente:
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {[
-                  { id: 'dinheiro', label: 'Dinheiro', icon: '💵' },
-                  { id: 'pix', label: 'PIX', icon: '⚡' },
-                  { id: 'cartao_debito', label: 'Cartão Débito', icon: '💳' },
-                  { id: 'cartao_credito', label: 'Cartão Crédito', icon: '💳' },
-                  { id: 'pagar_depois', label: 'A Prazo (Fiado)', icon: '📝' },
-                  { id: 'boleto', label: 'Boleto', icon: '📄' },
-                ].map(opt => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setFinalizingPaymentMethod(opt.id as PaymentMethod)}
-                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${
-                      finalizingPaymentMethod === opt.id
-                        ? 'border-wr-orange bg-wr-orange/15 text-wr-orange font-bold shadow-sm'
-                        : 'border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text'
-                    }`}
-                  >
-                    <span className="text-base">{opt.icon}</span>
-                    <span className="text-[11px]">{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+              return (
+                <div className="space-y-3">
+                  <div className="p-4 rounded-2xl bg-wr-surface border border-wr-border space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                      <div className="p-2 rounded-xl bg-wr-elevated border border-wr-border">
+                        <span className="text-[10px] text-wr-muted block">Peças</span>
+                        <span className="font-mono font-bold text-wr-text">
+                          {formatCurrency(baseParts)}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-wr-elevated border border-wr-border">
+                        <span className="text-[10px] text-wr-muted block">Mão de Obra</span>
+                        <span className="font-mono font-bold text-wr-text">
+                          {formatCurrency(baseLabor)}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-wr-elevated border border-wr-border">
+                        <span className="text-[10px] text-wr-muted block">Subtotal</span>
+                        <span className="font-mono font-bold text-wr-text">
+                          {formatCurrency(baseSubtotal)}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                        <span className="text-[10px] text-emerald-500 font-bold block">TOTAL FINAL</span>
+                        <span className="font-mono text-base font-black text-emerald-500">
+                          {formatCurrency(finalCalculatedTotal)}
+                        </span>
+                      </div>
+                    </div>
 
-            {/* Checkbox de Emissão Fiscal */}
-            <div className="p-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 flex items-center justify-between gap-3">
-              <div className="space-y-0.5">
-                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs block">
-                  Emitir Nota Fiscal (NFS-e Porto Nacional / Luzimangues)
-                </span>
-                <p className="text-[10px] text-wr-muted">
-                  Gera a NFS-e oficial com a forma de pagamento selecionada descrita no corpo da nota.
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                checked={finalizingEmitNfse}
-                onChange={e => setFinalizingEmitNfse(e.target.checked)}
-                className="w-5 h-5 accent-emerald-500 rounded cursor-pointer"
-              />
-            </div>
+                    {/* Campo de Desconto */}
+                    <div className="pt-2 border-t border-wr-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <label className="text-xs font-bold text-wr-text block">
+                          Conceder Desconto na OS:
+                        </label>
+                        <span className="text-[10px] text-wr-muted">
+                          Abatimento aplicado direto no valor a pagar
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-wr-muted">R$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max={baseSubtotal}
+                          step="1"
+                          value={finalizingDiscount || ''}
+                          onChange={e => setFinalizingDiscount(Math.max(0, Number(e.target.value)))}
+                          placeholder="0,00"
+                          className="wr-input w-28 bg-wr-elevated font-mono font-bold text-right"
+                        />
+                      </div>
+                    </div>
+                  </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-wr-border">
-              <button
-                type="button"
-                onClick={() => setFinalizingOrder(null)}
-                className="wr-btn-secondary"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  finishOrder(finalizingOrder.id, finalizingPaymentMethod, finalizingEmitNfse)
-                  setFinalizingOrder(null)
-                }}
-                className="rounded-xl bg-emerald-600 text-white font-bold px-4 py-2 hover:bg-emerald-500 transition-colors shadow-sm flex items-center gap-2"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Concluir OS e Entregar Veículo
-              </button>
-            </div>
+                  {/* Seleção da Forma de Pagamento */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-wr-orange">
+                      Escolha a Forma de Pagamento:
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        { id: 'dinheiro', label: 'Dinheiro', icon: '💵' },
+                        { id: 'pix', label: 'PIX', icon: '⚡' },
+                        { id: 'cartao_debito', label: 'Cartão Débito', icon: '💳' },
+                        { id: 'cartao_credito', label: 'Cartão Crédito', icon: '💳' },
+                        { id: 'pagar_depois', label: 'A Prazo (Fiado)', icon: '📝' },
+                        { id: 'boleto', label: 'Boleto', icon: '📄' },
+                      ].map(opt => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setFinalizingPaymentMethod(opt.id as PaymentMethod)}
+                          className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${
+                            finalizingPaymentMethod === opt.id
+                              ? 'border-wr-orange bg-wr-orange/15 text-wr-orange font-bold shadow-sm'
+                              : 'border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text'
+                          }`}
+                        >
+                          <span className="text-base">{opt.icon}</span>
+                          <span className="text-[11px]">{opt.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Parcelamento no Cartão de Crédito */}
+                  {finalizingPaymentMethod === 'cartao_credito' && (
+                    <div className="p-3.5 rounded-2xl bg-wr-surface border border-wr-orange/30 space-y-1.5 animate-fadeIn">
+                      <label className="block text-xs font-bold text-wr-orange">
+                        Dividir em quantas vezes no Crédito?
+                      </label>
+                      <select
+                        value={finalizingInstallments}
+                        onChange={e => setFinalizingInstallments(Number(e.target.value))}
+                        className="wr-input bg-wr-elevated font-semibold text-xs"
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => {
+                          const parcelVal = finalCalculatedTotal / n
+                          return (
+                            <option key={n} value={n}>
+                              {n === 1
+                                ? `1x de ${formatCurrency(finalCalculatedTotal)} (À vista no crédito)`
+                                : `${n}x de ${formatCurrency(parcelVal)} sem juros`}
+                            </option>
+                          )
+                        })}
+                      </select>
+                      <span className="text-[10px] text-wr-muted block">
+                        Essa condição de parcelamento constará na Nota Fiscal e no comprovante.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Vencimento caso seja Pagar Depois */}
+                  {finalizingPaymentMethod === 'pagar_depois' && (
+                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1.5 animate-fadeIn">
+                      <label className="block text-xs font-bold text-amber-600 dark:text-amber-400">
+                        Data de Vencimento Combinada (A Prazo):
+                      </label>
+                      <input
+                        type="date"
+                        value={finalizingDueDate}
+                        onChange={e => setFinalizingDueDate(e.target.value)}
+                        className="wr-input bg-wr-surface font-mono"
+                      />
+                    </div>
+                  )}
+
+                  {/* Checkbox de Emissão Fiscal */}
+                  <div className="p-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 flex items-center justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs block">
+                        Emitir Nota Fiscal (NFS-e Porto Nacional / Luzimangues)
+                      </span>
+                      <p className="text-[10px] text-wr-muted">
+                        Gera a NFS-e oficial com a forma de pagamento e parcelamento especificados.
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={finalizingEmitNfse}
+                      onChange={e => setFinalizingEmitNfse(e.target.checked)}
+                      className="w-5 h-5 accent-emerald-500 rounded cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-wr-border">
+                    <button
+                      type="button"
+                      onClick={() => setFinalizingOrder(null)}
+                      className="wr-btn-secondary"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        finishOrder(finalizingOrder.id, {
+                          paymentMethod: finalizingPaymentMethod,
+                          installments:
+                            finalizingPaymentMethod === 'cartao_credito' ? finalizingInstallments : 1,
+                          discount: currentDiscount,
+                          emitNfse: finalizingEmitNfse,
+                          dueDate: finalizingDueDate,
+                        })
+                        setFinalizingOrder(null)
+                      }}
+                      className="rounded-xl bg-emerald-600 text-white font-bold px-4 py-2 hover:bg-emerald-500 transition-colors shadow-sm flex items-center gap-2"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      Concluir OS e Entregar Veículo
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}
@@ -1727,8 +1833,8 @@ export const OrdersView: React.FC = () => {
                 </div>
 
                 {serviceItems.length > 0 && (
-                  <div className="rounded-xl border border-wr-border overflow-hidden bg-wr-surface">
-                    <table className="w-full text-left text-xs">
+                  <div className="overflow-x-auto rounded-xl border border-wr-border bg-wr-surface">
+                    <table className="w-full text-left text-xs min-w-[420px]">
                       <thead className="bg-wr-elevated text-wr-muted border-b border-wr-border">
                         <tr>
                           <th className="py-2 px-3">Serviço</th>

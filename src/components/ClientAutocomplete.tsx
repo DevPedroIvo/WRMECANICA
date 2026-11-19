@@ -59,6 +59,19 @@ export const ClientAutocomplete: React.FC<ClientAutocompleteProps> = ({
     setIsOpen(false)
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      // Se pressionou Enter, fecha a listinha suspensa para não atrapalhar preencher outros campos
+      if (filteredClients.length === 1 && value.trim().length > 1) {
+        handleSelect(filteredClients[0])
+      } else {
+        setIsOpen(false)
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false)
+    }
+  }
+
   return (
     <div ref={containerRef} className="relative w-full">
       <div className="relative">
@@ -70,6 +83,7 @@ export const ClientAutocomplete: React.FC<ClientAutocompleteProps> = ({
             setIsOpen(true)
           }}
           onFocus={() => setIsOpen(true)}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           required={required}
           autoFocus={autoFocus}
@@ -122,11 +136,17 @@ export const ClientAutocomplete: React.FC<ClientAutocompleteProps> = ({
           ) : (
             <div className="p-3 text-center space-y-2">
               <p className="text-xs text-wr-muted">
-                Nenhum cliente encontrado com "<strong>{value}</strong>".
+                Nenhum cliente cadastrado com "<strong>{value}</strong>".
               </p>
-              <p className="text-[10px] text-wr-orange font-semibold">
-                Você pode continuar digitando este nome ou cadastrá-lo.
-              </p>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="px-2.5 py-1 rounded-lg bg-wr-orange text-white text-[11px] font-bold"
+                >
+                  OK, usar este nome
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -27,6 +27,8 @@ export const Sidebar: React.FC = () => {
     setMobileMenuOpen,
     activeShift,
     currentUserRole,
+    currentUserName,
+    canAccess,
     logout,
   } = useApp()
 
@@ -124,62 +126,68 @@ export const Sidebar: React.FC = () => {
 
         {/* Navigation Groups */}
         <nav className="flex-1 space-y-5 px-3 py-5 overflow-y-auto">
-          {menuGroups.map(group => (
-            <div key={group.label} className="space-y-1">
-              <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-wr-muted/80">
-                {group.label}
-              </span>
-              <div className="space-y-1 pt-1">
-                {group.items.map(item => {
-                  const Icon = item.icon
-                  const isActive = activeTab === item.id
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleNavClick(item.id)}
-                      className={`group flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
-                        isActive
-                          ? 'bg-wr-orange text-white dark:text-[#0B0C10] font-bold shadow-sm'
-                          : 'text-wr-muted hover:bg-wr-elevated hover:text-wr-text'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon
-                          className={`h-4 w-4 transition-colors ${
-                            isActive
-                              ? 'text-white dark:text-[#0B0C10]'
-                              : 'text-wr-muted group-hover:text-wr-orange'
-                          }`}
-                          strokeWidth={isActive ? 2.25 : 1.75}
-                        />
-                        <span>{item.label}</span>
-                      </div>
+          {menuGroups
+            .map(group => ({
+              ...group,
+              items: group.items.filter(it => canAccess(it.id)),
+            }))
+            .filter(group => group.items.length > 0)
+            .map(group => (
+              <div key={group.label} className="space-y-1">
+                <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-wr-muted/80">
+                  {group.label}
+                </span>
+                <div className="space-y-1 pt-1">
+                  {group.items.map(item => {
+                    const Icon = item.icon
+                    const isActive = activeTab === item.id
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleNavClick(item.id)}
+                        className={`group flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
+                          isActive
+                            ? 'bg-wr-orange text-white dark:text-[#0B0C10] font-bold shadow-sm'
+                            : 'text-wr-muted hover:bg-wr-elevated hover:text-wr-text'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon
+                            className={`h-4 w-4 transition-colors ${
+                              isActive
+                                ? 'text-white dark:text-[#0B0C10]'
+                                : 'text-wr-muted group-hover:text-wr-orange'
+                            }`}
+                            strokeWidth={isActive ? 2.25 : 1.75}
+                          />
+                          <span>{item.label}</span>
+                        </div>
 
-                      {item.badge !== undefined && item.badge > 0 && (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                            isActive
-                              ? 'bg-black/20 text-white dark:bg-[#0B0C10]/85 dark:text-wr-orange'
-                              : item.badgeDanger
-                              ? 'bg-rose-500/15 text-rose-500 dark:text-rose-400'
-                              : 'bg-wr-elevated text-wr-muted border border-wr-border'
-                          }`}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
+                        {item.badge !== undefined && item.badge > 0 && (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                              isActive
+                                ? 'bg-black/20 text-white dark:bg-[#0B0C10]/85 dark:text-wr-orange'
+                                : item.badgeDanger
+                                ? 'bg-rose-500/15 text-rose-500 dark:text-rose-400'
+                                : 'bg-wr-elevated text-wr-muted border border-wr-border'
+                            }`}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
 
-                      {item.customBadge && (
-                        <span className="rounded-full bg-emerald-500/20 text-emerald-500 text-[10px] font-bold px-2 py-0.5 border border-emerald-500/30">
-                          {item.customBadge}
-                        </span>
-                      )}
-                    </button>
-                  )
-                })}
+                        {item.customBadge && (
+                          <span className="rounded-full bg-emerald-500/20 text-emerald-500 text-[10px] font-bold px-2 py-0.5 border border-emerald-500/30">
+                            {item.customBadge}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </nav>
 
         {/* Operador Ativo */}
@@ -193,7 +201,7 @@ export const Sidebar: React.FC = () => {
               />
               <div className="min-w-0">
                 <p className="text-xs font-bold text-wr-text uppercase tracking-wider truncate">
-                  {currentUserRole === 'dono' ? 'Dono (2026)' : 'Caixa (1234)'}
+                  {currentUserRole === 'dono' ? 'Dono (Samilly)' : 'Equipe (Wr_mecanica)'}
                 </p>
                 <p className="text-[10px] text-wr-muted truncate">
                   {activeShift ? 'Caixa Aberto' : 'Caixa Fechado'}

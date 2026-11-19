@@ -321,7 +321,7 @@ export const Header: React.FC = () => {
               }`}
             />
             <span className="font-bold text-wr-text uppercase tracking-wider text-[11px]">
-              {currentUserRole === 'dono' ? 'Dono' : 'Caixa'}
+              {currentUserRole === 'dono' ? 'Dono (Samilly)' : 'Funcionário'}
             </span>
             <button
               onClick={logout}

@@ -16,6 +16,7 @@ import {
   DailyCashShift,
   CashMovement,
   PaymentMethod,
+  ClientReminder,
 } from '../types'
 import {
   INITIAL_CLIENTS,
@@ -68,6 +69,62 @@ export interface OrderPrefill {
   vehicleId?: string
 }
 
+export interface FinishOrderOptions {
+  paymentMethod: PaymentMethod
+  installments?: number
+  discount?: number
+  emitNfse: boolean
+  dueDate?: string
+}
+
+// Abas que podem ser liberadas para os funcionários (Configurações é exclusiva do dono)
+export const PERMISSION_TABS: { id: TabType; label: string; description: string }[] = [
+  { id: 'inicio', label: 'Visão Geral', description: 'Painel inicial (sempre liberado)' },
+  { id: 'caixa', label: 'Caixa Diário', description: 'Abrir/fechar caixa, sangria e suprimento' },
+  { id: 'os', label: 'Ordens de Serviço', description: 'Criar, finalizar e enviar OS' },
+  { id: 'atendimentos', label: 'Agendamentos', description: 'Agenda e boxes' },
+  { id: 'clientes', label: 'Clientes', description: 'Cadastro, veículos e lembretes' },
+  { id: 'fiado', label: 'Pagar Depois', description: 'Contas a prazo dos clientes' },
+  { id: 'estoque', label: 'Estoque', description: 'Peças e reposição' },
+  { id: 'financeiro', label: 'Financeiro', description: 'Receitas, despesas e saldo' },
+  { id: 'relatorios', label: 'Relatórios', description: 'Indicadores e faturamento' },
+]
+
+export const DEFAULT_EMPLOYEE_PERMISSIONS: TabType[] = [
+  'inicio',
+  'caixa',
+  'os',
+  'atendimentos',
+  'clientes',
+  'estoque',
+]
+
+// Logins do sistema
+const SYSTEM_USERS: { username: string; password: string; role: UserRole; displayName: string }[] = [
+  { username: 'Samilly Martins', password: 'Sami2026@', role: 'dono', displayName: 'Samilly Martins' },
+  { username: 'Wr_mecanica', password: 'We2023@', role: 'funcionario', displayName: 'Funcionário WR' },
+]
+
+export const PAYMENT_DESCRIPTIONS: Record<PaymentMethod, string> = {
+  pix: 'PAGO VIA PIX',
+  dinheiro: 'PAGO EM DINHEIRO',
+  cartao_debito: 'PAGO NO CARTÃO DE DÉBITO',
+  cartao_credito: 'PAGO NO CARTÃO DE CRÉDITO',
+  pagar_depois: 'FATURADO / A PRAZO (PAGAR DEPOIS)',
+  boleto: 'BOLETO BANCÁRIO',
+  pendente: 'A DEFINIR',
+}
+
+export const describePayment = (method?: PaymentMethod, installments?: number): string => {
+  if (!method) return 'A DEFINIR'
+  const base = PAYMENT_DESCRIPTIONS[method] || 'PAGO'
+  if (method === 'cartao_credito') {
+    const n = installments && installments > 1 ? installments : 1
+    return n > 1 ? `${base} EM ${n}X` : `${base} À VISTA (1X)`
+  }
+  return base
+}
+
 interface AppContextType {
   theme: ThemeMode
   toggleTheme: () => void
@@ -86,7 +143,7 @@ interface AppContextType {
   fiscalSettings: FiscalSettings
 
   updateFiscalSettings: (settings: Partial<FiscalSettings>) => void
-  issueFiscalInvoice: (orderId: string) => FiscalInvoice | null
+  issueFiscalInvoice: (orderId: string, orderOverride?: ServiceOrder) => FiscalInvoice | null
   cancelFiscalInvoice: (orderId: string) => void
 
   addClient: (client: Omit<Client, 'id' | 'createdAt'>) => Client
@@ -137,8 +194,17 @@ interface AppContextType {
   dismissToast: (id: string) => void
 
   currentUserRole: UserRole | null
-  login: (pin: string) => { success: boolean; role?: UserRole; message?: string }
+  currentUserName: string | null
+  login: (username: string, password: string) => { success: boolean; role?: UserRole; message?: string }
   logout: () => void
+  employeePermissions: TabType[]
+  updateEmployeePermissions: (perms: TabType[]) => void
+  canAccess: (tab: TabType) => boolean
+
+  reminders: ClientReminder[]
+  addReminder: (data: Omit<ClientReminder, 'id' | 'createdAt' | 'done'>) => void
+  toggleReminderDone: (id: string) => void
+  deleteReminder: (id: string) => void
 
   activeShift: DailyCashShift | null
   shiftHistory: DailyCashShift[]
@@ -146,7 +212,7 @@ interface AppContextType {
   closeCashShift: (finalPhysicalCash: number, notes?: string) => void
   addCashMovement: (movement: Omit<CashMovement, 'id' | 'timestamp' | 'timeFormatted' | 'operator'>) => void
 
-  finishOrder: (orderId: string, paymentMethod: PaymentMethod, emitNfse: boolean) => void
+  finishOrder: (orderId: string, options: FinishOrderOptions) => void
 
   storageMetrics: StorageMetrics
   resetDataToDefault: () => void
@@ -164,7 +230,9 @@ const STORAGE_KEYS = {
   deferred: 'wr_deferred_v6',
   fiscal: 'wr_fiscal_v6',
   theme: 'wr_theme',
-  authRole: 'wr_auth_role_v1',
+  authRole: 'wr_auth_v2',
+  employeePerms: 'wr_employee_perms_v1',
+  reminders: 'wr_reminders_v1',
   activeCashShift: 'wr_active_cash_shift_v6',
   cashShiftsHistory: 'wr_cash_shifts_v6',
 } as const
@@ -210,11 +278,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadLocalSafe(STORAGE_KEYS.fiscal, DEFAULT_FISCAL_SETTINGS)
   )
 
-  // Autenticação de Operadores (Dono: 2026 / Caixa: 1234)
+  // Autenticação de Operadores (Dono: Samilly Martins / Funcionário: Wr_mecanica)
   const [currentUserRole, setCurrentUserRole] = useState<UserRole | null>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.authRole)
-    return saved === 'dono' || saved === 'caixa' ? saved : null
+    if (!saved) return null
+    try {
+      const parsed = JSON.parse(saved)
+      return parsed.role === 'dono' || parsed.role === 'funcionario' ? parsed.role : null
+    } catch {
+      return saved === 'dono' || saved === 'funcionario' ? (saved as UserRole) : null
+    }
   })
+
+  const [currentUserName, setCurrentUserName] = useState<string | null>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.authRole)
+    if (!saved) return null
+    try {
+      const parsed = JSON.parse(saved)
+      return parsed.username || null
+    } catch {
+      return saved === 'dono' ? 'Samilly Martins' : 'Wr_mecanica'
+    }
+  })
+
+  // Permissões de Acesso dos Funcionários (configuradas pelo Dono)
+  const [employeePermissions, setEmployeePermissions] = useState<TabType[]>(() =>
+    loadLocalSafe(STORAGE_KEYS.employeePerms, DEFAULT_EMPLOYEE_PERMISSIONS)
+  )
+
+  // Lembretes de manutenção / troca de óleo de clientes
+  const [reminders, setReminders] = useState<ClientReminder[]>(() =>
+    loadLocalSafe(STORAGE_KEYS.reminders, [])
+  )
 
   // Caixa Diário (Turno atual aberto e histórico)
   const [activeShift, setActiveShift] = useState<DailyCashShift | null>(() =>
@@ -225,12 +320,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   )
 
   useEffect(() => {
-    if (currentUserRole) {
-      localStorage.setItem(STORAGE_KEYS.authRole, currentUserRole)
+    if (currentUserRole && currentUserName) {
+      localStorage.setItem(
+        STORAGE_KEYS.authRole,
+        JSON.stringify({ role: currentUserRole, username: currentUserName })
+      )
     } else {
       localStorage.removeItem(STORAGE_KEYS.authRole)
     }
-  }, [currentUserRole])
+  }, [currentUserRole, currentUserName])
+
+  useEffect(() => {
+    saveLocalDebounced(STORAGE_KEYS.employeePerms, employeePermissions)
+  }, [employeePermissions])
+
+  useEffect(() => {
+    saveLocalDebounced(STORAGE_KEYS.reminders, reminders)
+  }, [reminders])
 
   useEffect(() => {
     saveLocalDebounced(STORAGE_KEYS.activeCashShift, activeShift)
@@ -311,28 +417,77 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [])
 
   const login = useCallback(
-    (pin: string) => {
-      const cleanPin = pin.trim()
-      if (cleanPin === '2026') {
-        setCurrentUserRole('dono')
-        showToast('Bem-vindo, Dono! Acesso administrativo liberado.', 'success')
-        return { success: true, role: 'dono' as UserRole }
+    (usernameInput: string, passwordInput: string) => {
+      const u = usernameInput.trim()
+      const p = passwordInput.trim()
+
+      const found = SYSTEM_USERS.find(
+        user => user.username.toLowerCase() === u.toLowerCase() && user.password === p
+      )
+
+      if (found) {
+        setCurrentUserRole(found.role)
+        setCurrentUserName(found.username)
+        showToast(
+          `Bem-vindo(a), ${found.displayName}! Acesso como ${found.role === 'dono' ? 'Dono(a)' : 'Funcionário(a)'} liberado.`,
+          'success'
+        )
+        return { success: true, role: found.role }
       }
-      if (cleanPin === '1234') {
-        setCurrentUserRole('caixa')
-        showToast('Bem-vindo, Operador de Caixa! Sistema aberto para lançamentos.', 'success')
-        return { success: true, role: 'caixa' as UserRole }
-      }
-      showToast('Senha de 4 dígitos incorreta! Tente novamente.', 'warning')
-      return { success: false, message: 'Senha incorreta' }
+
+      showToast('Usuário ou senha incorretos! Verifique suas credenciais.', 'warning')
+      return { success: false, message: 'Credenciais inválidas' }
     },
     [showToast]
   )
 
   const logout = useCallback(() => {
     setCurrentUserRole(null)
+    setCurrentUserName(null)
     showToast('Sessão encerrada com segurança.', 'info')
   }, [showToast])
+
+  const updateEmployeePermissions = useCallback((perms: TabType[]) => {
+    setEmployeePermissions(perms)
+  }, [])
+
+  const canAccess = useCallback(
+    (tab: TabType): boolean => {
+      if (currentUserRole === 'dono') return true
+      if (tab === 'configuracoes') return false
+      if (tab === 'inicio') return true
+      return employeePermissions.includes(tab)
+    },
+    [currentUserRole, employeePermissions]
+  )
+
+  const addReminder = useCallback(
+    (data: Omit<ClientReminder, 'id' | 'createdAt' | 'done'>) => {
+      const newRem: ClientReminder = {
+        ...data,
+        id: `rem-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        createdAt: new Date().toLocaleDateString('pt-BR'),
+        done: false,
+      }
+      setReminders(prev => [newRem, ...prev])
+      showToast('Lembrete salvo com sucesso!', 'success')
+    },
+    [showToast]
+  )
+
+  const toggleReminderDone = useCallback((id: string) => {
+    setReminders(prev =>
+      prev.map(r => (r.id === id ? { ...r, done: !r.done } : r))
+    )
+  }, [])
+
+  const deleteReminder = useCallback(
+    (id: string) => {
+      setReminders(prev => prev.filter(r => r.id !== id))
+      showToast('Lembrete excluído.', 'info')
+    },
+    [showToast]
+  )
 
   const openCashShift = useCallback(
     (initialAmount: number, notes?: string) => {
@@ -465,10 +620,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [])
 
   const issueFiscalInvoice = useCallback(
-    (orderId: string): FiscalInvoice | null => {
-      const targetOrder = orders.find(o => o.id === orderId)
-      if (!targetOrder) return null
+    (orderId: string, orderOverride?: ServiceOrder): FiscalInvoice | null => {
+      const baseOrder = orderOverride || orders.find(o => o.id === orderId)
+      if (!baseOrder) return null
 
+      const targetOrder = baseOrder
       const currentYear = new Date().getFullYear()
       const invNum = fiscalSettings.nextInvoiceNumber
       const formattedInvNumber = `${currentYear}${String(invNum).padStart(7, '0')}`
@@ -476,10 +632,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
       const rndSegment = () =>
         Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
-      // Código de verificação municipal de Porto Nacional / Luzimangues
       const verificationCode = `PRTO-${rndSegment()}-${rndSegment()}`
 
-      // Chave de Acesso Fiscal padrão nacional (50 dígitos com Módulo 11)
       const ibgeCode = fiscalSettings.cityCodeIBGE || '1718204' // Porto Nacional - TO
       const now = new Date()
       const aamm = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -506,7 +660,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const isCnpj = clientDoc.length > 11
       const docTag = isCnpj ? `<Cnpj>${clientDoc}</Cnpj>` : `<Cpf>${clientDoc.padStart(11, '0')}</Cpf>`
 
-      // XML da NFS-e compatível com Padrão Nacional / ABRASF 2.04
+      const paymentMethodDescription = describePayment(
+        targetOrder.paymentMethod,
+        targetOrder.paymentInstallments
+      )
+
       const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
 <CompNfse xmlns="http://www.abrasf.org.br/nfse.xsd">
   <Nfse versao="2.04">
@@ -556,26 +714,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         <ItemListaServico>${fiscalSettings.serviceCode || '14.01'}</ItemListaServico>
         <CodigoCnae>${(fiscalSettings.cnae || '4520-0/01').replace(/\D/g, '')}</CodigoCnae>
         <CodigoTributacaoMunicipio>14.01.01</CodigoTributacaoMunicipio>
-        <Discriminacao>${targetOrder.serviceDescription} | Veículo: ${targetOrder.vehicleModel} Placa: ${targetOrder.vehiclePlate} KM: ${targetOrder.mileage}</Discriminacao>
+        <Discriminacao>${targetOrder.serviceDescription} | Veículo: ${targetOrder.vehicleModel} Placa: ${targetOrder.vehiclePlate} KM: ${targetOrder.mileage} | Condição: ${paymentMethodDescription}</Discriminacao>
         <CodigoMunicipio>${ibgeCode}</CodigoMunicipio>
         <MunicipioIncidencia>${ibgeCode}</MunicipioIncidencia>
       </Servico>
     </InfNfse>
   </Nfse>
 </CompNfse>`
-
-      const paymentDescMap: Record<PaymentMethod, string> = {
-        pix: 'PAGO VIA PIX',
-        dinheiro: 'PAGO EM DINHEIRO',
-        cartao_debito: 'PAGO NO CARTÃO DE DÉBITO',
-        cartao_credito: 'PAGO NO CARTÃO DE CRÉDITO',
-        pagar_depois: 'FATURADO / A PRAZO',
-        boleto: 'BOLETO BANCÁRIO',
-        pendente: 'A DEFINIR',
-      }
-      const paymentMethodDescription = targetOrder.paymentMethod
-        ? paymentDescMap[targetOrder.paymentMethod] || 'PAGO'
-        : 'PAGAMENTO À VISTA'
 
       const newInvoice: FiscalInvoice = {
         invoiceNumber: formattedInvNumber,
@@ -597,6 +742,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         city: 'Porto Nacional',
         cityCodeIBGE: ibgeCode,
         paymentMethodDescription,
+        discountValue: targetOrder.discount || 0,
       }
 
       updateOrder(orderId, { fiscalInvoice: newInvoice })
@@ -617,36 +763,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   )
 
   const finishOrder = useCallback(
-    (orderId: string, paymentMethod: PaymentMethod, emitNfse: boolean) => {
+    (orderId: string, options: FinishOrderOptions) => {
       const order = orders.find(o => o.id === orderId)
       if (!order) return
 
-      const paymentDescMap: Record<PaymentMethod, string> = {
-        pix: 'PAGO VIA PIX',
-        dinheiro: 'PAGO EM DINHEIRO',
-        cartao_debito: 'PAGO NO CARTÃO DE DÉBITO',
-        cartao_credito: 'PAGO NO CARTÃO DE CRÉDITO',
-        pagar_depois: 'FATURADO / A PRAZO',
-        boleto: 'BOLETO BANCÁRIO',
-        pendente: 'A DEFINIR',
-      }
+      const { paymentMethod, installments, discount = 0, emitNfse, dueDate } = options
+      const rawSubtotal = (order.partsTotal || 0) + (order.laborTotal || 0)
+      const validDiscount = Math.min(Math.max(0, Number(discount) || 0), rawSubtotal)
+      const finalTotal = Math.max(0, rawSubtotal - validDiscount)
+
+      const paymentDesc = describePayment(paymentMethod, installments)
 
       const updatedOrder: Partial<ServiceOrder> = {
         status: 'pronto',
         paymentMethod,
+        paymentInstallments: paymentMethod === 'cartao_credito' ? installments || 1 : undefined,
+        discount: validDiscount > 0 ? validDiscount : undefined,
+        totalAmount: finalTotal,
+        paymentDueDate: paymentMethod === 'pagar_depois' ? dueDate : undefined,
         date: order.date || new Date().toLocaleDateString('pt-BR'),
       }
 
       updateOrder(orderId, updatedOrder)
 
-      // Atualiza ou insere registro financeiro como pago
+      const mergedOrder: ServiceOrder = {
+        ...order,
+        ...updatedOrder,
+      }
+
+      // Registra no financeiro se não for a prazo
       if (paymentMethod !== 'pagar_depois') {
         const finRecord: FinancialRecord = {
           id: `fin-${Date.now()}`,
           type: 'receita',
           category: 'Serviços & Peças',
-          description: `${order.number} (Finalizada) - ${order.vehicleModel}`,
-          amount: order.totalAmount,
+          description: `${order.number} (${paymentDesc}) - ${order.vehicleModel}${validDiscount > 0 ? ` (Desc: ${formatCurrency(validDiscount)})` : ''}`,
+          amount: finalTotal,
           entityName: order.clientName,
           dueDate: new Date().toLocaleDateString('pt-BR'),
           paymentDate: new Date().toLocaleDateString('pt-BR'),
@@ -664,8 +816,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (activeShift && paymentMethod !== 'pagar_depois') {
         addCashMovement({
           type: 'entrada_os',
-          description: `Recebimento ${order.number} - ${order.clientName}`,
-          amount: order.totalAmount,
+          description: `Recebimento ${order.number} - ${order.clientName} (${paymentDesc})`,
+          amount: finalTotal,
           paymentMethod,
           orderId: order.id,
           orderNumber: order.number,
@@ -686,12 +838,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           orderId: order.id,
           orderNumber: order.number,
           description: `${order.number} - ${order.serviceDescription}`,
-          totalAmount: order.totalAmount,
+          totalAmount: finalTotal,
           paidAmount: 0,
           createdAt: new Date().toLocaleDateString('pt-BR'),
-          dueDate: order.paymentDueDate || defaultDue,
+          dueDate: dueDate || order.paymentDueDate || defaultDue,
           payments: [],
-          notes: order.observations || 'Finalizada com pagamento a prazo.',
+          notes: order.observations
+            ? `${order.observations}${validDiscount > 0 ? ` | Desconto: ${formatCurrency(validDiscount)}` : ''}`
+            : validDiscount > 0
+            ? `Desconto de ${formatCurrency(validDiscount)} aplicado.`
+            : 'Finalizada com pagamento a prazo.',
         }
         setDeferredPayments(prev => [deferred, ...prev])
         void upsertDeltaRow('deferred_payments', deferred.id, deferred, {
@@ -703,13 +859,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Emissão da Nota Fiscal se solicitada
       if (emitNfse) {
         setTimeout(() => {
-          issueFiscalInvoice(orderId)
+          issueFiscalInvoice(orderId, mergedOrder)
         }, 120)
       }
 
-      showToast(`${order.number} finalizada! Pagamento: ${paymentDescMap[paymentMethod] || paymentMethod}`, 'success')
+      showToast(
+        `${order.number} finalizada! Pagamento: ${paymentDesc}${validDiscount > 0 ? ` (Desconto: ${formatCurrency(validDiscount)})` : ''}`,
+        'success'
+      )
     },
-    [orders, activeShift, updateOrder, addCashMovement, issueFiscalInvoice, showToast]
+    [orders, activeShift, updateOrder, addCashMovement, issueFiscalInvoice, formatCurrency, showToast]
   )
 
   const cancelFiscalInvoice = useCallback(
@@ -1196,8 +1355,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         showToast,
         dismissToast,
         currentUserRole,
+        currentUserName,
         login,
         logout,
+        employeePermissions,
+        updateEmployeePermissions,
+        canAccess,
+        reminders,
+        addReminder,
+        toggleReminderDone,
+        deleteReminder,
         activeShift,
         shiftHistory,
         openCashShift,

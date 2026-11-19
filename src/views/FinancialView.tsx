@@ -8,6 +8,11 @@ import {
   TrendingDown,
   Calendar,
   Wallet,
+  Search,
+  CheckCircle2,
+  Clock,
+  ArrowUpRight,
+  ArrowDownRight,
 } from 'lucide-react'
 
 export const FinancialView: React.FC = () => {
@@ -20,7 +25,9 @@ export const FinancialView: React.FC = () => {
     setActiveTab,
   } = useApp()
 
-  const [subTab, setSubTab] = useState<'resumo' | 'receber' | 'pagar'>('resumo')
+  // Unificação: "Resumo Geral" e "Receitas" agora são um só!
+  const [subTab, setSubTab] = useState<'receitas' | 'despesas'>('receitas')
+  const [searchTerm, setSearchTerm] = useState('')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
   const [type, setType] = useState<'receita' | 'despesa'>('receita')
@@ -52,8 +59,27 @@ export const FinancialView: React.FC = () => {
     }
   }, [financial, deferredPayments])
 
-  const contasReceber = financial.filter(f => f.type === 'receita')
-  const contasPagar = financial.filter(f => f.type === 'despesa')
+  const contasReceber = useMemo(
+    () => financial.filter(f => f.type === 'receita'),
+    [financial]
+  )
+  const contasPagar = useMemo(
+    () => financial.filter(f => f.type === 'despesa'),
+    [financial]
+  )
+
+  const filteredItems = useMemo(() => {
+    const currentList = subTab === 'receitas' ? contasReceber : contasPagar
+    const q = searchTerm.trim().toLowerCase()
+    if (!q) return currentList
+    return currentList.filter(
+      item =>
+        item.description.toLowerCase().includes(q) ||
+        item.entityName.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        item.dueDate.toLowerCase().includes(q)
+    )
+  }, [subTab, contasReceber, contasPagar, searchTerm])
 
   const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault()
@@ -85,50 +111,38 @@ export const FinancialView: React.FC = () => {
             Financeiro da Oficina
           </h2>
           <p className="text-xs text-wr-muted mt-0.5">
-            Entradas, saídas, saldo em caixa e integração com Pagar Depois
+            Fluxo de caixa, receitas operacionais, despesas e integração com Pagar Depois
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => setActiveTab('fiado')} className="wr-btn-secondary">
             <Wallet className="h-4 w-4 text-amber-500" />
             Pagar Depois ({formatCurrency(totalPagarDepois)})
           </button>
-          <button onClick={() => setIsAddModalOpen(true)} className="wr-btn-primary">
+          <button
+            onClick={() => {
+              setType(subTab === 'despesas' ? 'despesa' : 'receita')
+              setIsAddModalOpen(true)
+            }}
+            className="wr-btn-primary"
+          >
             <Plus className="h-4 w-4 stroke-[2.5]" />
             Novo Lançamento
           </button>
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-1.5 rounded-xl border border-wr-border bg-wr-surface p-1 w-fit">
-        {[
-          { id: 'resumo', label: 'Resumo Geral' },
-          { id: 'receber', label: `Receitas (${contasReceber.length})` },
-          { id: 'pagar', label: `Despesas (${contasPagar.length})` },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setSubTab(tab.id as typeof subTab)}
-            className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
-              subTab === tab.id
-                ? 'bg-wr-orange text-white dark:text-[#0B0C10]'
-                : 'text-wr-muted hover:text-wr-text'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* KPIs Cards - Unificados para dar visão completa da oficina */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="wr-card p-5 flex items-center justify-between">
           <div>
             <span className="text-xs font-semibold text-wr-muted block">Receitas Totais</span>
             <span className="text-2xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400 mt-1 block">
               {formatCurrency(totalReceitas)}
+            </span>
+            <span className="text-[10px] text-wr-muted mt-0.5 block">
+              {contasReceber.length} lançamento(s)
             </span>
           </div>
           <div className="h-10 w-10 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
@@ -138,9 +152,12 @@ export const FinancialView: React.FC = () => {
 
         <div className="wr-card p-5 flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-wr-muted block">Despesas</span>
+            <span className="text-xs font-semibold text-wr-muted block">Despesas Totais</span>
             <span className="text-2xl font-extrabold font-mono text-rose-500 mt-1 block">
               {formatCurrency(totalDespesas)}
+            </span>
+            <span className="text-[10px] text-wr-muted mt-0.5 block">
+              {contasPagar.length} lançamento(s)
             </span>
           </div>
           <div className="h-10 w-10 rounded-xl bg-rose-500/15 text-rose-500 flex items-center justify-center">
@@ -151,121 +168,201 @@ export const FinancialView: React.FC = () => {
         <div className="wr-card p-5 flex items-center justify-between border-wr-gold/40">
           <div>
             <span className="text-xs font-semibold text-wr-muted block">
-              Saldo Líquido ({margem}%)
+              Saldo em Caixa ({margem}% margem)
             </span>
             <span className="text-2xl font-extrabold font-mono text-wr-gold mt-1 block">
               {formatCurrency(saldoAtual)}
+            </span>
+            <span className="text-[10px] text-wr-muted mt-0.5 block">
+              {saldoAtual >= 0 ? 'Resultado positivo' : 'Déficit no período'}
             </span>
           </div>
           <div className="h-10 w-10 rounded-xl bg-wr-gold/15 text-wr-gold flex items-center justify-center">
             <DollarSign className="h-5 w-5" />
           </div>
         </div>
+
+        <div className="wr-card p-5 flex items-center justify-between border-amber-500/30">
+          <div>
+            <span className="text-xs font-semibold text-wr-muted block">A Prazo (Pagar Depois)</span>
+            <span className="text-2xl font-extrabold font-mono text-amber-500 mt-1 block">
+              {formatCurrency(totalPagarDepois)}
+            </span>
+            <button
+              onClick={() => setActiveTab('fiado')}
+              className="text-[10px] text-amber-500 hover:underline mt-0.5 block font-bold"
+            >
+              Ver contas a receber →
+            </button>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center">
+            <Wallet className="h-5 w-5" />
+          </div>
+        </div>
       </div>
 
-      {/* Lists */}
-      <div className={`grid grid-cols-1 ${subTab === 'resumo' ? 'lg:grid-cols-2' : ''} gap-5`}>
-        {(subTab === 'resumo' || subTab === 'receber') && (
-          <div className="wr-card p-5 space-y-3.5">
-            <div className="flex items-center justify-between pb-3 border-b border-wr-border">
-              <h4 className="text-xs font-bold text-wr-text uppercase tracking-wider">
-                Receitas &amp; Entradas
-              </h4>
-              <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                {contasReceber.length} registro(s)
-              </span>
-            </div>
+      {/* Abas Unificadas: apenas 2 abas (Resumo & Receitas vs Despesas) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-1.5 rounded-xl border border-wr-border bg-wr-surface p-1 w-full sm:w-fit">
+          <button
+            type="button"
+            onClick={() => setSubTab('receitas')}
+            className={`flex-1 sm:flex-initial rounded-lg px-5 py-2 text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              subTab === 'receitas'
+                ? 'bg-wr-orange text-white dark:text-[#0B0C10] shadow-sm'
+                : 'text-wr-muted hover:text-wr-text'
+            }`}
+          >
+            <ArrowUpRight className="h-3.5 w-3.5" />
+            Resumo &amp; Receitas ({contasReceber.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubTab('despesas')}
+            className={`flex-1 sm:flex-initial rounded-lg px-5 py-2 text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              subTab === 'despesas'
+                ? 'bg-rose-600 text-white shadow-sm'
+                : 'text-wr-muted hover:text-wr-text'
+            }`}
+          >
+            <ArrowDownRight className="h-3.5 w-3.5" />
+            Despesas &amp; Saídas ({contasPagar.length})
+          </button>
+        </div>
 
-            <div className="space-y-2.5">
-              {contasReceber.map(item => {
-                const isPaid = item.status === 'pago'
-                return (
-                  <div
-                    key={item.id}
-                    className="wr-surface-muted p-3.5 text-xs flex items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0">
-                      <span className="font-bold text-wr-text block truncate">
-                        {item.entityName}
-                      </span>
-                      <span className="text-[11px] text-wr-muted block truncate">
-                        {item.description}
-                      </span>
-                      <span className="text-[10px] text-wr-muted inline-flex items-center gap-1 mt-1">
-                        <Calendar className="h-3 w-3 text-wr-orange" /> {item.dueDate}
-                      </span>
-                    </div>
-                    <div className="text-right flex flex-col items-end gap-1.5 shrink-0">
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono text-sm">
-                        {formatCurrency(item.amount)}
-                      </span>
-                      <button
-                        onClick={() => toggleFinancialStatus(item.id)}
-                        className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-colors ${
-                          isPaid
-                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                            : 'bg-wr-orange/15 text-wr-orange border-wr-orange/30 hover:bg-wr-orange hover:text-white'
-                        }`}
-                      >
-                        {isPaid ? 'Recebido ✓' : 'Marcar Pago'}
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+        {/* Campo de Busca Rápida */}
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-wr-muted" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder={`Buscar em ${subTab === 'receitas' ? 'receitas' : 'despesas'}...`}
+            className="wr-input pl-9 py-1.5 text-xs"
+          />
+        </div>
+      </div>
+
+      {/* Lista Principal de Movimentações (Totalmente adaptada para Celular) */}
+      <div className="wr-card p-5 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-wr-border">
+          <div>
+            <h3 className="text-sm font-bold text-wr-text flex items-center gap-2">
+              {subTab === 'receitas' ? (
+                <>
+                  <span className="p-1 rounded-md bg-emerald-500/15 text-emerald-500">
+                    <ArrowUpRight className="h-4 w-4" />
+                  </span>
+                  Extrato de Receitas &amp; Entradas
+                </>
+              ) : (
+                <>
+                  <span className="p-1 rounded-md bg-rose-500/15 text-rose-500">
+                    <ArrowDownRight className="h-4 w-4" />
+                  </span>
+                  Contas a Pagar &amp; Despesas da Oficina
+                </>
+              )}
+            </h3>
+            <p className="text-[11px] text-wr-muted mt-0.5">
+              {subTab === 'receitas'
+                ? 'Ordens de serviço pagas, pagamentos de fiado e receitas avulsas'
+                : 'Compras de peças, fornecedores, contas e custos operacionais'}
+            </p>
           </div>
-        )}
 
-        {(subTab === 'resumo' || subTab === 'pagar') && (
-          <div className="wr-card p-5 space-y-3.5">
-            <div className="flex items-center justify-between pb-3 border-b border-wr-border">
-              <h4 className="text-xs font-bold text-wr-text uppercase tracking-wider">
-                Despesas &amp; Saídas
-              </h4>
-              <span className="text-[11px] font-mono text-rose-500 font-bold">
-                {contasPagar.length} registro(s)
-              </span>
-            </div>
+          <span className="font-mono text-xs font-bold text-wr-muted">
+            {filteredItems.length} registro(s)
+          </span>
+        </div>
 
-            <div className="space-y-2.5">
-              {contasPagar.map(item => {
-                const isPaid = item.status === 'pago'
-                return (
-                  <div
-                    key={item.id}
-                    className="wr-surface-muted p-3.5 text-xs flex items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0">
-                      <span className="font-bold text-wr-text block truncate">
+        {filteredItems.length === 0 ? (
+          <div className="text-center py-12 text-wr-muted text-xs space-y-2">
+            <DollarSign className="h-8 w-8 mx-auto text-wr-muted/60" />
+            <p className="font-semibold text-wr-text">Nenhum registro encontrado</p>
+            <p className="text-[11px]">
+              {searchTerm
+                ? `Nenhum lançamento corresponde a "${searchTerm}"`
+                : subTab === 'receitas'
+                ? 'Nenhuma receita registrada ainda.'
+                : 'Nenhuma despesa registrada ainda.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {filteredItems.map(item => {
+              const isPaid = item.status === 'pago'
+              const isReceita = item.type === 'receita'
+
+              return (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-wr-border bg-wr-elevated p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-wr-borderHover transition-colors"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-bold text-xs text-wr-text truncate">
                         {item.entityName}
                       </span>
-                      <span className="text-[11px] text-wr-muted block truncate">
-                        {item.description}
+                      <span className="rounded-md bg-wr-surface border border-wr-border px-1.5 py-0.5 text-[10px] text-wr-muted font-medium">
+                        {item.category}
                       </span>
-                      <span className="text-[10px] text-wr-muted inline-flex items-center gap-1 mt-1">
-                        <Calendar className="h-3 w-3 text-wr-orange" /> {item.dueDate}
-                      </span>
+                      {isPaid ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="h-3 w-3" />
+                          {isReceita ? 'Recebido' : 'Pago'}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-500">
+                          <Clock className="h-3 w-3" />
+                          Pendente
+                        </span>
+                      )}
                     </div>
-                    <div className="text-right flex flex-col items-end gap-1.5 shrink-0">
-                      <span className="font-bold text-rose-500 font-mono text-sm">
-                        {formatCurrency(item.amount)}
+
+                    <p className="text-xs text-wr-muted truncate">{item.description}</p>
+
+                    <div className="flex items-center gap-3 text-[11px] text-wr-muted pt-0.5 font-mono">
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="h-3 w-3 text-wr-orange" />
+                        {item.dueDate}
                       </span>
-                      <button
-                        onClick={() => toggleFinancialStatus(item.id)}
-                        className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-colors ${
-                          isPaid
-                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                            : 'bg-rose-500/15 text-rose-500 border-rose-500/30 hover:bg-rose-500 hover:text-white'
-                        }`}
-                      >
-                        {isPaid ? 'Pago ✓' : 'Liquidar'}
-                      </button>
                     </div>
                   </div>
-                )
-              })}
-            </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-wr-border">
+                    <div className="text-left sm:text-right">
+                      <span
+                        className={`font-mono text-base font-extrabold block ${
+                          isReceita
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-500'
+                        }`}
+                      >
+                        {isReceita ? '+' : '-'} {formatCurrency(item.amount)}
+                      </span>
+                      <span className="text-[10px] text-wr-muted capitalize">
+                        {item.type}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => toggleFinancialStatus(item.id)}
+                      className={`text-xs font-bold px-3.5 py-2 rounded-xl border transition-all ${
+                        isPaid
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
+                          : isReceita
+                          ? 'bg-wr-orange/15 text-wr-orange border-wr-orange/30 hover:bg-wr-orange hover:text-white dark:hover:text-[#0B0C10]'
+                          : 'bg-rose-500/15 text-rose-500 border-rose-500/30 hover:bg-rose-500 hover:text-white'
+                      }`}
+                    >
+                      {isPaid ? 'Concluído ✓' : isReceita ? 'Marcar Recebido' : 'Pagar Agora'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -291,22 +388,22 @@ export const FinancialView: React.FC = () => {
                   onClick={() => setType('receita')}
                   className={`py-2.5 rounded-xl font-bold border transition-all ${
                     type === 'receita'
-                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                       : 'bg-wr-elevated text-wr-muted border-wr-border'
                   }`}
                 >
-                  + Receita
+                  + Receita (Entrada)
                 </button>
                 <button
                   type="button"
                   onClick={() => setType('despesa')}
                   className={`py-2.5 rounded-xl font-bold border transition-all ${
                     type === 'despesa'
-                      ? 'bg-rose-600 text-white border-rose-600'
+                      ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
                       : 'bg-wr-elevated text-wr-muted border-wr-border'
                   }`}
                 >
-                  - Despesa
+                  - Despesa (Saída)
                 </button>
               </div>
 
@@ -325,7 +422,7 @@ export const FinancialView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-wr-muted font-semibold mb-1">
-                    {type === 'receita' ? 'Cliente *' : 'Fornecedor *'}
+                    {type === 'receita' ? 'Cliente *' : 'Fornecedor / Credor *'}
                   </label>
                   <input
                     type="text"
@@ -364,7 +461,7 @@ export const FinancialView: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-wr-muted font-semibold mb-1">Vencimento</label>
+                  <label className="block text-wr-muted font-semibold mb-1">Data de Vencimento</label>
                   <input
                     type="text"
                     value={dueDate}

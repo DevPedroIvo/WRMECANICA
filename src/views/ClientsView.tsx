@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useApp } from '../context/AppContext'
-import { Client, Vehicle } from '../types'
+import { Client, Vehicle, ClientReminder } from '../types'
 import {
   Users,
   Search,
@@ -20,6 +20,13 @@ import {
   Wallet,
   Phone,
   ClipboardList,
+  Bell,
+  Droplets,
+  AlertCircle,
+  CheckCircle2,
+  ArrowLeft,
+  CalendarCheck,
+  Send,
 } from 'lucide-react'
 
 export const ClientsView: React.FC = () => {
@@ -28,11 +35,15 @@ export const ClientsView: React.FC = () => {
     vehicles,
     orders,
     deferredPayments,
+    reminders,
     addClient,
     updateClient,
     addVehicle,
     updateVehicle,
     deleteVehicle,
+    addReminder,
+    toggleReminderDone,
+    deleteReminder,
     sendWhatsApp,
     openNewOrderModal,
     setActiveTab,
@@ -40,16 +51,21 @@ export const ClientsView: React.FC = () => {
     selectedClientId,
     setSelectedClientId,
     formatCurrency,
+    showToast,
   } = useApp()
 
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedId, setSelectedId] = useState<string>(selectedClientId || clients[0]?.id || '')
+
+  // No celular: controla se exibe a lista de clientes ou a ficha detalhada do cliente selecionado
+  const [mobileShowDetail, setMobileShowDetail] = useState(false)
 
   // Modals
   const [isClientModalOpen, setIsClientModalOpen] = useState(false)
   const [editingClient, setEditingClient] = useState<Client | null>(null)
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false)
 
   // Client form state (com veículo inicial opcional no cadastro)
   const [cName, setCName] = useState('')
@@ -73,10 +89,23 @@ export const ClientsView: React.FC = () => {
   const [vMileage, setVMileage] = useState(0)
   const [vFuelType, setVFuelType] = useState<Vehicle['fuelType']>('Flex')
 
+  // Reminder form state
+  const [remType, setRemType] = useState<ClientReminder['type']>('troca_oleo')
+  const [remVehiclePlate, setRemVehiclePlate] = useState('')
+  const [remDueDate, setRemDueDate] = useState(() => {
+    const d = new Date()
+    d.setMonth(d.getMonth() + 6)
+    return d.toISOString().split('T')[0]
+  })
+  const [remDueMileage, setRemDueMileage] = useState<number | ''>('')
+  const [remDescription, setRemDescription] = useState('Troca de Óleo e Filtros')
+  const [remNotes, setRemNotes] = useState('')
+
   // Sincroniza quando vem da busca global do Header
   useEffect(() => {
     if (selectedClientId) {
       setSelectedId(selectedClientId)
+      setMobileShowDetail(true)
       setSelectedClientId(null)
     }
   }, [selectedClientId, setSelectedClientId])
@@ -129,6 +158,17 @@ export const ClientsView: React.FC = () => {
     0
   )
 
+  // Lembretes do cliente selecionado
+  const clientReminders = useMemo(() => {
+    if (!selectedClient) return []
+    return reminders.filter(r => r.clientId === selectedClient.id)
+  }, [reminders, selectedClient])
+
+  const handleSelectClient = (id: string) => {
+    setSelectedId(id)
+    setMobileShowDetail(true)
+  }
+
   const openNewClientModal = () => {
     setEditingClient(null)
     setCName('')
@@ -180,6 +220,7 @@ export const ClientsView: React.FC = () => {
         notes: cNotes.trim() || undefined,
       })
       setSelectedId(created.id)
+      setMobileShowDetail(true)
 
       if (includeFirstVehicle && firstVModel.trim() && firstVPlate.trim()) {
         addVehicle({
@@ -255,6 +296,65 @@ export const ClientsView: React.FC = () => {
     setEditingVehicle(null)
   }
 
+  const openAddReminderModal = () => {
+    if (!selectedClient) return
+    const primaryVehicle = clientVehicles[0]
+    setRemType('troca_oleo')
+    setRemVehiclePlate(primaryVehicle ? primaryVehicle.plate : '')
+    const d = new Date()
+    d.setMonth(d.getMonth() + 6)
+    setRemDueDate(d.toISOString().split('T')[0])
+    setRemDueMileage(primaryVehicle ? (primaryVehicle.currentMileage || 0) + 10000 : '')
+    setRemDescription('Troca de Óleo e Filtros')
+    setRemNotes('')
+    setIsReminderModalOpen(true)
+  }
+
+  const handleSaveReminder = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedClient || !remDescription.trim() || !remDueDate) return
+
+    const matchedVehicle = clientVehicles.find(v => v.plate === remVehiclePlate)
+
+    addReminder({
+      clientId: selectedClient.id,
+      clientName: selectedClient.name,
+      vehiclePlate: remVehiclePlate || undefined,
+      vehicleModel: matchedVehicle ? `${matchedVehicle.brand} ${matchedVehicle.model}` : undefined,
+      type: remType,
+      title: remDescription.trim(),
+      description: remDescription.trim(),
+      dueDate: remDueDate,
+      dueMileage: remDueMileage !== '' ? Number(remDueMileage) : undefined,
+      notes: remNotes.trim() || undefined,
+    })
+
+    showToast('Lembrete de manutenção cadastrado com sucesso!')
+    setIsReminderModalOpen(false)
+  }
+
+  const handleSendReminderWhatsApp = (rem: ClientReminder) => {
+    if (!selectedClient) return
+    const typeNames: Record<ClientReminder['type'], string> = {
+      troca_oleo: 'Troca de Óleo',
+      filtros: 'Troca de Filtros',
+      revisao: 'Revisão Preventiva',
+      correia: 'Troca da Correia Dentada',
+      freios: 'Revisão de Pastilhas e Freios',
+      pneus: 'Alinhamento e Pneus',
+      outro: 'Manutenção Preventiva',
+    }
+    const typeLabel = typeNames[rem.type] || 'Manutenção'
+    const carInfo = rem.vehicleModel
+      ? ` no seu veículo ${rem.vehicleModel}${rem.vehiclePlate ? ` (${rem.vehiclePlate})` : ''}`
+      : ''
+    const dueFormatted = new Date(rem.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')
+
+    const msg = `Olá, ${selectedClient.name}! Aqui é da *WR Mecânica & Cia*. 🚗🔧\n\nPassando para lembrar que está prevista a *${typeLabel}* (${rem.title || rem.description})${carInfo} para a data *${dueFormatted}*${rem.dueMileage ? ` ou aos *${rem.dueMileage.toLocaleString('pt-BR')} km*` : ''}.\n\nCuidar do seu carro previne prejuízos e garante sua segurança na estrada! Vamos agendar o seu atendimento?`
+
+    sendWhatsApp(selectedClient.phone, msg)
+  }
+
   const getInitials = (name: string) => {
     const parts = name.trim().split(/\s+/)
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
@@ -273,8 +373,15 @@ export const ClientsView: React.FC = () => {
           </div>
           <div className="inline-flex items-center gap-2 rounded-xl border border-wr-border bg-wr-surface px-3.5 py-2 text-xs">
             <Car className="h-4 w-4 text-wr-gold" />
-            <span className="text-wr-muted">Veículos vinculados:</span>
+            <span className="text-wr-muted">Veículos:</span>
             <strong className="font-mono text-wr-text">{vehicles.length}</strong>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-xl border border-wr-border bg-wr-surface px-3.5 py-2 text-xs">
+            <Bell className="h-4 w-4 text-amber-500" />
+            <span className="text-wr-muted">Lembretes Ativos:</span>
+            <strong className="font-mono text-wr-text">
+              {reminders.filter(r => !r.done).length}
+            </strong>
           </div>
         </div>
 
@@ -284,10 +391,14 @@ export const ClientsView: React.FC = () => {
         </button>
       </div>
 
-      {/* Main Master-Detail Grid */}
+      {/* Main Master-Detail Grid: Responsivo com navegação fluida no celular */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left: Client & Plate Searchable Directory (5 cols) */}
-        <div className="lg:col-span-5 space-y-3">
+        {/* Left: Lista de Clientes (Visível sempre no desktop, ou quando mobileShowDetail é falso no celular) */}
+        <div
+          className={`${
+            mobileShowDetail ? 'hidden' : 'block'
+          } lg:block lg:col-span-5 space-y-3`}
+        >
           <div className="relative">
             <Search
               className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-wr-muted"
@@ -302,7 +413,7 @@ export const ClientsView: React.FC = () => {
             />
           </div>
 
-          <div className="space-y-2 max-h-[680px] overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-[720px] overflow-y-auto pr-1">
             {filteredClients.length === 0 ? (
               <div className="wr-card p-8 text-center text-xs text-wr-muted">
                 Nenhum cliente ou placa encontrado para "{searchTerm}".
@@ -314,12 +425,15 @@ export const ClientsView: React.FC = () => {
                 const hasDebt = deferredPayments.some(
                   d => d.clientId === client.id && d.totalAmount - d.paidAmount > 0.01
                 )
+                const pendingRemindersCount = reminders.filter(
+                  r => r.clientId === client.id && !r.done
+                ).length
 
                 return (
                   <button
                     key={client.id}
                     type="button"
-                    onClick={() => setSelectedId(client.id)}
+                    onClick={() => handleSelectClient(client.id)}
                     className={`w-full text-left flex items-center justify-between gap-3 p-3.5 rounded-2xl border transition-all ${
                       isSelected
                         ? 'border-wr-orange bg-wr-surface shadow-card ring-1 ring-wr-orange/25'
@@ -348,6 +462,15 @@ export const ClientsView: React.FC = () => {
                               title="Possui saldo em Pagar Depois"
                             >
                               A prazo
+                            </span>
+                          )}
+                          {pendingRemindersCount > 0 && (
+                            <span
+                              className="inline-flex items-center gap-0.5 rounded-full bg-wr-orange/15 px-1.5 py-0.5 text-[9px] font-bold text-wr-orange"
+                              title={`${pendingRemindersCount} lembrete(s) de manutenção pendente(s)`}
+                            >
+                              <Bell className="h-2.5 w-2.5" />
+                              {pendingRemindersCount}
                             </span>
                           )}
                         </div>
@@ -393,9 +516,25 @@ export const ClientsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Right: Selected Client + Linked Vehicles + History (7 cols) */}
+        {/* Right: Selected Client + Reminders + Linked Vehicles + History */}
         {selectedClient ? (
-          <div className="lg:col-span-7 space-y-5">
+          <div
+            className={`${
+              mobileShowDetail ? 'block' : 'hidden'
+            } lg:block lg:col-span-7 space-y-5`}
+          >
+            {/* Botão de retorno visível exclusivamente no celular */}
+            <div className="lg:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileShowDetail(false)}
+                className="inline-flex items-center gap-2 rounded-xl border border-wr-border bg-wr-surface px-3.5 py-2 text-xs font-bold text-wr-orange hover:bg-wr-elevated transition-colors mb-1"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar para a Lista de Clientes
+              </button>
+            </div>
+
             {/* Client Summary Card */}
             <div className="wr-card p-6 space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-wr-border">
@@ -492,6 +631,153 @@ export const ClientsView: React.FC = () => {
                   >
                     Ver em Pagar Depois →
                   </button>
+                </div>
+              )}
+            </div>
+
+            {/* SEÇÃO NOVINHA: Lembretes de Manutenção & Troca de Óleo */}
+            <div className="wr-card p-6 space-y-4">
+              <div className="flex items-center justify-between gap-2 pb-3 border-b border-wr-border">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-wr-orange/15 text-wr-orange">
+                    <Droplets className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-wr-text flex items-center gap-2">
+                      Lembretes de Troca de Óleo &amp; Manutenção
+                    </h4>
+                    <p className="text-[11px] text-wr-muted">
+                      Avisos de revisão e troca de óleo para enviar no WhatsApp do cliente
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={openAddReminderModal}
+                  className="wr-btn-primary px-3 py-1.5 text-xs"
+                >
+                  <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+                  Novo Lembrete
+                </button>
+              </div>
+
+              {clientReminders.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-wr-border bg-wr-elevated/40 p-6 text-center space-y-2">
+                  <Droplets className="h-7 w-7 text-wr-muted mx-auto" />
+                  <p className="text-xs font-semibold text-wr-text">
+                    Nenhum lembrete cadastrado para {selectedClient.name}
+                  </p>
+                  <p className="text-[11px] text-wr-muted max-w-md mx-auto">
+                    Cadastre a próxima troca de óleo ou revisão programada para enviar avisos no WhatsApp com 1 clique.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={openAddReminderModal}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-wr-orange/15 hover:bg-wr-orange text-wr-orange hover:text-white dark:hover:text-[#0B0C10] px-3.5 py-1.5 text-xs font-bold transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Agendar Lembrete de Óleo / Revisão
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {clientReminders.map(rem => {
+                    const isDuePast =
+                      !rem.done &&
+                      new Date(rem.dueDate + 'T23:59:59') < new Date()
+
+                    return (
+                      <div
+                        key={rem.id}
+                        className={`rounded-2xl border p-3.5 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          rem.done
+                            ? 'border-wr-border bg-wr-elevated/40 opacity-70'
+                            : isDuePast
+                            ? 'border-rose-500/40 bg-rose-500/5'
+                            : 'border-wr-border bg-wr-elevated hover:border-wr-orange/40'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3 min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => toggleReminderDone(rem.id)}
+                            className={`mt-0.5 p-1 rounded-lg border transition-colors shrink-0 ${
+                              rem.done
+                                ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40'
+                                : 'border-wr-border text-wr-muted hover:border-wr-orange hover:text-wr-orange'
+                            }`}
+                            title={rem.done ? 'Marcar como pendente' : 'Marcar como concluído'}
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                          </button>
+
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs font-bold text-wr-text">
+                                {rem.title || rem.description}
+                              </span>
+                              {rem.vehiclePlate && (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-wr-surface border border-wr-border px-1.5 py-0.5 text-[10px] font-mono font-bold text-wr-orange">
+                                  <Car className="h-2.5 w-2.5" />
+                                  {rem.vehiclePlate}
+                                </span>
+                              )}
+                              {rem.done ? (
+                                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-500">
+                                  Concluído
+                                </span>
+                              ) : isDuePast ? (
+                                <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[9px] font-bold text-rose-500 flex items-center gap-1">
+                                  <AlertCircle className="h-2.5 w-2.5" /> Vencido
+                                </span>
+                              ) : (
+                                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-bold text-amber-500">
+                                  Programado
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-wr-muted mt-1">
+                              <span className="inline-flex items-center gap-1 font-mono">
+                                <Calendar className="h-3 w-3 text-wr-orange" />
+                                Previsto: {new Date(rem.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                              </span>
+                              {rem.dueMileage && (
+                                <span className="inline-flex items-center gap-1 font-mono">
+                                  <Gauge className="h-3 w-3 text-wr-gold" />
+                                  {rem.dueMileage.toLocaleString('pt-BR')} km
+                                </span>
+                              )}
+                              {rem.notes && (
+                                <span className="text-wr-muted italic">• {rem.notes}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleSendReminderWhatsApp(rem)}
+                            className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-[11px] font-bold text-white transition-colors"
+                            title="Avisar cliente via WhatsApp"
+                          >
+                            <Send className="h-3 w-3" />
+                            Avisar WhatsApp
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteReminder(rem.id)}
+                            className="rounded-xl border border-wr-border bg-wr-surface p-1.5 text-wr-muted hover:text-rose-500 hover:border-rose-500/40 transition-colors"
+                            title="Excluir lembrete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -626,7 +912,7 @@ export const ClientsView: React.FC = () => {
                         setSelectedOrderForModal(order)
                         setActiveTab('os')
                       }}
-                      className="w-full text-left wr-surface-muted p-3.5 flex items-center justify-between gap-3 hover:border-wr-orange/50 transition-colors text-xs"
+                      className="w-full text-left wr-surface-muted p-3.5 flex items-center justify-between gap-3 hover:border-wr-orange/50 transition-colors text-xs rounded-xl"
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -659,6 +945,157 @@ export const ClientsView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Modal: Novo Lembrete de Manutenção / Troca de Óleo */}
+      {isReminderModalOpen && selectedClient && (
+        <div className="wr-modal-backdrop">
+          <div className="wr-modal-panel max-w-md animate-fadeIn">
+            <div className="flex items-center justify-between pb-3.5 border-b border-wr-border">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-wr-orange/15 text-wr-orange">
+                  <CalendarCheck className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-wr-text">
+                    Novo Lembrete de Manutenção
+                  </h3>
+                  <p className="text-[11px] text-wr-muted">
+                    Cliente: <strong className="text-wr-orange">{selectedClient.name}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReminderModalOpen(false)}
+                className="rounded-lg p-1 text-wr-muted hover:text-wr-text"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveReminder} className="mt-4 space-y-3.5 text-xs">
+              <div>
+                <label className="block text-wr-muted font-semibold mb-1">
+                  Tipo de Manutenção *
+                </label>
+                <select
+                  value={remType}
+                  onChange={e => {
+                    const val = e.target.value as ClientReminder['type']
+                    setRemType(val)
+                    if (val === 'troca_oleo') setRemDescription('Troca de Óleo e Filtros')
+                    else if (val === 'filtros') setRemDescription('Substituição de Filtro de Ar e Combustível')
+                    else if (val === 'revisao') setRemDescription('Revisão Preventiva Periódica')
+                    else if (val === 'correia') setRemDescription('Troca do Kit da Correia Dentada')
+                    else if (val === 'freios') setRemDescription('Revisão e Troca de Pastilhas / Fluido')
+                    else if (val === 'pneus') setRemDescription('Alinhamento, Balanceamento e Pneus')
+                  }}
+                  className="wr-input"
+                >
+                  <option value="troca_oleo">🛢️ Troca de Óleo &amp; Filtro</option>
+                  <option value="filtros">🔄 Troca de Filtros (Ar, Cabine, Combustível)</option>
+                  <option value="revisao">🔍 Revisão Geral Preventiva</option>
+                  <option value="correia">⚙️ Correia Dentada &amp; Tensor</option>
+                  <option value="freios">🛑 Freios &amp; Pastilhas</option>
+                  <option value="pneus">🚗 Pneus &amp; Geometria / Balanceamento</option>
+                  <option value="outro">🛠️ Outro Serviço Programado</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-wr-muted font-semibold mb-1">
+                  Veículo Vinculado
+                </label>
+                <select
+                  value={remVehiclePlate}
+                  onChange={e => {
+                    setRemVehiclePlate(e.target.value)
+                    const v = clientVehicles.find(item => item.plate === e.target.value)
+                    if (v && v.currentMileage) {
+                      setRemDueMileage(v.currentMileage + 10000)
+                    }
+                  }}
+                  className="wr-input font-mono"
+                >
+                  <option value="">Nenhum veículo específico</option>
+                  {clientVehicles.map(v => (
+                    <option key={v.id} value={v.plate}>
+                      {v.brand} {v.model} ({v.plate})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-wr-muted font-semibold mb-1">
+                  Descrição do Lembrete *
+                </label>
+                <input
+                  type="text"
+                  value={remDescription}
+                  onChange={e => setRemDescription(e.target.value)}
+                  placeholder="Ex: Óleo 5W30 Sintético + Filtro de Óleo"
+                  className="wr-input"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-wr-muted font-semibold mb-1">
+                    Data Prevista *
+                  </label>
+                  <input
+                    type="date"
+                    value={remDueDate}
+                    onChange={e => setRemDueDate(e.target.value)}
+                    className="wr-input font-mono"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-wr-muted font-semibold mb-1">
+                    KM Prevista (opcional)
+                  </label>
+                  <input
+                    type="number"
+                    value={remDueMileage}
+                    onChange={e => setRemDueMileage(e.target.value ? Number(e.target.value) : '')}
+                    placeholder="Ex: 85000"
+                    className="wr-input font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-wr-muted font-semibold mb-1">
+                  Observações / Especificação (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={remNotes}
+                  onChange={e => setRemNotes(e.target.value)}
+                  placeholder="Ex: Utilizar óleo homologado Dexos 1 / 4 litros"
+                  className="wr-input"
+                />
+              </div>
+
+              <div className="flex items-center gap-2.5 pt-2">
+                <button type="submit" className="wr-btn-primary flex-1 py-3">
+                  Salvar Lembrete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsReminderModalOpen(false)}
+                  className="wr-btn-secondary py-3"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Cadastrar / Editar Cliente */}
       {isClientModalOpen && (

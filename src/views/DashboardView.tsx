@@ -59,25 +59,58 @@ export const DashboardView: React.FC = () => {
     return { inProgress, completed, paidRevenue, deferredOpen, deferredOverdueCount, lowStock }
   }, [orders, financial, deferredPayments, stock, todayISO])
 
-  const dailyServiceData = [
-    { day: 'Seg', name: 'Segunda-feira', services: 14, isToday: false },
-    { day: 'Ter', name: 'Terça-feira', services: 18, isToday: false },
-    { day: 'Qua', name: 'Quarta-feira', services: 12, isToday: false },
-    { day: 'Qui', name: 'Quinta-feira', services: 22, isToday: false },
-    { day: 'Sex', name: 'Sexta-feira', services: 28, isToday: true },
-    { day: 'Sáb', name: 'Sábado', services: 20, isToday: false },
-    { day: 'Dom', name: 'Domingo', services: 6, isToday: false },
-  ]
+  // Calcula movimentação semanal a partir das ordens reais cadastradas
+  const dailyServiceData = useMemo(() => {
+    const daysConfig = [
+      { day: 'Seg', name: 'Segunda-feira', dayOfWeek: 1 },
+      { day: 'Ter', name: 'Terça-feira', dayOfWeek: 2 },
+      { day: 'Qua', name: 'Quarta-feira', dayOfWeek: 3 },
+      { day: 'Qui', name: 'Quinta-feira', dayOfWeek: 4 },
+      { day: 'Sex', name: 'Sexta-feira', dayOfWeek: 5 },
+      { day: 'Sáb', name: 'Sábado', dayOfWeek: 6 },
+      { day: 'Dom', name: 'Domingo', dayOfWeek: 0 },
+    ]
 
-  const maxVal = 32
-  const selectedDay = dailyServiceData[selectedDayIdx]
-  const otherDaysAvg = Math.round(
-    dailyServiceData
-      .filter((_, idx) => idx !== selectedDayIdx)
-      .reduce((acc, d) => acc + d.services, 0) /
-      (dailyServiceData.length - 1)
-  )
-  const diffPercent = Math.round(((selectedDay.services - otherDaysAvg) / otherDaysAvg) * 100)
+    const todayDayOfWeek = new Date().getDay()
+
+    return daysConfig.map(dc => {
+      const count = orders.filter(o => {
+        if (!o.date) return false
+        const parts = o.date.split('/')
+        if (parts.length === 3) {
+          const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]))
+          return d.getDay() === dc.dayOfWeek
+        }
+        return false
+      }).length
+
+      return {
+        day: dc.day,
+        name: dc.name,
+        services: count,
+        isToday: dc.dayOfWeek === todayDayOfWeek,
+      }
+    })
+  }, [orders])
+
+  const totalWeeklyServices = dailyServiceData.reduce((acc, d) => acc + d.services, 0)
+  const maxVal = Math.max(1, ...dailyServiceData.map(d => d.services))
+  const selectedDay = dailyServiceData[selectedDayIdx] || dailyServiceData[0]
+  const otherDaysAvg =
+    dailyServiceData.length > 1
+      ? Math.round(
+          dailyServiceData
+            .filter((_, idx) => idx !== selectedDayIdx)
+            .reduce((acc, d) => acc + d.services, 0) /
+            (dailyServiceData.length - 1)
+        )
+      : 0
+  const diffPercent =
+    otherDaysAvg > 0
+      ? Math.round(((selectedDay.services - otherDaysAvg) / otherDaysAvg) * 100)
+      : selectedDay.services > 0
+      ? 100
+      : 0
 
   return (
     <div className="space-y-6 select-none animate-fadeIn">
@@ -85,22 +118,13 @@ export const DashboardView: React.FC = () => {
       <div className="wr-card p-5 sm:p-6 border border-wr-border bg-gradient-to-r from-wr-surface via-wr-elevated to-wr-surface relative overflow-hidden">
         <div className="flex flex-col md:flex-row items-center justify-between gap-5 relative z-10">
           <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-            {/* Imagem real da logo + SVG */}
-            <div className="relative shrink-0">
-              <img
-                src="/assets/real-logo.jpg"
-                alt="Logo WR Mecânica & Cia"
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-contain border border-wr-border shadow-md bg-black/40 p-1"
-                onError={e => {
-                  // Fallback se a imagem falhar
-                  (e.target as HTMLElement).style.display = 'none'
-                }}
-              />
+            {/* Logo Vetorizada Oficial WR (sem foto) */}
+            <div className="relative shrink-0 flex items-center justify-center p-2 rounded-2xl bg-wr-elevated border border-wr-border shadow-xs">
+              <WrLogo size="lg" showSubtitle={true} />
             </div>
 
             <div className="space-y-1">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                <WrLogo size="md" showSubtitle={false} />
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
                   Sistema Operacional Ativo
                 </span>
@@ -264,50 +288,60 @@ export const DashboardView: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-6 h-56 w-full flex items-end justify-between gap-2 sm:gap-3 px-1">
-              {dailyServiceData.map((d, idx) => {
-                const isSelected = selectedDayIdx === idx
-                const barHeightPercent = Math.max(14, Math.round((d.services / maxVal) * 100))
+            {totalWeeklyServices === 0 ? (
+              <div className="mt-6 h-56 w-full flex flex-col items-center justify-center text-center p-6 rounded-2xl border border-dashed border-wr-border bg-wr-elevated/40 space-y-2">
+                <BarChart3 className="h-8 w-8 text-wr-muted opacity-50" />
+                <p className="text-xs font-bold text-wr-text">Nenhuma movimentação de serviços nesta semana</p>
+                <p className="text-[11px] text-wr-muted max-w-md">
+                  O sistema está zerado. À medida que você criar e finalizar ordens de serviço, a movimentação de cada dia da semana aparecerá aqui automaticamente.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-6 h-56 w-full flex items-end justify-between gap-2 sm:gap-3 px-1">
+                {dailyServiceData.map((d, idx) => {
+                  const isSelected = selectedDayIdx === idx
+                  const barHeightPercent = Math.max(14, Math.round((d.services / maxVal) * 100))
 
-                return (
-                  <button
-                    key={d.day}
-                    type="button"
-                    onClick={() => setSelectedDayIdx(idx)}
-                    className="flex-1 flex flex-col items-center h-full justify-end group"
-                  >
-                    <span
-                      className={`mb-2 text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg border transition-all ${
-                        isSelected
-                          ? 'bg-wr-orange text-white dark:text-[#0B0C10] border-wr-orange'
-                          : 'bg-wr-elevated text-wr-muted border-wr-border group-hover:text-wr-text'
-                      }`}
+                  return (
+                    <button
+                      key={d.day}
+                      type="button"
+                      onClick={() => setSelectedDayIdx(idx)}
+                      className="flex-1 flex flex-col items-center h-full justify-end group"
                     >
-                      {d.services}
-                    </span>
-
-                    <div className="w-full max-w-[44px] h-36 bg-wr-elevated rounded-xl flex items-end overflow-hidden border border-wr-border">
-                      <div
-                        style={{ height: `${barHeightPercent}%` }}
-                        className={`w-full rounded-t-lg transition-all duration-300 ${
+                      <span
+                        className={`mb-2 text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg border transition-all ${
                           isSelected
-                            ? 'bg-gradient-to-t from-wr-orangeDark to-wr-orange'
-                            : 'bg-wr-borderHover/70 group-hover:bg-wr-orange/50'
+                            ? 'bg-wr-orange text-white dark:text-[#0B0C10] border-wr-orange'
+                            : 'bg-wr-elevated text-wr-muted border-wr-border group-hover:text-wr-text'
                         }`}
-                      />
-                    </div>
+                      >
+                        {d.services}
+                      </span>
 
-                    <span
-                      className={`mt-2 text-xs font-semibold ${
-                        isSelected ? 'text-wr-orange font-bold' : 'text-wr-muted'
-                      }`}
-                    >
-                      {d.day}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+                      <div className="w-full max-w-[44px] h-36 bg-wr-elevated rounded-xl flex items-end overflow-hidden border border-wr-border">
+                        <div
+                          style={{ height: `${barHeightPercent}%` }}
+                          className={`w-full rounded-t-lg transition-all duration-300 ${
+                            isSelected
+                              ? 'bg-gradient-to-t from-wr-orangeDark to-wr-orange'
+                              : 'bg-wr-borderHover/70 group-hover:bg-wr-orange/50'
+                          }`}
+                        />
+                      </div>
+
+                      <span
+                        className={`mt-2 text-xs font-semibold ${
+                          isSelected ? 'text-wr-orange font-bold' : 'text-wr-muted'
+                        }`}
+                      >
+                        {d.day}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           <div className="mt-4 pt-3 border-t border-wr-border flex flex-wrap items-center justify-between gap-2 text-xs text-wr-muted">

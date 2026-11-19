@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useApp } from '../context/AppContext'
+import { useApp, PERMISSION_TABS, TabType } from '../context/AppContext'
 import {
   Settings,
   Building,
@@ -17,6 +17,12 @@ import {
   Trash2,
   Sparkles,
   FileCheck2,
+  Users,
+  Lock,
+  Key,
+  CheckSquare,
+  Square,
+  UserCheck,
 } from 'lucide-react'
 
 export const SettingsView: React.FC = () => {
@@ -28,6 +34,10 @@ export const SettingsView: React.FC = () => {
     clearAllData,
     loadDemoData,
     showToast,
+    employeePermissions,
+    updateEmployeePermissions,
+    currentUserRole,
+    currentUserName,
   } = useApp()
 
   const [savedSuccess, setSavedSuccess] = useState(false)
@@ -59,6 +69,29 @@ export const SettingsView: React.FC = () => {
     fiscalSettings.warrantyTerms ||
       'Garantia legal de 90 dias conforme Art. 26 do Código de Defesa do Consumidor (CDC) para serviços mecânicos executados. Peças novas com garantia contra defeito de fabricação.'
   )
+
+  const handleTogglePermission = (tabId: TabType) => {
+    let next: TabType[]
+    if (employeePermissions.includes(tabId)) {
+      next = employeePermissions.filter(t => t !== tabId)
+    } else {
+      next = [...employeePermissions, tabId]
+    }
+    updateEmployeePermissions(next)
+    showToast('Permissão de funcionários atualizada!')
+  }
+
+  const handleSelectAllPermissions = () => {
+    const all = PERMISSION_TABS.map(t => t.id)
+    updateEmployeePermissions(all)
+    showToast('Todas as telas liberadas para os funcionários!')
+  }
+
+  const handleSelectStandardPermissions = () => {
+    const standard: TabType[] = ['inicio', 'caixa', 'os', 'atendimentos', 'clientes', 'estoque']
+    updateEmployeePermissions(standard)
+    showToast('Padrão operacional restaurado para funcionários!')
+  }
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
@@ -92,15 +125,146 @@ export const SettingsView: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 select-none">
+    <div className="space-y-6 select-none max-w-5xl">
       <div>
         <h2 className="text-lg font-bold text-wr-text flex items-center gap-2">
           <Settings className="h-5 w-5 text-wr-orange" />
           Configurações da Oficina &amp; Validade Fiscal (Luzimangues / Porto Nacional - TO)
         </h2>
         <p className="text-xs text-wr-muted mt-0.5">
-          Parâmetros cadastrais, alíquota de ISS de Porto Nacional (IBGE 1718204), emissão da NFS-e e tema visual
+          Permissões de funcionários, dados cadastrais, alíquota de ISS de Porto Nacional (IBGE 1718204), emissão da NFS-e e tema visual
         </p>
+      </div>
+
+      {/* SEÇÃO PRINCIPAL: Permissões de Funcionários & Controle de Acesso */}
+      <div className="wr-card p-6 space-y-5 border-wr-orange/40">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-wr-border pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-wr-orange/15 text-wr-orange border border-wr-orange/30">
+              <Users className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-wr-text flex items-center gap-2">
+                Funcionários &amp; Controle de Acesso
+                <span className="rounded-full bg-wr-orange/15 px-2 py-0.5 text-[10px] font-bold text-wr-orange">
+                  Usuário: Wr_mecanica
+                </span>
+              </h3>
+              <p className="text-[11px] text-wr-muted mt-0.5">
+                Marque abaixo quais telas e funções os funcionários têm permissão para acessar
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSelectStandardPermissions}
+              className="wr-btn-secondary px-3 py-1.5 text-xs"
+            >
+              Padrão Operacional
+            </button>
+            <button
+              type="button"
+              onClick={handleSelectAllPermissions}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-wr-orange/15 hover:bg-wr-orange text-wr-orange hover:text-white dark:hover:text-[#0B0C10] px-3 py-1.5 text-xs font-bold transition-colors"
+            >
+              <CheckSquare className="h-3.5 w-3.5" />
+              Liberar Tudo
+            </button>
+          </div>
+        </div>
+
+        {/* Resumo de Logins Oficiais do Sistema */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-500">
+              <UserCheck className="h-4 w-4" />
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-emerald-500 block">
+                Conta Administrador / Dono
+              </span>
+              <span className="font-bold text-wr-text text-sm block">Samilly Martins</span>
+              <span className="font-mono text-[11px] text-wr-muted">
+                Usuário: <strong>Samilly Martins</strong> | Senha: <strong>Sami2026@</strong>
+              </span>
+              <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-semibold">
+                ✓ Acesso irrestrito a todas as áreas e configurações
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-wr-orange/30 bg-wr-orange/10 p-3.5 flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-wr-orange/20 text-wr-orange">
+              <Key className="h-4 w-4" />
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-wr-orange block">
+                Conta Operacional / Funcionários
+              </span>
+              <span className="font-bold text-wr-text text-sm block">Funcionário WR</span>
+              <span className="font-mono text-[11px] text-wr-muted">
+                Usuário: <strong>Wr_mecanica</strong> | Senha: <strong>We2023@</strong>
+              </span>
+              <span className="block text-[10px] text-wr-orange mt-1 font-semibold">
+                ⚙️ Acesso gerenciado pelas opções selecionadas abaixo
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Grade de Seleção de Permissões */}
+        <div className="space-y-2">
+          <label className="block text-xs font-bold text-wr-text">
+            Telas e Módulos Acessíveis para o Funcionário:
+          </label>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {PERMISSION_TABS.map(tab => {
+              const isAllowed = employeePermissions.includes(tab.id)
+
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTogglePermission(tab.id)}
+                  className={`text-left p-3.5 rounded-2xl border transition-all flex items-start gap-3 ${
+                    isAllowed
+                      ? 'border-wr-orange/60 bg-wr-surface shadow-sm ring-1 ring-wr-orange/20'
+                      : 'border-wr-border bg-wr-elevated/40 opacity-60 hover:opacity-100 hover:border-wr-borderHover'
+                  }`}
+                >
+                  <div className="mt-0.5 shrink-0">
+                    {isAllowed ? (
+                      <CheckSquare className="h-4 w-4 text-wr-orange" />
+                    ) : (
+                      <Square className="h-4 w-4 text-wr-muted" />
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-bold text-xs text-wr-text">{tab.label}</span>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                          isAllowed
+                            ? 'bg-emerald-500/15 text-emerald-500'
+                            : 'bg-wr-border text-wr-muted'
+                        }`}
+                      >
+                        {isAllowed ? 'Liberado' : 'Oculto'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-wr-muted mt-0.5 leading-tight">
+                      {tab.description}
+                    </p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Top Row: Tema Visual da Oficina */}
@@ -155,7 +319,7 @@ export const SettingsView: React.FC = () => {
       </div>
 
       {/* Formulário Principal de Configurações */}
-      <form onSubmit={handleSave} className="space-y-6 max-w-4xl">
+      <form onSubmit={handleSave} className="space-y-6">
         {/* Card 1: Dados Cadastrais */}
         <div className="wr-card p-5 space-y-4 text-xs">
           <h3 className="text-xs font-bold uppercase tracking-wider text-wr-orange flex items-center gap-2 border-b border-wr-border pb-3">

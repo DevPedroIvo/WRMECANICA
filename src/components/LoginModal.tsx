@@ -1,71 +1,67 @@
 import React, { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { WrLogo } from './WrLogo'
-import { ShieldCheck, UserCheck, KeyRound, Lock, ArrowRight, Delete } from 'lucide-react'
-import { UserRole } from '../types'
+import { ShieldCheck, Users, Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react'
 
 export const LoginModal: React.FC = () => {
   const { login } = useApp()
-  const [selectedRole, setSelectedRole] = useState<UserRole>('dono')
-  const [pin, setPin] = useState('')
+  const [selectedRole, setSelectedRole] = useState<'dono' | 'funcionario'>('dono')
+  const [username, setUsername] = useState('Samilly Martins')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
-  const handleKeyPress = (digit: string) => {
-    if (pin.length < 4) {
-      const next = pin + digit
-      setPin(next)
-      setErrorMsg('')
-      if (next.length === 4) {
-        attemptLogin(next)
-      }
+  const handleRoleSelect = (role: 'dono' | 'funcionario') => {
+    setSelectedRole(role)
+    setErrorMsg('')
+    if (role === 'dono') {
+      setUsername('Samilly Martins')
+      setPassword('')
+    } else {
+      setUsername('Wr_mecanica')
+      setPassword('')
     }
   }
 
-  const handleDelete = () => {
-    setPin(prev => prev.slice(0, -1))
-    setErrorMsg('')
-  }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!username.trim() || !password.trim()) {
+      setErrorMsg('Preencha o usuário e a senha.')
+      return
+    }
 
-  const handleClear = () => {
-    setPin('')
-    setErrorMsg('')
-  }
-
-  const attemptLogin = (codeToTest: string) => {
-    const res = login(codeToTest)
+    const res = login(username, password)
     if (!res.success) {
-      setErrorMsg('Senha incorreta! Dono: 2026 | Caixa: 1234')
-      setPin('')
+      setErrorMsg('Usuário ou senha incorretos! Verifique os dados.')
     }
   }
 
-  const quickLogin = (role: UserRole) => {
-    const defaultPin = role === 'dono' ? '2026' : '1234'
-    login(defaultPin)
+  const handleQuickLogin = (role: 'dono' | 'funcionario') => {
+    if (role === 'dono') {
+      login('Samilly Martins', 'Sami2026@')
+    } else {
+      login('Wr_mecanica', 'We2023@')
+    }
   }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn select-none">
-      <div className="w-full max-w-md rounded-3xl border border-wr-border bg-wr-surface p-6 sm:p-8 shadow-2xl space-y-6">
-        {/* Header com Logo */}
+      <div className="w-full max-w-md rounded-3xl border border-wr-border bg-wr-surface p-6 sm:p-8 shadow-2xl space-y-5">
+        {/* Header com Logo Vetorizada Oficial */}
         <div className="text-center space-y-2">
           <div className="flex justify-center mb-1">
             <WrLogo size="lg" showSubtitle={true} />
           </div>
           <p className="text-xs text-wr-muted font-medium">
-            Sistema de Gestão &amp; Oficina Automotiva
+            Acesso Restrito &bull; Gestão Automotiva
           </p>
         </div>
 
-        {/* Seleção do Perfil (Dono vs Caixa) */}
+        {/* Seleção do Perfil (Dono vs Funcionários) */}
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
-            onClick={() => {
-              setSelectedRole('dono')
-              setPin('')
-              setErrorMsg('')
-            }}
+            onClick={() => handleRoleSelect('dono')}
             className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center gap-1.5 ${
               selectedRole === 'dono'
                 ? 'border-wr-orange bg-wr-orange/15 text-wr-orange shadow-md'
@@ -74,103 +70,106 @@ export const LoginModal: React.FC = () => {
           >
             <ShieldCheck className="h-5 w-5" />
             <span className="text-xs font-bold uppercase tracking-wider">Dono</span>
-            <span className="text-[10px] text-wr-muted font-mono">Senha: 2026</span>
+            <span className="text-[10px] text-wr-muted truncate max-w-full">Samilly Martins</span>
           </button>
 
           <button
             type="button"
-            onClick={() => {
-              setSelectedRole('caixa')
-              setPin('')
-              setErrorMsg('')
-            }}
+            onClick={() => handleRoleSelect('funcionario')}
             className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center gap-1.5 ${
-              selectedRole === 'caixa'
+              selectedRole === 'funcionario'
                 ? 'border-wr-gold bg-wr-gold/15 text-wr-gold shadow-md'
                 : 'border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text'
             }`}
           >
-            <UserCheck className="h-5 w-5" />
-            <span className="text-xs font-bold uppercase tracking-wider">Caixa</span>
-            <span className="text-[10px] text-wr-muted font-mono">Senha: 1234</span>
+            <Users className="h-5 w-5" />
+            <span className="text-xs font-bold uppercase tracking-wider">Funcionários</span>
+            <span className="text-[10px] text-wr-muted font-mono">Wr_mecanica</span>
           </button>
         </div>
 
-        {/* Display do PIN (4 bolinhas) */}
-        <div className="text-center space-y-2">
-          <span className="text-xs text-wr-muted font-semibold flex items-center justify-center gap-1.5">
-            <KeyRound className="h-3.5 w-3.5 text-wr-orange" />
-            Digite o PIN de 4 dígitos ({selectedRole === 'dono' ? 'Dono' : 'Caixa'})
-          </span>
+        {/* Formulário de Login */}
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          <div>
+            <label className="block text-xs font-bold text-wr-muted mb-1 flex items-center gap-1.5">
+              <User className="h-3.5 w-3.5 text-wr-orange" /> Usuário
+            </label>
+            <input
+              type="text"
+              required
+              value={username}
+              onChange={e => {
+                setUsername(e.target.value)
+                setErrorMsg('')
+              }}
+              placeholder="Digite o usuário..."
+              className="wr-input"
+            />
+          </div>
 
-          <div className="flex justify-center items-center gap-4 py-2">
-            {[0, 1, 2, 3].map(idx => (
-              <div
-                key={idx}
-                className={`w-4 h-4 rounded-full border-2 transition-all ${
-                  pin.length > idx
-                    ? 'bg-wr-orange border-wr-orange scale-110 shadow-sm'
-                    : 'border-wr-border bg-wr-elevated'
-                }`}
+          <div>
+            <label className="block text-xs font-bold text-wr-muted mb-1 flex items-center gap-1.5">
+              <Lock className="h-3.5 w-3.5 text-wr-orange" /> Senha
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={e => {
+                  setPassword(e.target.value)
+                  setErrorMsg('')
+                }}
+                placeholder="Digite a senha..."
+                className="wr-input pr-10 font-mono"
               />
-            ))}
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-wr-muted hover:text-wr-text"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           {errorMsg && (
-            <p className="text-[11px] font-bold text-rose-500 animate-fadeIn">
+            <p className="text-xs font-bold text-rose-500 animate-fadeIn text-center">
               {errorMsg}
             </p>
           )}
-        </div>
 
-        {/* Teclado Numérico */}
-        <div className="grid grid-cols-3 gap-2.5 max-w-xs mx-auto">
-          {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
+          <button
+            type="submit"
+            className="w-full wr-btn-primary py-3 justify-center text-xs font-bold uppercase tracking-wider mt-1"
+          >
+            Entrar no Sistema <ArrowRight className="h-4 w-4" />
+          </button>
+        </form>
+
+        {/* Acesso rápido em 1 clique com as credenciais cadastradas */}
+        <div className="pt-3 border-t border-wr-border text-center space-y-2">
+          <span className="text-[10px] uppercase font-bold text-wr-muted block">
+            Atalho rápido de acesso
+          </span>
+          <div className="grid grid-cols-2 gap-2">
             <button
-              key={num}
               type="button"
-              onClick={() => handleKeyPress(num)}
-              className="h-12 rounded-2xl border border-wr-border bg-wr-elevated text-lg font-bold text-wr-text hover:bg-wr-orange hover:text-white dark:hover:text-[#0B0C10] hover:border-wr-orange active:scale-95 transition-all shadow-sm flex items-center justify-center font-mono"
+              onClick={() => handleQuickLogin('dono')}
+              className="rounded-xl border border-wr-border bg-wr-elevated hover:border-wr-orange p-2 text-left transition-colors"
             >
-              {num}
+              <span className="font-bold text-xs text-wr-text block truncate">Samilly Martins</span>
+              <span className="text-[10px] text-wr-muted font-mono">Dono &bull; Total</span>
             </button>
-          ))}
-          <button
-            type="button"
-            onClick={handleClear}
-            className="h-12 rounded-2xl border border-wr-border bg-wr-elevated text-xs font-bold text-wr-muted hover:text-rose-500 active:scale-95 transition-all flex items-center justify-center uppercase tracking-wider"
-          >
-            Limpar
-          </button>
-          <button
-            type="button"
-            onClick={() => handleKeyPress('0')}
-            className="h-12 rounded-2xl border border-wr-border bg-wr-elevated text-lg font-bold text-wr-text hover:bg-wr-orange hover:text-white dark:hover:text-[#0B0C10] hover:border-wr-orange active:scale-95 transition-all shadow-sm flex items-center justify-center font-mono"
-          >
-            0
-          </button>
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="h-12 rounded-2xl border border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text active:scale-95 transition-all flex items-center justify-center"
-            aria-label="Apagar dígito"
-          >
-            <Delete className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Botão de Acesso Rápido */}
-        <div className="pt-2 border-t border-wr-border text-center space-y-2">
-          <button
-            type="button"
-            onClick={() => quickLogin(selectedRole)}
-            className="w-full wr-btn-primary py-2.5 justify-center text-xs font-bold uppercase tracking-wider"
-          >
-            Entrar como {selectedRole === 'dono' ? 'Dono (2026)' : 'Caixa (1234)'} <ArrowRight className="h-4 w-4" />
-          </button>
-          <p className="text-[10px] text-wr-muted">
-            Dono tem acesso total • Caixa tem acesso ao caixa diário, ordens e atendimentos
-          </p>
+            <button
+              type="button"
+              onClick={() => handleQuickLogin('funcionario')}
+              className="rounded-xl border border-wr-border bg-wr-elevated hover:border-wr-gold p-2 text-left transition-colors"
+            >
+              <span className="font-bold text-xs text-wr-text block truncate">Wr_mecanica</span>
+              <span className="text-[10px] text-wr-muted font-mono">Funcionários</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

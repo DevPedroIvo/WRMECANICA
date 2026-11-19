@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 
 export const BottomNav: React.FC = () => {
-  const { activeTab, setActiveTab } = useApp()
+  const { activeTab, setActiveTab, canAccess } = useApp()
   const [moreOpen, setMoreOpen] = useState(false)
 
   const mainTabs: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -35,7 +35,10 @@ export const BottomNav: React.FC = () => {
     { id: 'configuracoes', label: 'Configurações', icon: Settings },
   ]
 
-  const isExtraActive = extraTabs.some(t => t.id === activeTab)
+  const accessibleMain = mainTabs.filter(t => canAccess(t.id))
+  const accessibleExtra = extraTabs.filter(t => canAccess(t.id))
+
+  const isExtraActive = accessibleExtra.some(t => t.id === activeTab)
 
   return (
     <>
@@ -55,7 +58,7 @@ export const BottomNav: React.FC = () => {
             </button>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            {extraTabs.map(tab => {
+            {accessibleExtra.map(tab => {
               const Icon = tab.icon
               const active = activeTab === tab.id
               return (
@@ -81,7 +84,7 @@ export const BottomNav: React.FC = () => {
       )}
 
       <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-wr-border bg-wr-surface/95 backdrop-blur-md py-2 px-2 lg:hidden">
-        {mainTabs.map(tab => {
+        {accessibleMain.map(tab => {
           const Icon = tab.icon
           const active = activeTab === tab.id
           return (
