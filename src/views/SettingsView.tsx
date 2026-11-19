@@ -25,7 +25,21 @@ import {
   UserCheck,
   Wrench,
   Plus,
+  Download,
+  Bell,
+  Smartphone,
+  Laptop,
+  CheckCircle,
+  AlertCircle,
+  Volume2,
 } from 'lucide-react'
+import { usePwaInstall } from '../hooks/usePwaInstall'
+import {
+  requestNotificationPermission,
+  sendAppNotification,
+  getNotificationPermissionStatus,
+  NotificationStatus,
+} from '../utils/notifications'
 
 export const SettingsView: React.FC = () => {
   const {
@@ -47,6 +61,26 @@ export const SettingsView: React.FC = () => {
 
   const [savedSuccess, setSavedSuccess] = useState(false)
   const [newMechanicName, setNewMechanicName] = useState('')
+
+  const { isInstallable, isInstalled, isIOS, installApp } = usePwaInstall()
+  const [notifStatus, setNotifStatus] = useState<NotificationStatus>(getNotificationPermissionStatus)
+
+  const handleRequestNotification = async () => {
+    const granted = await requestNotificationPermission()
+    setNotifStatus(getNotificationPermissionStatus())
+    if (granted) {
+      showToast('Notificações no aparelho ativadas com sucesso!', 'success')
+    } else {
+      showToast('Permissão de notificação não concedida ou bloqueada no navegador.', 'warning')
+    }
+  }
+
+  const handleTestNotification = () => {
+    sendAppNotification('🔔 Teste: WR Mecânica & Cia', {
+      body: 'Alerta emitido! Você receberá avisos de novas OS e agendamentos mesmo fora do app.',
+    })
+    showToast('Alerta sonoro e visual de teste emitido!', 'info')
+  }
 
   const [companyName, setCompanyName] = useState(fiscalSettings.companyName)
   const [tradeName, setTradeName] = useState(fiscalSettings.tradeName)
@@ -173,31 +207,18 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Perfis Resumidos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <UserCheck className="h-4 w-4 text-emerald-500 shrink-0" />
-              <div>
-                <span className="text-xs font-bold text-wr-text block">Dono (Samilly Martins)</span>
-                <span className="text-[10px] text-wr-muted">Administrador Geral</span>
-              </div>
-            </div>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-              Acesso Total
-            </span>
-          </div>
-
+        {/* Perfil do Funcionário */}
+        <div>
           <div className="rounded-xl border border-wr-orange/30 bg-wr-orange/10 p-3 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <Users className="h-4 w-4 text-wr-orange shrink-0" />
               <div>
                 <span className="text-xs font-bold text-wr-text block">Funcionário (Wr_mecanica)</span>
-                <span className="text-[10px] text-wr-muted">Operador</span>
+                <span className="text-[10px] text-wr-muted">Operador do Sistema</span>
               </div>
             </div>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-wr-orange/20 text-wr-orange">
-              {employeePermissions.length} liberadas
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-wr-orange/20 text-wr-orange">
+              {employeePermissions.length} de {PERMISSION_TABS.length} telas liberadas
             </span>
           </div>
         </div>
@@ -232,6 +253,117 @@ export const SettingsView: React.FC = () => {
                 </button>
               )
             })}
+          </div>
+        </div>
+      </div>
+
+      {/* SEÇÃO: Aplicativo Instalável (PWA) & Notificações Externas */}
+      <div className="wr-card p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-wr-border pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-wr-orange/15 text-wr-orange">
+              <Smartphone className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-wr-text">Aplicativo Baixável &amp; Notificações Externas</h3>
+              <p className="text-[11px] text-wr-muted">Instale o app na tela inicial e receba alertas sonoros e no aparelho fora do navegador</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Card Baixar Aplicativo */}
+          <div className="rounded-xl border border-wr-border bg-wr-elevated/40 p-4 space-y-3 flex flex-col justify-between">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-wr-text flex items-center gap-2">
+                  <Download className="h-4 w-4 text-wr-orange" />
+                  Aplicativo WR Mecânica
+                </span>
+                {isInstalled ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-500 flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" /> Instalado
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-wr-orange/20 text-wr-orange">
+                    Pronto para Baixar
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-wr-muted leading-relaxed">
+                Transforme a oficina em um aplicativo sem precisar de loja. Funciona em tela cheia, offline e com acesso instantâneo na tela inicial do celular ou computador.
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={installApp}
+                className="w-full wr-btn-primary py-2.5 text-xs font-bold flex items-center justify-center gap-2 shadow-sm"
+              >
+                <Download className="h-4 w-4" />
+                {isInstalled ? 'Abrir / Reinstalar Aplicativo' : 'Baixar / Instalar no Aparelho'}
+              </button>
+              {isIOS && (
+                <p className="text-[10px] text-wr-muted text-center mt-2">
+                  No iPhone: toque no ícone de <strong>Compartilhar</strong> e escolha <strong>"Adicionar à Tela de Início"</strong>.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Card Notificações do Aparelho */}
+          <div className="rounded-xl border border-wr-border bg-wr-elevated/40 p-4 space-y-3 flex flex-col justify-between">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-wr-text flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-wr-orange" />
+                  Notificações no Dispositivo
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
+                    notifStatus === 'granted'
+                      ? 'bg-emerald-500/20 text-emerald-500'
+                      : notifStatus === 'denied'
+                      ? 'bg-rose-500/20 text-rose-500'
+                      : 'bg-wr-orange/20 text-wr-orange'
+                  }`}
+                >
+                  {notifStatus === 'granted'
+                    ? 'Ativadas'
+                    : notifStatus === 'denied'
+                    ? 'Bloqueadas no Navegador'
+                    : 'Pendente de Ativação'}
+                </span>
+              </div>
+              <p className="text-[11px] text-wr-muted leading-relaxed">
+                Receba alertas visuais e sonoros com vibração quando uma nova OS for gerada, o status mudar ou novos agendamentos forem marcados, mesmo fora da página.
+              </p>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={handleRequestNotification}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  notifStatus === 'granted'
+                    ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/25'
+                    : 'wr-btn-primary'
+                }`}
+              >
+                <Bell className="h-4 w-4" />
+                {notifStatus === 'granted' ? 'Notificações Ativas' : 'Ativar Notificações no Aparelho'}
+              </button>
+              <button
+                type="button"
+                onClick={handleTestNotification}
+                className="wr-btn-secondary py-2.5 px-3 text-xs font-bold flex items-center justify-center gap-1.5 shrink-0"
+                title="Tocar som e enviar notificação de teste"
+              >
+                <Volume2 className="h-4 w-4 text-wr-orange" />
+                Testar Alerta
+              </button>
+            </div>
           </div>
         </div>
       </div>

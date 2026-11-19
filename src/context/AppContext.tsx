@@ -63,6 +63,7 @@ import {
   getSupabaseOptimizationMetrics,
   StorageMetrics,
 } from '../utils/supabaseClient'
+import { sendAppNotification } from '../utils/notifications'
 
 export type TabType =
   | 'inicio'
@@ -253,22 +254,22 @@ interface AppContextType {
 }
 
 const STORAGE_KEYS = {
-  clients: 'wr_clients_v6',
-  vehicles: 'wr_vehicles_v6',
-  stock: 'wr_stock_v6',
-  orders: 'wr_orders_v6',
-  financial: 'wr_financial_v6',
-  appointments: 'wr_appointments_v6',
-  deferred: 'wr_deferred_v6',
-  fiscal: 'wr_fiscal_v6',
+  clients: 'wr_clients_v7',
+  vehicles: 'wr_vehicles_v7',
+  stock: 'wr_stock_v7',
+  orders: 'wr_orders_v7',
+  financial: 'wr_financial_v7',
+  appointments: 'wr_appointments_v7',
+  deferred: 'wr_deferred_v7',
+  fiscal: 'wr_fiscal_v7',
   theme: 'wr_theme',
   authRole: 'wr_auth_v2',
   employeePerms: 'wr_employee_perms_v1',
-  reminders: 'wr_reminders_v1',
+  reminders: 'wr_reminders_v7',
   mechanics: 'wr_mechanics_v1',
   servicePresets: 'wr_service_presets_v1',
-  activeCashShift: 'wr_active_cash_shift_v6',
-  cashShiftsHistory: 'wr_cash_shifts_v6',
+  activeCashShift: 'wr_active_cash_shift_v7',
+  cashShiftsHistory: 'wr_cash_shifts_v7',
 } as const
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -288,25 +289,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
   const [clients, setClients] = useState<Client[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.clients, INITIAL_CLIENTS)
+    loadLocalSafe(STORAGE_KEYS.clients, [])
   )
   const [vehicles, setVehicles] = useState<Vehicle[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.vehicles, INITIAL_VEHICLES)
+    loadLocalSafe(STORAGE_KEYS.vehicles, [])
   )
   const [stock, setStock] = useState<StockItem[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.stock, INITIAL_STOCK)
+    loadLocalSafe(STORAGE_KEYS.stock, [])
   )
   const [orders, setOrders] = useState<ServiceOrder[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.orders, INITIAL_ORDERS)
+    loadLocalSafe(STORAGE_KEYS.orders, [])
   )
   const [financial, setFinancial] = useState<FinancialRecord[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.financial, INITIAL_FINANCIAL)
+    loadLocalSafe(STORAGE_KEYS.financial, [])
   )
   const [appointments, setAppointments] = useState<Appointment[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.appointments, INITIAL_APPOINTMENTS)
+    loadLocalSafe(STORAGE_KEYS.appointments, [])
   )
   const [deferredPayments, setDeferredPayments] = useState<DeferredPayment[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.deferred, INITIAL_DEFERRED_PAYMENTS)
+    loadLocalSafe(STORAGE_KEYS.deferred, [])
   )
   const [fiscalSettings, setFiscalSettings] = useState<FiscalSettings>(() =>
     loadLocalSafe(STORAGE_KEYS.fiscal, DEFAULT_FISCAL_SETTINGS)
@@ -1194,8 +1195,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const maxNum = orders.reduce((acc, o) => {
         const parsed = parseInt(o.number.replace(/\D/g, ''), 10)
         return Number.isNaN(parsed) ? acc : Math.max(acc, parsed)
-      }, 1024)
-      const nextNumber = `OS #${maxNum + 1}`
+      }, 0)
+      const nextNumber = `OS #${maxNum > 0 ? maxNum + 1 : 1001}`
       const newOrder: ServiceOrder = {
         ...orderData,
         id: `os-${Date.now()}`,
@@ -1205,6 +1206,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       void upsertDeltaRow('service_orders', newOrder.id, newOrder, {
         client_id: newOrder.clientId,
         status: newOrder.status,
+      })
+
+      sendAppNotification(`Nova ${nextNumber} Criada!`, {
+        body: `${orderData.clientName} • ${orderData.vehicleModel} (${orderData.serviceDescription || 'Serviço em andamento'})`,
       })
 
       const finRecord: FinancialRecord = {
@@ -1267,6 +1272,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateOrderStatus = useCallback(
     (id: string, status: ServiceOrder['status']) => {
       updateOrder(id, { status })
+      const statusLabels: Record<ServiceOrder['status'], string> = {
+        aguardando: 'Aguardando',
+        andamento: 'Em Andamento',
+        pronto: 'Concluído / Pronto',
+        cancelado: 'Cancelado',
+      }
+      sendAppNotification('Status da OS Atualizado', {
+        body: `Ordem alterada para: ${statusLabels[status] || status}`,
+      })
       showToast('Status da ordem de serviço atualizado!', 'info')
     },
     [updateOrder, showToast]
@@ -1353,6 +1367,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         date: created.date,
         status: created.status,
       })
+      sendAppNotification('Novo Agendamento Marcado!', {
+        body: `${created.clientName} - ${created.vehicleModel} em ${created.date} às ${created.time}`,
+      })
       showToast(`Agendamento para ${created.clientName} criado!`)
       return created
     },
@@ -1377,7 +1394,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const clearAllData = useCallback(() => {
     Object.values(STORAGE_KEYS).forEach(k => {
-      if (k !== STORAGE_KEYS.theme) localStorage.removeItem(k)
+      if (k !== STORAGE_KEYS.theme && k !== STORAGE_KEYS.authRole) localStorage.removeItem(k)
     })
     setClients([])
     setVehicles([])
@@ -1386,6 +1403,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFinancial([])
     setAppointments([])
     setDeferredPayments([])
+    setActiveShift(null)
+    setShiftHistory([])
+    setReminders([])
     setFiscalSettings(DEFAULT_FISCAL_SETTINGS)
     showToast('Sistema 100% zerado e limpo para operação real!', 'info')
   }, [showToast])
