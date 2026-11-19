@@ -43,6 +43,9 @@ import {
   XCircle,
   UserCheck,
   ArrowRight,
+  Edit2,
+  Save,
+  Wrench,
 } from 'lucide-react'
 
 const PRE_REGISTERED_SERVICES = [
@@ -142,6 +145,91 @@ export const OrdersView: React.FC = () => {
   const [generatedImageUrl, setGeneratedImageUrl] = useState('')
   const [imageBlob, setImageBlob] = useState<Blob | null>(null)
   const [copyFeedback, setCopyFeedback] = useState(false)
+
+  // Estados para alteração posterior de itens e valores da OS
+  const [isEditingItems, setIsEditingItems] = useState(false)
+  const [editableItems, setEditableItems] = useState<OrderItem[]>([])
+  const [newEditServiceDesc, setNewEditServiceDesc] = useState('')
+  const [newEditPartsCost, setNewEditPartsCost] = useState('')
+  const [newEditLaborCost, setNewEditLaborCost] = useState('')
+
+  useEffect(() => {
+    if (selectedOrderForModal) {
+      setEditableItems(selectedOrderForModal.items || [])
+      setIsEditingItems(false)
+      setNewEditServiceDesc('')
+      setNewEditPartsCost('')
+      setNewEditLaborCost('')
+    }
+  }, [selectedOrderForModal?.id])
+
+  const handleUpdateItemValue = (id: string, field: 'partsCost' | 'laborCost' | 'serviceDescription', value: any) => {
+    setEditableItems(prev =>
+      prev.map(it => {
+        if (it.id !== id) return it
+        const next = { ...it, [field]: value }
+        if (field === 'partsCost' || field === 'laborCost') {
+          const p = field === 'partsCost' ? (parseFloat(value) || 0) : it.partsCost
+          const l = field === 'laborCost' ? (parseFloat(value) || 0) : it.laborCost
+          next.total = p + l
+        }
+        return next
+      })
+    )
+  }
+
+  const handleRemoveEditableItem = (id: string) => {
+    setEditableItems(prev => prev.filter(it => it.id !== id))
+  }
+
+  const handleAddEditableItem = () => {
+    if (!newEditServiceDesc.trim()) {
+      showToast('Digite a descrição do serviço ou peça.', 'warning')
+      return
+    }
+    const pCost = parseFloat(newEditPartsCost) || 0
+    const lCost = parseFloat(newEditLaborCost) || 0
+    const newItem: OrderItem = {
+      id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      serviceDescription: newEditServiceDesc.trim(),
+      partsCost: pCost,
+      laborCost: lCost,
+      total: pCost + lCost,
+      serviceCode: '14.01',
+      cnae: '4520-0/01',
+    }
+    setEditableItems(prev => [...prev, newItem])
+    setNewEditServiceDesc('')
+    setNewEditPartsCost('')
+    setNewEditLaborCost('')
+  }
+
+  const handleSaveEditableItems = () => {
+    if (!selectedOrderForModal) return
+    const partsTotal = editableItems.reduce((acc, i) => acc + (Number(i.partsCost) || 0), 0)
+    const laborTotal = editableItems.reduce((acc, i) => acc + (Number(i.laborCost) || 0), 0)
+    const rawTotal = partsTotal + laborTotal
+    const discount = selectedOrderForModal.discount || 0
+    const totalAmount = Math.max(0, rawTotal - discount)
+    const serviceDescription =
+      editableItems.map(i => i.serviceDescription).filter(Boolean).join(', ') || 'Serviço Geral'
+
+    const updatedData: Partial<ServiceOrder> = {
+      items: editableItems,
+      partsTotal,
+      laborTotal,
+      totalAmount,
+      serviceDescription,
+    }
+
+    updateOrder(selectedOrderForModal.id, updatedData)
+    setSelectedOrderForModal({
+      ...selectedOrderForModal,
+      ...updatedData,
+    })
+    setIsEditingItems(false)
+    showToast('Valores e itens da OS atualizados com sucesso!', 'success')
+  }
 
   // ===================== NEW OS FORM STATE =====================
   const [selectedClientId, setSelectedClientId] = useState<string>('')
@@ -519,10 +607,10 @@ export const OrdersView: React.FC = () => {
         : [
             {
               id: `item-${Date.now()}`,
-              serviceDescription: mainServiceDesc.trim() || 'Serviço Geral',
+              serviceDescription: mainServiceDesc.trim() || 'Serviço a Avaliar / Orçamento',
               partsCost: 0,
-              laborCost: 150,
-              total: 150,
+              laborCost: 0,
+              total: 0,
               serviceCode: '14.01',
               cnae: '4520-0/01',
             },
@@ -937,58 +1025,263 @@ export const OrdersView: React.FC = () => {
               </select>
             </div>
 
-            {/* Itens da OS - Adaptado com rolagem horizontal para celular */}
-            <div className="overflow-x-auto rounded-xl border border-wr-border">
-              <table className="w-full text-left text-xs min-w-[460px]">
-                <thead className="bg-wr-elevated text-wr-muted border-b border-wr-border">
-                  <tr>
-                    <th className="py-2.5 px-3.5 font-semibold">Serviço</th>
-                    <th className="py-2.5 px-3.5 font-semibold text-right">Peças</th>
-                    <th className="py-2.5 px-3.5 font-semibold text-right">Mão de Obra</th>
-                    <th className="py-2.5 px-3.5 font-semibold text-right">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-wr-border text-wr-text">
-                  {selectedOrderForModal.items?.map(it => (
-                    <tr key={it.id}>
-                      <td className="py-2.5 px-3.5">{it.serviceDescription}</td>
-                      <td className="py-2.5 px-3.5 font-mono text-right text-wr-muted">
-                        {formatCurrency(it.partsCost)}
-                      </td>
-                      <td className="py-2.5 px-3.5 font-mono text-right text-wr-muted">
-                        {formatCurrency(it.laborCost)}
-                      </td>
-                      <td className="py-2.5 px-3.5 font-mono text-right font-bold text-emerald-600 dark:text-emerald-400">
-                        {formatCurrency(it.total)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-wr-elevated border-t border-wr-border font-bold text-xs">
-                  <tr>
-                    <td className="py-2.5 px-3.5 text-wr-muted">Total da OS</td>
-                    <td className="py-2.5 px-3.5 font-mono text-right text-wr-text">
-                      {formatCurrency(selectedOrderForModal.partsTotal || 0)}
-                    </td>
-                    <td className="py-2.5 px-3.5 font-mono text-right text-wr-text">
-                      {formatCurrency(selectedOrderForModal.laborTotal || 0)}
-                    </td>
-                    <td className="py-2.5 px-3.5 font-mono text-right text-wr-orange text-sm font-black">
-                      {formatCurrency(selectedOrderForModal.totalAmount)}
-                    </td>
-                  </tr>
-                  {(selectedOrderForModal.discount || 0) > 0 && (
-                    <tr className="text-rose-500 font-bold">
-                      <td colSpan={3} className="py-2 px-3.5 text-right">
-                        Desconto Aplicado:
-                      </td>
-                      <td className="py-2 px-3.5 font-mono text-right">
-                        - {formatCurrency(selectedOrderForModal.discount || 0)}
-                      </td>
-                    </tr>
-                  )}
-                </tfoot>
-              </table>
+            {/* Seção de Itens & Valores da OS (Permite alterar valores e adicionar serviços/peças depois) */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                  <Wrench className="h-4 w-4" /> Serviços &amp; Peças da OS
+                </span>
+                {selectedOrderForModal.status !== 'pronto' && selectedOrderForModal.status !== 'cancelado' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isEditingItems) {
+                        setEditableItems(selectedOrderForModal.items || [])
+                      }
+                      setIsEditingItems(prev => !prev)
+                    }}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      isEditingItems
+                        ? 'bg-wr-orange/20 text-wr-orange border border-wr-orange/40'
+                        : 'bg-wr-elevated border border-wr-border text-wr-text hover:border-wr-orange/50'
+                    }`}
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                    {isEditingItems ? 'Cancelar Edição' : 'Alterar Valores / Adicionar Itens'}
+                  </button>
+                )}
+              </div>
+
+              {isEditingItems ? (
+                /* Modo de Edição Ativa de Valores e Itens */
+                <div className="rounded-2xl border border-wr-orange/40 bg-wr-elevated/40 p-4 space-y-4 animate-fadeIn">
+                  <div className="flex items-center justify-between border-b border-wr-border pb-2.5">
+                    <span className="text-xs font-bold text-wr-text">
+                      Ajuste os valores ou adicione novos serviços/peças
+                    </span>
+                    <span className="text-[10px] text-wr-muted font-mono">
+                      {editableItems.length} item(ns)
+                    </span>
+                  </div>
+
+                  {/* Lista de Itens Editáveis */}
+                  <div className="space-y-3">
+                    {editableItems.map((it, idx) => (
+                      <div
+                        key={it.id || idx}
+                        className="rounded-xl border border-wr-border bg-wr-surface p-3 space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <input
+                            type="text"
+                            value={it.serviceDescription}
+                            onChange={e => handleUpdateItemValue(it.id, 'serviceDescription', e.target.value)}
+                            placeholder="Descrição do serviço ou peça..."
+                            className="wr-input text-xs font-bold flex-1"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEditableItem(it.id)}
+                            className="p-2 rounded-lg text-wr-muted hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                            title="Remover este item"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div>
+                            <label className="block text-[10px] font-bold text-wr-muted uppercase mb-1">
+                              Peças (R$)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={it.partsCost}
+                              onChange={e => handleUpdateItemValue(it.id, 'partsCost', e.target.value)}
+                              className="wr-input font-mono text-xs text-right"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-wr-muted uppercase mb-1">
+                              Mão de Obra (R$)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={it.laborCost}
+                              onChange={e => handleUpdateItemValue(it.id, 'laborCost', e.target.value)}
+                              className="wr-input font-mono text-xs text-right"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-wr-muted uppercase mb-1">
+                              Subtotal
+                            </label>
+                            <div className="wr-input bg-wr-elevated font-mono text-xs font-bold text-right text-emerald-500 flex items-center justify-end">
+                              {formatCurrency(Number(it.partsCost || 0) + Number(it.laborCost || 0))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {editableItems.length === 0 && (
+                      <p className="text-xs text-wr-muted text-center py-4 bg-wr-surface rounded-xl border border-wr-border">
+                        Nenhum item lançado. Adicione um novo serviço ou peça abaixo.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Adicionar Novo Item / Serviço à OS */}
+                  <div className="rounded-xl border border-dashed border-wr-orange/40 bg-wr-orange/5 p-3.5 space-y-3">
+                    <span className="text-xs font-bold text-wr-orange flex items-center gap-1.5">
+                      <Plus className="h-4 w-4" /> Incluir Mais um Serviço ou Peça
+                    </span>
+
+                    <div>
+                      <input
+                        type="text"
+                        value={newEditServiceDesc}
+                        onChange={e => setNewEditServiceDesc(e.target.value)}
+                        placeholder="Nome do serviço ou peça adicional (ex: Troca de Correia)..."
+                        className="wr-input text-xs"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-wr-muted uppercase mb-1">
+                          Peças (R$)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0,00"
+                          value={newEditPartsCost}
+                          onChange={e => setNewEditPartsCost(e.target.value)}
+                          className="wr-input font-mono text-xs text-right"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-wr-muted uppercase mb-1">
+                          Mão de Obra (R$)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0,00"
+                          value={newEditLaborCost}
+                          onChange={e => setNewEditLaborCost(e.target.value)}
+                          className="wr-input font-mono text-xs text-right"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={handleAddEditableItem}
+                          className="w-full wr-btn-primary py-2 text-xs font-bold flex items-center justify-center gap-1.5"
+                        >
+                          <Plus className="h-4 w-4" /> Incluir
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Totais Recalculados & Botões de Salvar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-wr-border">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] text-wr-muted uppercase font-bold block">Novo Total da OS:</span>
+                      <span className="text-lg font-black font-mono text-wr-orange">
+                        {formatCurrency(
+                          editableItems.reduce(
+                            (acc, i) => acc + (Number(i.partsCost) || 0) + (Number(i.laborCost) || 0),
+                            0
+                          ) - (selectedOrderForModal.discount || 0)
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditableItems(selectedOrderForModal.items || [])
+                          setIsEditingItems(false)
+                        }}
+                        className="wr-btn-secondary px-4 py-2 text-xs font-bold"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveEditableItems}
+                        className="wr-btn-primary px-5 py-2 text-xs font-bold flex items-center gap-1.5 shadow-md"
+                      >
+                        <Save className="h-4 w-4" /> Salvar Novos Valores
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Modo Visualização Normal da Tabela */
+                <div className="overflow-x-auto rounded-xl border border-wr-border">
+                  <table className="w-full text-left text-xs min-w-[460px]">
+                    <thead className="bg-wr-elevated text-wr-muted border-b border-wr-border">
+                      <tr>
+                        <th className="py-2.5 px-3.5 font-semibold">Serviço / Peça</th>
+                        <th className="py-2.5 px-3.5 font-semibold text-right">Peças</th>
+                        <th className="py-2.5 px-3.5 font-semibold text-right">Mão de Obra</th>
+                        <th className="py-2.5 px-3.5 font-semibold text-right">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-wr-border text-wr-text">
+                      {selectedOrderForModal.items?.map(it => (
+                        <tr key={it.id}>
+                          <td className="py-2.5 px-3.5 font-medium">{it.serviceDescription}</td>
+                          <td className="py-2.5 px-3.5 font-mono text-right text-wr-muted">
+                            {formatCurrency(it.partsCost)}
+                          </td>
+                          <td className="py-2.5 px-3.5 font-mono text-right text-wr-muted">
+                            {formatCurrency(it.laborCost)}
+                          </td>
+                          <td className="py-2.5 px-3.5 font-mono text-right font-bold text-emerald-600 dark:text-emerald-400">
+                            {formatCurrency(it.total)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-wr-elevated border-t border-wr-border font-bold text-xs">
+                      <tr>
+                        <td className="py-2.5 px-3.5 text-wr-muted">Total da OS</td>
+                        <td className="py-2.5 px-3.5 font-mono text-right text-wr-text">
+                          {formatCurrency(selectedOrderForModal.partsTotal || 0)}
+                        </td>
+                        <td className="py-2.5 px-3.5 font-mono text-right text-wr-text">
+                          {formatCurrency(selectedOrderForModal.laborTotal || 0)}
+                        </td>
+                        <td className="py-2.5 px-3.5 font-mono text-right text-wr-orange text-sm font-black">
+                          {formatCurrency(selectedOrderForModal.totalAmount)}
+                        </td>
+                      </tr>
+                      {(selectedOrderForModal.discount || 0) > 0 && (
+                        <tr className="text-rose-500 font-bold">
+                          <td colSpan={3} className="py-2 px-3.5 text-right">
+                            Desconto Aplicado:
+                          </td>
+                          <td className="py-2 px-3.5 font-mono text-right">
+                            - {formatCurrency(selectedOrderForModal.discount || 0)}
+                          </td>
+                        </tr>
+                      )}
+                    </tfoot>
+                  </table>
+                </div>
+              )}
             </div>
 
             {/* Footer Actions */}

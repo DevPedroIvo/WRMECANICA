@@ -740,6 +740,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     )
     setSelectedOrderForModal(prev => (prev && prev.id === id ? { ...prev, ...updated } : prev))
+
+    // Se o valor total ou descrição da OS foram alterados, sincroniza com o registro financeiro vinculado
+    if (updated.totalAmount !== undefined) {
+      setFinancial(prev =>
+        prev.map(f => {
+          if (f.orderId === id) {
+            const nextFin = {
+              ...f,
+              amount: updated.totalAmount!,
+              description: updated.serviceDescription
+                ? `${f.description.split(' - ')[0]} - ${updated.serviceDescription}`
+                : f.description,
+            }
+            void upsertDeltaRow('financial_records', f.id, nextFin, {
+              type: nextFin.type,
+              status: nextFin.status,
+            })
+            return nextFin
+          }
+          return f
+        })
+      )
+    }
   }, [])
 
   const issueFiscalInvoice = useCallback(
