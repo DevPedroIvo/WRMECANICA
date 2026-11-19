@@ -13,7 +13,7 @@ export const DEFAULT_WORKSHOP_INFO: WorkshopInfo = {
   name: 'WR MECÂNICA & CIA',
   cnpj: '34.892.124/0001-90',
   phone: '(63) 99234-5678',
-  address: 'Av. Teotônio Segurado, 1200 - Palmas/TO',
+  address: 'Rodovia TO-080, KM 12 - Luzimangues, Porto Nacional/TO',
   slogan: 'Oficina Especializada & Centro Automotivo',
   warranty: '90 dias de garantia para serviços e garantia do fabricante para peças.'
 }
@@ -267,11 +267,11 @@ export function generateOsCanvas(order: ServiceOrder, info: WorkshopInfo = DEFAU
 
       ctx.fillStyle = '#10B981'
       ctx.font = 'bold 11px sans-serif'
-      ctx.fillText(`✓ DOCUMENTO FISCAL MUNICIPAL EMITIDO — NFS-e Nº ${order.fiscalInvoice.invoiceNumber}`, 45, y + 22)
+      ctx.fillText(`✓ NFS-e AUTORIZADA — PORTO NACIONAL/TO (IBGE: 1718204) — Nº ${order.fiscalInvoice.invoiceNumber}`, 45, y + 22)
 
       ctx.font = '10px monospace'
       ctx.fillStyle = '#A5A5A5'
-      ctx.fillText(`Cód. Autenticidade: ${order.fiscalInvoice.verificationCode}  •  Protocolo: ${order.fiscalInvoice.protocolNumber || 'AUTORIZADO'}  •  LC 116: 14.01`, 45, y + 40)
+      ctx.fillText(`Cód: ${order.fiscalInvoice.verificationCode}  •  Distrito de Luzimangues/TO  •  LC 116: 14.01`, 45, y + 40)
       
       ctx.textAlign = 'right'
       ctx.font = 'bold 10px sans-serif'

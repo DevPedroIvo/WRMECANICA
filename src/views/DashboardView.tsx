@@ -275,36 +275,42 @@ export const DashboardView: React.FC = () => {
             </div>
 
             <div className="space-y-2.5">
-              {appointments.slice(0, 4).map(apt => (
-                <div
-                  key={apt.id}
-                  className="wr-surface-muted p-3 flex items-center justify-between gap-2 hover:border-wr-borderHover transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="font-mono text-xs font-bold text-wr-orange bg-wr-surface px-2 py-1 rounded-lg border border-wr-border shrink-0">
-                      {apt.time}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-wr-text truncate">{apt.clientName}</p>
-                      <p className="text-[11px] text-wr-muted truncate">
-                        {apt.vehicleModel} • {apt.vehiclePlate}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() =>
-                      sendWhatsApp(
-                        apt.clientPhone,
-                        `Olá ${apt.clientName}! Confirmamos seu atendimento às ${apt.time} na WR Mecânica & Cia.`
-                      )
-                    }
-                    className="rounded-lg p-1.5 text-emerald-500 hover:bg-emerald-500/10 border border-emerald-500/25 shrink-0"
-                    title="Confirmar no WhatsApp"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                  </button>
+              {appointments.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-wr-border p-6 text-center text-xs text-wr-muted">
+                  Nenhum atendimento agendado. Clique em Agendamentos para marcar uma revisão.
                 </div>
-              ))}
+              ) : (
+                appointments.slice(0, 4).map(apt => (
+                  <div
+                    key={apt.id}
+                    className="wr-surface-muted p-3 flex items-center justify-between gap-2 hover:border-wr-borderHover transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="font-mono text-xs font-bold text-wr-orange bg-wr-surface px-2 py-1 rounded-lg border border-wr-border shrink-0">
+                        {apt.time}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-wr-text truncate">{apt.clientName}</p>
+                        <p className="text-[11px] text-wr-muted truncate">
+                          {apt.vehicleModel} • {apt.vehiclePlate}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() =>
+                        sendWhatsApp(
+                          apt.clientPhone,
+                          `Olá ${apt.clientName}! Confirmamos seu atendimento às ${apt.time} na WR Mecânica & Cia.`
+                        )
+                      }
+                      className="rounded-lg p-1.5 text-emerald-500 hover:bg-emerald-500/10 border border-emerald-500/25 shrink-0"
+                      title="Confirmar no WhatsApp"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -333,35 +339,44 @@ export const DashboardView: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {orders.slice(0, 4).map(order => (
-            <button
-              key={order.id}
-              type="button"
-              onClick={() => setActiveTab('os')}
-              className="wr-surface-muted p-4 text-left flex flex-col justify-between gap-2 hover:border-wr-orange/50 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-xs font-bold text-wr-orange">{order.number}</span>
-                <span className="text-[10px] font-mono text-wr-muted">{order.date}</span>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-wr-text truncate">{order.clientName}</p>
-                <p className="text-[11px] text-wr-muted truncate">
-                  {order.vehicleModel} ({order.vehiclePlate})
-                </p>
-              </div>
-              <div className="flex items-center justify-between pt-2 border-t border-wr-border text-xs">
-                <span className="text-[10px] uppercase font-bold text-wr-muted">
-                  {order.status}
-                </span>
-                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(order.totalAmount)}
-                </span>
-              </div>
+        {orders.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-wr-border p-8 text-center text-xs text-wr-muted space-y-3">
+            <p>Nenhuma ordem de serviço registrada ainda. Sistema limpo e pronto para novos atendimentos.</p>
+            <button onClick={() => openNewOrderModal()} className="wr-btn-primary mx-auto">
+              <Plus className="h-4 w-4" /> Criar Primeira Ordem de Serviço
             </button>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {orders.slice(0, 4).map(order => (
+              <button
+                key={order.id}
+                type="button"
+                onClick={() => setActiveTab('os')}
+                className="wr-surface-muted p-4 text-left flex flex-col justify-between gap-2 hover:border-wr-orange/50 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold text-wr-orange">{order.number}</span>
+                  <span className="text-[10px] font-mono text-wr-muted">{order.date}</span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-wr-text truncate">{order.clientName}</p>
+                  <p className="text-[11px] text-wr-muted truncate">
+                    {order.vehicleModel} ({order.vehiclePlate})
+                  </p>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-wr-border text-xs">
+                  <span className="text-[10px] uppercase font-bold text-wr-muted">
+                    {order.status}
+                  </span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(order.totalAmount)}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

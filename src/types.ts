@@ -94,6 +94,10 @@ export interface FiscalInvoice {
   issValue: number
   taxRegime: string
   danfseUrl?: string
+  xmlData?: string
+  district?: string
+  city?: string
+  cityCodeIBGE?: string
 }
 
 export interface ServiceOrder {
@@ -221,4 +225,12 @@ export interface FiscalSettings {
   nextRpsNumber: number
   rpsSeries: string
   cityCodeIBGE: string
+  district?: string
+  city?: string
+  state?: string
+  address?: string
+  phone?: string
+  cep?: string
+  fiscalProvider?: 'emissor_nacional' | 'prefeitura_porto_nacional' | 'api_direta'
+  apiToken?: string
 }

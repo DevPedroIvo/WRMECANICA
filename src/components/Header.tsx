@@ -26,7 +26,7 @@ const TAB_TITLES: Record<string, { title: string; subtitle: string }> = {
   estoque: { title: 'Estoque de Peças', subtitle: 'Peças em almoxarifado e alertas de reposição' },
   financeiro: { title: 'Financeiro', subtitle: 'Receitas, despesas e fluxo de caixa' },
   relatorios: { title: 'Relatórios', subtitle: 'Indicadores de desempenho e faturamento' },
-  configuracoes: { title: 'Configurações', subtitle: 'Dados da oficina, NFS-e e economia Supabase' },
+  configuracoes: { title: 'Configurações', subtitle: 'Dados cadastrais da oficina, NFS-e e preferências' },
 }
 
 export const Header: React.FC = () => {

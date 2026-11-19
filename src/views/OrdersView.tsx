@@ -498,7 +498,7 @@ export const OrdersView: React.FC = () => {
             Ordens de Serviço &amp; NFS-e
           </h2>
           <p className="text-xs text-wr-muted mt-0.5">
-            Vistoria visual rápida (faróis, pintura, pneus), garantia de 90 dias e emissão fiscal leve
+            Vistoria visual rápida (faróis, pintura, pneus), garantia de 90 dias e emissão da NFS-e de Porto Nacional
           </p>
         </div>
 
@@ -921,7 +921,7 @@ export const OrdersView: React.FC = () => {
                     Enviar Imagem da OS via WhatsApp
                   </h3>
                   <p className="text-[11px] text-wr-muted">
-                    Gerada localmente no navegador (zero upload para o Supabase)
+                    Pronta para envio direto ao cliente com resumo completo e carimbo fiscal
                   </p>
                 </div>
               </div>
@@ -1278,7 +1278,7 @@ export const OrdersView: React.FC = () => {
                     <CheckSquare className="h-4 w-4" /> Checklist Visual do Veículo
                   </span>
                   <span className="text-[10px] text-wr-muted">
-                    Faróis, pintura, pneus e lataria • leve para o banco
+                    Inspeção visual na entrada do veículo na oficina
                   </span>
                 </div>
 

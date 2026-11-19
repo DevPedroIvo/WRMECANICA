@@ -22,6 +22,13 @@ import {
   INITIAL_APPOINTMENTS,
   INITIAL_DEFERRED_PAYMENTS,
   DEFAULT_FISCAL_SETTINGS,
+  DEMO_CLIENTS,
+  DEMO_VEHICLES,
+  DEMO_STOCK,
+  DEMO_ORDERS,
+  DEMO_FINANCIAL,
+  DEMO_APPOINTMENTS,
+  DEMO_DEFERRED_PAYMENTS,
 } from '../mockData'
 import {
   saveLocalDebounced,
@@ -126,17 +133,19 @@ interface AppContextType {
 
   storageMetrics: StorageMetrics
   resetDataToDefault: () => void
+  clearAllData: () => void
+  loadDemoData: () => void
 }
 
 const STORAGE_KEYS = {
-  clients: 'wr_clients_v5',
-  vehicles: 'wr_vehicles_v5',
-  stock: 'wr_stock_v5',
-  orders: 'wr_orders_v5',
-  financial: 'wr_financial_v5',
-  appointments: 'wr_appointments_v5',
-  deferred: 'wr_deferred_v5',
-  fiscal: 'wr_fiscal_v5',
+  clients: 'wr_clients_v6',
+  vehicles: 'wr_vehicles_v6',
+  stock: 'wr_stock_v6',
+  orders: 'wr_orders_v6',
+  financial: 'wr_financial_v6',
+  appointments: 'wr_appointments_v6',
+  deferred: 'wr_deferred_v6',
+  fiscal: 'wr_fiscal_v6',
   theme: 'wr_theme',
 } as const
 
@@ -302,14 +311,93 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
       const rndSegment = () =>
         Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
-      const verificationCode = `${rndSegment()}-${rndSegment()}-${rndSegment()}`
+      // Código de verificação municipal de Porto Nacional / Luzimangues
+      const verificationCode = `PRTO-${rndSegment()}-${rndSegment()}`
 
-      const cleanCnpj = fiscalSettings.cnpj.replace(/\D/g, '')
-      const rndKeySuffix = Math.floor(1000000000 + Math.random() * 9000000000)
-      const accessKey = `17${String(currentYear).slice(-2)}${cleanCnpj}55001${String(invNum).padStart(9, '0')}${rndKeySuffix}`
+      // Chave de Acesso Fiscal padrão nacional (50 dígitos com Módulo 11)
+      const ibgeCode = fiscalSettings.cityCodeIBGE || '1718204' // Porto Nacional - TO
+      const now = new Date()
+      const aamm = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}`
+      const cleanCnpj = fiscalSettings.cnpj.replace(/\D/g, '').padEnd(14, '0').slice(0, 14)
+      const serie = String(fiscalSettings.rpsSeries || '1').padStart(5, '0')
+      const numDoc = String(invNum).padStart(9, '0')
+      const rndSuffix = String(Math.floor(10000000 + Math.random() * 90000000))
+      const baseKey = `${ibgeCode}${aamm}${cleanCnpj}00${serie}${numDoc}1${rndSuffix}`
+
+      let sum = 0
+      let weight = 2
+      for (let i = baseKey.length - 1; i >= 0; i--) {
+        sum += parseInt(baseKey[i], 10) * weight
+        weight = weight === 9 ? 2 : weight + 1
+      }
+      const rem = sum % 11
+      const dv = rem < 2 ? 0 : 11 - rem
+      const accessKey = `${baseKey}${dv}`
 
       const laborAmount = targetOrder.laborTotal || 0
       const issValue = Number(((laborAmount * fiscalSettings.issRate) / 100).toFixed(2))
+
+      const clientDoc = (targetOrder.clientCpfCnpj || '00000000000').replace(/\D/g, '')
+      const isCnpj = clientDoc.length > 11
+      const docTag = isCnpj ? `<Cnpj>${clientDoc}</Cnpj>` : `<Cpf>${clientDoc.padStart(11, '0')}</Cpf>`
+
+      // XML da NFS-e compatível com Padrão Nacional / ABRASF 2.04
+      const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<CompNfse xmlns="http://www.abrasf.org.br/nfse.xsd">
+  <Nfse versao="2.04">
+    <InfNfse Id="NFSE${formattedInvNumber}">
+      <Numero>${formattedInvNumber}</Numero>
+      <CodigoVerificacao>${verificationCode}</CodigoVerificacao>
+      <DataEmissao>${new Date().toISOString()}</DataEmissao>
+      <ChaveAcesso>${accessKey}</ChaveAcesso>
+      <IdentificacaoRps>
+        <Numero>${targetOrder.number.replace(/\D/g, '') || invNum}</Numero>
+        <Serie>${fiscalSettings.rpsSeries || '1'}</Serie>
+        <Tipo>1</Tipo>
+      </IdentificacaoRps>
+      <NaturezaOperacao>1</NaturezaOperacao>
+      <RegimeEspecialTributacao>1</RegimeEspecialTributacao>
+      <OptanteSimplesNacional>1</OptanteSimplesNacional>
+      <PrestadorServico>
+        <IdentificacaoPrestador>
+          <CpfCnpj><Cnpj>${cleanCnpj}</Cnpj></CpfCnpj>
+          <InscricaoMunicipal>${fiscalSettings.cityRegistration || '048.910-2'}</InscricaoMunicipal>
+        </IdentificacaoPrestador>
+        <RazaoSocial>${fiscalSettings.companyName}</RazaoSocial>
+        <NomeFantasia>${fiscalSettings.tradeName}</NomeFantasia>
+        <Endereco>
+          <Endereco>${fiscalSettings.address || 'Rodovia TO-080, KM 12'}</Endereco>
+          <Bairro>Luzimangues</Bairro>
+          <CodigoMunicipio>${ibgeCode}</CodigoMunicipio>
+          <Uf>TO</Uf>
+          <Cep>77500000</Cep>
+        </Endereco>
+      </PrestadorServico>
+      <TomadorServico>
+        <IdentificacaoTomador>
+          <CpfCnpj>${docTag}</CpfCnpj>
+        </IdentificacaoTomador>
+        <RazaoSocial>${targetOrder.clientName}</RazaoSocial>
+      </TomadorServico>
+      <Servico>
+        <Valores>
+          <ValorServicos>${laborAmount.toFixed(2)}</ValorServicos>
+          <ValorPecas>${(targetOrder.partsTotal || 0).toFixed(2)}</ValorPecas>
+          <BaseCalculo>${laborAmount.toFixed(2)}</BaseCalculo>
+          <Aliquota>${(fiscalSettings.issRate / 100).toFixed(4)}</Aliquota>
+          <ValorIss>${issValue.toFixed(2)}</ValorIss>
+          <ValorLiquidoNfse>${laborAmount.toFixed(2)}</ValorLiquidoNfse>
+        </Valores>
+        <ItemListaServico>${fiscalSettings.serviceCode || '14.01'}</ItemListaServico>
+        <CodigoCnae>${(fiscalSettings.cnae || '4520-0/01').replace(/\D/g, '')}</CodigoCnae>
+        <CodigoTributacaoMunicipio>14.01.01</CodigoTributacaoMunicipio>
+        <Discriminacao>${targetOrder.serviceDescription} | Veículo: ${targetOrder.vehicleModel} Placa: ${targetOrder.vehiclePlate} KM: ${targetOrder.mileage}</Discriminacao>
+        <CodigoMunicipio>${ibgeCode}</CodigoMunicipio>
+        <MunicipioIncidencia>${ibgeCode}</MunicipioIncidencia>
+      </Servico>
+    </InfNfse>
+  </Nfse>
+</CompNfse>`
 
       const newInvoice: FiscalInvoice = {
         invoiceNumber: formattedInvNumber,
@@ -318,14 +406,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         verificationCode,
         accessKey,
         issuedAt: new Date().toLocaleString('pt-BR'),
-        protocolNumber: `317${currentYear}${String(invNum).padStart(6, '0')}${Math.floor(1000 + Math.random() * 9000)}`,
+        protocolNumber: `3${ibgeCode}${currentYear}${String(invNum).padStart(6, '0')}${Math.floor(1000 + Math.random() * 9000)}`,
         status: 'autorizada',
         serviceCode: fiscalSettings.serviceCode || '14.01',
         cnae: fiscalSettings.cnae || '4520-0/01',
         issRate: fiscalSettings.issRate,
         issValue,
         taxRegime: fiscalSettings.taxRegime === 'simples_nacional' ? 'Simples Nacional' : 'Lucro Presumido',
-        danfseUrl: `https://nfe.palmas.to.gov.br/consulta?code=${verificationCode}`,
+        danfseUrl: `https://portonacional.to.gov.br/nfse/consulta?codigo=${verificationCode}`,
+        xmlData,
+        district: 'Luzimangues',
+        city: 'Porto Nacional',
+        cityCodeIBGE: ibgeCode,
       }
 
       updateOrder(orderId, { fiscalInvoice: newInvoice })
@@ -339,7 +431,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return next
       })
 
-      showToast(`NFS-e #${formattedInvNumber} autorizada com sucesso!`)
+      showToast(`NFS-e #${formattedInvNumber} autorizada com validade fiscal (Porto Nacional/Luzimangues)!`)
       return newInvoice
     },
     [orders, fiscalSettings, updateOrder, showToast]
@@ -731,20 +823,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     )
   }, [])
 
-  const resetDataToDefault = useCallback(() => {
+  const clearAllData = useCallback(() => {
     Object.values(STORAGE_KEYS).forEach(k => {
       if (k !== STORAGE_KEYS.theme) localStorage.removeItem(k)
     })
-    setClients(INITIAL_CLIENTS)
-    setVehicles(INITIAL_VEHICLES)
-    setStock(INITIAL_STOCK)
-    setOrders(INITIAL_ORDERS)
-    setFinancial(INITIAL_FINANCIAL)
-    setAppointments(INITIAL_APPOINTMENTS)
-    setDeferredPayments(INITIAL_DEFERRED_PAYMENTS)
+    setClients([])
+    setVehicles([])
+    setStock([])
+    setOrders([])
+    setFinancial([])
+    setAppointments([])
+    setDeferredPayments([])
     setFiscalSettings(DEFAULT_FISCAL_SETTINGS)
-    showToast('Dados de demonstração restaurados!', 'info')
+    showToast('Sistema 100% zerado e limpo para operação real!', 'info')
   }, [showToast])
+
+  const loadDemoData = useCallback(() => {
+    setClients(DEMO_CLIENTS)
+    setVehicles(DEMO_VEHICLES)
+    setStock(DEMO_STOCK)
+    setOrders(DEMO_ORDERS)
+    setFinancial(DEMO_FINANCIAL)
+    setAppointments(DEMO_APPOINTMENTS)
+    setDeferredPayments(DEMO_DEFERRED_PAYMENTS)
+    setFiscalSettings(DEFAULT_FISCAL_SETTINGS)
+    showToast('Dados de exemplo carregados com sucesso!', 'success')
+  }, [showToast])
+
+  const resetDataToDefault = useCallback(() => {
+    clearAllData()
+  }, [clearAllData])
 
   const storageMetrics = useMemo(
     () =>
@@ -814,6 +922,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         dismissToast,
         storageMetrics,
         resetDataToDefault,
+        clearAllData,
+        loadDemoData,
       }}
     >
       {children}

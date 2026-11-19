@@ -12,7 +12,6 @@ import {
   BarChart3,
   Settings,
   X,
-  Database,
 } from 'lucide-react'
 
 export const Sidebar: React.FC = () => {
@@ -24,7 +23,6 @@ export const Sidebar: React.FC = () => {
     deferredPayments,
     mobileMenuOpen,
     setMobileMenuOpen,
-    storageMetrics,
   } = useApp()
 
   const pendingOrdersCount = orders.filter(
@@ -166,26 +164,14 @@ export const Sidebar: React.FC = () => {
           ))}
         </nav>
 
-        {/* Footer: Supabase Optimization Telemetry */}
-        <div className="p-3.5 border-t border-wr-border">
-          <button
-            onClick={() => handleNavClick('configuracoes')}
-            className="w-full flex items-center justify-between rounded-xl bg-wr-elevated px-3 py-2.5 text-xs border border-wr-border hover:border-wr-borderHover transition-colors"
-            title="Ver otimização de uso do Supabase"
-          >
-            <div className="flex items-center gap-2">
-              <Database className="h-3.5 w-3.5 text-emerald-500" />
-              <div className="text-left">
-                <span className="text-[11px] font-semibold text-wr-text block leading-tight">
-                  {storageMetrics.configured ? 'Supabase Econômico' : 'Modo Local Leve'}
-                </span>
-                <span className="text-[10px] text-wr-muted font-mono">
-                  {storageMetrics.localPayloadKB} KB • 0 fotos
-                </span>
-              </div>
-            </div>
-            <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-          </button>
+        {/* Rodapé institucional limpo */}
+        <div className="p-4 border-t border-wr-border text-center">
+          <p className="text-[10px] font-semibold text-wr-muted uppercase tracking-wider">
+            WR Mecânica &amp; Cia
+          </p>
+          <p className="text-[9px] text-wr-muted/70">
+            Luzimangues • Porto Nacional/TO
+          </p>
         </div>
       </aside>
     </>
