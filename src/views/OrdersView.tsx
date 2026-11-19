@@ -564,8 +564,8 @@ export const OrdersView: React.FC = () => {
     link.click()
   }
 
-  const handleCreateOrder = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleCreateOrder = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e && 'preventDefault' in e) e.preventDefault()
     if (!clientName.trim() || !clientPhone.trim() || !vehicleModel.trim()) {
       showToast('Preencha nome do cliente, telefone e veículo.', 'warning')
       return
@@ -607,10 +607,11 @@ export const OrdersView: React.FC = () => {
         : [
             {
               id: `item-${Date.now()}`,
-              serviceDescription: mainServiceDesc.trim() || 'Serviço a Avaliar / Orçamento',
-              partsCost: 0,
-              laborCost: 0,
-              total: 0,
+              serviceDescription:
+                mainServiceDesc.trim() || newItemDesc.trim() || 'Serviço a Avaliar / Orçamento',
+              partsCost: Number(newItemParts) || 0,
+              laborCost: Number(newItemLabor) || 0,
+              total: (Number(newItemParts) || 0) + (Number(newItemLabor) || 0),
               serviceCode: '14.01',
               cnae: '4520-0/01',
             },
@@ -1812,7 +1813,18 @@ export const OrdersView: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleCreateOrder} className="space-y-5">
+            <form
+              onSubmit={e => {
+                e.preventDefault()
+              }}
+              onKeyDown={e => {
+                // Impede que a tecla Enter conclua ou submeta a OS acidentalmente
+                if (e.key === 'Enter' && (e.target as HTMLElement)?.tagName !== 'TEXTAREA') {
+                  e.preventDefault()
+                }
+              }}
+              className="space-y-5"
+            >
               {/* 1. SELEÇÃO RÁPIDA DE CLIENTE & VEÍCULO VINCULADO */}
               <div className="wr-surface-muted p-4 space-y-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
@@ -2205,6 +2217,12 @@ export const OrdersView: React.FC = () => {
                         placeholder="0,00"
                         value={newItemLabor || ''}
                         onChange={e => setNewItemLabor(Number(e.target.value))}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            handleAddItem()
+                          }
+                        }}
                         className="wr-input font-mono text-xs sm:text-sm py-2.5 px-3.5 font-semibold"
                       />
                     </div>
@@ -2265,14 +2283,20 @@ export const OrdersView: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex items-center gap-3 pt-1">
-                <button type="submit" className="wr-btn-primary flex-1 py-3">
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleCreateOrder}
+                  className="wr-btn-primary flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 shadow-lg hover:brightness-110 active:scale-[0.99] transition-all"
+                  title="Salvar e emitir Ordem de Serviço"
+                >
+                  <Save className="h-4 w-4" />
                   Salvar Ordem de Serviço
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsNewOrderModalOpen(false)}
-                  className="wr-btn-secondary py-3"
+                  className="wr-btn-secondary py-3 px-5 text-sm font-semibold"
                 >
                   Cancelar
                 </button>
