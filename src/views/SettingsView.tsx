@@ -23,6 +23,8 @@ import {
   CheckSquare,
   Square,
   UserCheck,
+  Wrench,
+  Plus,
 } from 'lucide-react'
 
 export const SettingsView: React.FC = () => {
@@ -38,9 +40,13 @@ export const SettingsView: React.FC = () => {
     updateEmployeePermissions,
     currentUserRole,
     currentUserName,
+    mechanics,
+    addMechanic,
+    deleteMechanic,
   } = useApp()
 
   const [savedSuccess, setSavedSuccess] = useState(false)
+  const [newMechanicName, setNewMechanicName] = useState('')
 
   const [companyName, setCompanyName] = useState(fiscalSettings.companyName)
   const [tradeName, setTradeName] = useState(fiscalSettings.tradeName)
@@ -175,95 +181,198 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Resumo de Logins Oficiais do Sistema */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-500">
-              <UserCheck className="h-4 w-4" />
+        {/* Estrutura de Usuários em Cascata (Hierarquia) - Sem exibir senhas */}
+        <div className="space-y-4">
+          <label className="block text-xs font-bold uppercase tracking-wider text-wr-muted">
+            Hierarquia de Usuários do Sistema
+          </label>
+
+          {/* Nível 1: Dono / Administrador Geral */}
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-500 shrink-0">
+                  <UserCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-emerald-500 block">
+                    Nível 1 &bull; Administrador / Dono
+                  </span>
+                  <h4 className="font-bold text-wr-text text-sm">Samilly Martins</h4>
+                  <p className="text-[11px] text-wr-muted font-mono mt-0.5">
+                    Usuário: <strong>Samilly Martins</strong> &bull; Senha: <span className="tracking-widest">••••••••</span>
+                  </p>
+                </div>
+              </div>
+
+              <span className="self-start sm:self-center px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                Acesso Total Irrestrito
+              </span>
             </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-emerald-500 block">
-                Conta Administrador / Dono
-              </span>
-              <span className="font-bold text-wr-text text-sm block">Samilly Martins</span>
-              <span className="font-mono text-[11px] text-wr-muted">
-                Usuário: <strong>Samilly Martins</strong> | Senha: <strong>Sami2026@</strong>
-              </span>
-              <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-semibold">
-                ✓ Acesso irrestrito a todas as áreas e configurações
-              </span>
-            </div>
+            <p className="text-[11px] text-wr-muted pl-0 sm:pl-11">
+              Controle irrestrito sobre financeiro, caixa, relatórios, configurações e validade fiscal.
+            </p>
           </div>
 
-          <div className="rounded-2xl border border-wr-orange/30 bg-wr-orange/10 p-3.5 flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-wr-orange/20 text-wr-orange">
-              <Key className="h-4 w-4" />
+          {/* Nível 2 (Cascata): Equipe de Funcionários */}
+          <div className="ml-2 sm:ml-6 pl-4 border-l-2 border-wr-orange/40 space-y-4 pt-1">
+            <div className="rounded-2xl border border-wr-orange/30 bg-wr-orange/10 p-4 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-wr-orange/20 text-wr-orange shrink-0">
+                    <Key className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-wr-orange block">
+                      Nível 2 &bull; Operador / Funcionários
+                    </span>
+                    <h4 className="font-bold text-wr-text text-sm">Funcionário WR</h4>
+                    <p className="text-[11px] text-wr-muted font-mono mt-0.5">
+                      Usuário: <strong>Wr_mecanica</strong> &bull; Senha: <span className="tracking-widest">••••••••</span>
+                    </p>
+                  </div>
+                </div>
+
+                <span className="self-start sm:self-center px-3 py-1 rounded-full text-[10px] font-bold bg-wr-orange/20 text-wr-orange border border-wr-orange/30">
+                  {employeePermissions.length} tela(s) liberada(s)
+                </span>
+              </div>
+              <p className="text-[11px] text-wr-muted pl-0 sm:pl-11">
+                Acesso controlado pelo Dono. Marque ou desmarque abaixo os módulos que este usuário pode ver:
+              </p>
+            </div>
+
+            {/* Módulos em cascata logo abaixo do Funcionário */}
+            <div className="space-y-2 pt-1">
+              <span className="text-xs font-bold text-wr-text block">
+                Módulos Permitidos para o Funcionário:
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {PERMISSION_TABS.map(tab => {
+                  const isAllowed = employeePermissions.includes(tab.id)
+
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => handleTogglePermission(tab.id)}
+                      className={`text-left p-3.5 rounded-2xl border transition-all flex items-start gap-3 ${
+                        isAllowed
+                          ? 'border-wr-orange/60 bg-wr-surface shadow-sm ring-1 ring-wr-orange/20'
+                          : 'border-wr-border bg-wr-elevated/40 opacity-60 hover:opacity-100 hover:border-wr-borderHover'
+                      }`}
+                    >
+                      <div className="mt-0.5 shrink-0">
+                        {isAllowed ? (
+                          <CheckSquare className="h-4 w-4 text-wr-orange" />
+                        ) : (
+                          <Square className="h-4 w-4 text-wr-muted" />
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-bold text-xs text-wr-text">{tab.label}</span>
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                              isAllowed
+                                ? 'bg-emerald-500/15 text-emerald-500'
+                                : 'bg-wr-border text-wr-muted'
+                            }`}
+                          >
+                            {isAllowed ? 'Liberado' : 'Oculto'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-wr-muted mt-0.5 leading-tight">
+                          {tab.description}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SEÇÃO: Mecânicos da Oficina (Adicionar e Remover) */}
+      <div className="wr-card p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-wr-border pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-wr-orange/15 text-wr-orange border border-wr-orange/30">
+              <Wrench className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-[10px] uppercase font-bold text-wr-orange block">
-                Conta Operacional / Funcionários
-              </span>
-              <span className="font-bold text-wr-text text-sm block">Funcionário WR</span>
-              <span className="font-mono text-[11px] text-wr-muted">
-                Usuário: <strong>Wr_mecanica</strong> | Senha: <strong>We2023@</strong>
-              </span>
-              <span className="block text-[10px] text-wr-orange mt-1 font-semibold">
-                ⚙️ Acesso gerenciado pelas opções selecionadas abaixo
-              </span>
+              <h3 className="text-sm font-bold text-wr-text flex items-center gap-2">
+                Mecânicos da Oficina
+                <span className="rounded-full bg-wr-elevated border border-wr-border px-2 py-0.5 text-[10px] font-bold text-wr-muted font-mono">
+                  {mechanics.length} cadastrado(s)
+                </span>
+              </h3>
+              <p className="text-[11px] text-wr-muted mt-0.5">
+                Profissionais responsáveis pela execução dos serviços selecionáveis na Ordem de Serviço
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Grade de Seleção de Permissões */}
-        <div className="space-y-2">
-          <label className="block text-xs font-bold text-wr-text">
-            Telas e Módulos Acessíveis para o Funcionário:
-          </label>
+        {/* Formulário para Adicionar Novo Mecânico */}
+        <form
+          onSubmit={e => {
+            e.preventDefault()
+            if (!newMechanicName.trim()) return
+            addMechanic(newMechanicName.trim())
+            setNewMechanicName('')
+          }}
+          className="flex flex-col sm:flex-row gap-2 max-w-lg"
+        >
+          <input
+            type="text"
+            required
+            value={newMechanicName}
+            onChange={e => setNewMechanicName(e.target.value)}
+            placeholder="Nome do mecânico (ex: Fernando Santos)..."
+            className="wr-input flex-1"
+          />
+          <button type="submit" className="wr-btn-primary px-4 py-2.5 text-xs font-bold shrink-0">
+            <Plus className="h-4 w-4 stroke-[2.5]" />
+            Adicionar Mecânico
+          </button>
+        </form>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {PERMISSION_TABS.map(tab => {
-              const isAllowed = employeePermissions.includes(tab.id)
+        {/* Lista de Mecânicos Cadastrados */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+          {mechanics.map(m => (
+            <div
+              key={m}
+              className="rounded-2xl border border-wr-border bg-wr-elevated p-3.5 flex items-center justify-between gap-3 hover:border-wr-borderHover transition-colors"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-9 w-9 rounded-xl bg-wr-surface border border-wr-border flex items-center justify-center font-bold text-xs text-wr-orange shrink-0">
+                  {m.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <span className="font-bold text-xs text-wr-text block truncate">{m}</span>
+                  <span className="text-[10px] text-wr-muted block">Mecânico Operacional</span>
+                </div>
+              </div>
 
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => handleTogglePermission(tab.id)}
-                  className={`text-left p-3.5 rounded-2xl border transition-all flex items-start gap-3 ${
-                    isAllowed
-                      ? 'border-wr-orange/60 bg-wr-surface shadow-sm ring-1 ring-wr-orange/20'
-                      : 'border-wr-border bg-wr-elevated/40 opacity-60 hover:opacity-100 hover:border-wr-borderHover'
-                  }`}
-                >
-                  <div className="mt-0.5 shrink-0">
-                    {isAllowed ? (
-                      <CheckSquare className="h-4 w-4 text-wr-orange" />
-                    ) : (
-                      <Square className="h-4 w-4 text-wr-muted" />
-                    )}
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="font-bold text-xs text-wr-text">{tab.label}</span>
-                      <span
-                        className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
-                          isAllowed
-                            ? 'bg-emerald-500/15 text-emerald-500'
-                            : 'bg-wr-border text-wr-muted'
-                        }`}
-                      >
-                        {isAllowed ? 'Liberado' : 'Oculto'}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-wr-muted mt-0.5 leading-tight">
-                      {tab.description}
-                    </p>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`Deseja remover o mecânico "${m}" da lista?`)) {
+                    deleteMechanic(m)
+                  }
+                }}
+                className="p-1.5 rounded-lg border border-wr-border bg-wr-surface text-wr-muted hover:text-rose-500 hover:border-rose-500/30 transition-colors shrink-0"
+                title="Remover mecânico"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
         </div>
       </div>
 

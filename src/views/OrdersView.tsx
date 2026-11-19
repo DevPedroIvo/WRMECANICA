@@ -39,6 +39,8 @@ import {
   FileCheck2,
   Wallet,
   Eye,
+  XCircle,
+  UserCheck,
 } from 'lucide-react'
 
 const PRE_REGISTERED_SERVICES = [
@@ -84,8 +86,6 @@ const DEFAULT_VISUAL_CHECKLIST: VehicleInspectionChecklist = {
   bodyworkDamages: '',
 }
 
-const MECHANICS_LIST = ['Roberto Silva', 'Carlos Eduardo', 'Marcos Mecânico', 'Lucas Ferreira']
-
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   pix: 'Pix',
   cartao_credito: 'Crédito',
@@ -101,6 +101,9 @@ export const OrdersView: React.FC = () => {
     orders,
     clients,
     vehicles,
+    mechanics,
+    addClient,
+    addVehicle,
     addOrder,
     updateOrder,
     updateOrderStatus,
@@ -158,12 +161,18 @@ export const OrdersView: React.FC = () => {
   const [checklist, setChecklist] = useState<VehicleInspectionChecklist>(DEFAULT_VISUAL_CHECKLIST)
 
   const [mainServiceDesc, setMainServiceDesc] = useState('')
-  const [mechanicAssigned, setMechanicAssigned] = useState(MECHANICS_LIST[0])
+  const [mechanicAssigned, setMechanicAssigned] = useState(mechanics?.[0] || 'Roberto Silva')
   const [observations, setObservations] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
   const [paymentDueDate, setPaymentDueDate] = useState(() =>
     new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   )
+
+  useEffect(() => {
+    if (!mechanicAssigned && mechanics?.length > 0) {
+      setMechanicAssigned(mechanics[0])
+    }
+  }, [mechanics])
 
   const [serviceItems, setServiceItems] = useState<OrderItem[]>([])
   const [newItemDesc, setNewItemDesc] = useState('')
@@ -171,37 +180,133 @@ export const OrdersView: React.FC = () => {
   const [newItemLabor, setNewItemLabor] = useState<number>(0)
   const [showSuggestions, setShowSuggestions] = useState(false)
 
-  // Aplicar pré-preenchimento quando abrir OS direto de um cliente/veículo
+  // Função para salvar imediatamente cliente e carro no cadastro permanente
+  const handleRegisterClientAndVehicle = () => {
+    if (!clientName.trim()) {
+      showToast('Digite o nome do cliente.', 'warning')
+      return null
+    }
+
+    // Procura se já existe um cliente com mesmo nome ou telefone
+    let clientToUse = clients.find(
+      c =>
+        c.name.trim().toLowerCase() === clientName.trim().toLowerCase() ||
+        (clientPhone.trim() && c.phone.replace(/\D/g, '') === clientPhone.replace(/\D/g, ''))
+    )
+
+    if (!clientToUse) {
+      clientToUse = addClient({
+        name: clientName.trim(),
+        phone: clientPhone.trim() || '(63) 99999-0000',
+        cpfCnpj: clientCpfCnpj.trim() || undefined,
+      })
+      showToast(`Cliente "${clientToUse.name}" cadastrado com sucesso!`, 'success')
+    }
+    setSelectedClientId(clientToUse.id)
+
+    // Se informou dados de veículo, cadastra ou vincula
+    let vehicleToUse = null
+    if (vehicleModel.trim() || vehiclePlate.trim()) {
+      const cleanPlate = vehiclePlate.toUpperCase().trim() || 'SEM PLACA'
+      const existingVehicle = vehicles.find(
+        v => v.plate === cleanPlate && cleanPlate !== 'SEM PLACA'
+      )
+      if (existingVehicle) {
+        vehicleToUse = existingVehicle
+        setSelectedVehicleId(existingVehicle.id)
+      } else {
+        const parts = vehicleModel.trim().split(' ')
+        const brand = parts[0] || 'Geral'
+        const model = parts.slice(1).join(' ') || vehicleModel.trim() || 'Veículo'
+
+        vehicleToUse = addVehicle({
+          clientId: clientToUse.id,
+          brand,
+          model,
+          plate: cleanPlate,
+          year: new Date().getFullYear(),
+          currentMileage: Number(mileage) || 0,
+        })
+        setSelectedVehicleId(vehicleToUse.id)
+        showToast(`Veículo "${vehicleToUse.model} (${vehicleToUse.plate})" cadastrado!`, 'success')
+      }
+    }
+
+    return { client: clientToUse, vehicle: vehicleToUse }
+  }
+
+  // Aplicar pré-preenchimento quando abrir OS direto de um agendamento / cliente / veículo
   useEffect(() => {
     if (!isNewOrderModalOpen) return
 
-    const targetClient =
-      (orderPrefill?.clientId ? clients.find(c => c.id === orderPrefill.clientId) : null) ||
-      clients[0]
+    if (orderPrefill) {
+      if (orderPrefill.clientId) {
+        const targetClient = clients.find(c => c.id === orderPrefill.clientId)
+        if (targetClient) {
+          setSelectedClientId(targetClient.id)
+          setClientName(targetClient.name)
+          setClientPhone(targetClient.phone)
+          setClientCpfCnpj(targetClient.cpfCnpj || '')
+        }
+      } else if (orderPrefill.clientName) {
+        setSelectedClientId('')
+        setClientName(orderPrefill.clientName)
+        setClientPhone(orderPrefill.clientPhone || '')
+        setClientCpfCnpj('')
+      }
 
-    if (targetClient) {
-      setSelectedClientId(targetClient.id)
-      setClientName(targetClient.name)
-      setClientPhone(targetClient.phone)
-      setClientCpfCnpj(targetClient.cpfCnpj || '')
+      if (orderPrefill.vehicleId) {
+        const targetVehicle = vehicles.find(v => v.id === orderPrefill.vehicleId)
+        if (targetVehicle) {
+          setSelectedVehicleId(targetVehicle.id)
+          setVehicleModel(`${targetVehicle.brand} ${targetVehicle.model}`)
+          setVehiclePlate(targetVehicle.plate)
+          setMileage(targetVehicle.currentMileage || 0)
+        }
+      } else if (orderPrefill.vehicleModel || orderPrefill.vehiclePlate) {
+        setSelectedVehicleId('')
+        setVehicleModel(orderPrefill.vehicleModel || '')
+        setVehiclePlate(orderPrefill.vehiclePlate || '')
+        setMileage(0)
+      }
 
-      const linkedVehicles = vehicles.filter(v => v.clientId === targetClient.id)
-      const targetVehicle =
-        (orderPrefill?.vehicleId
-          ? linkedVehicles.find(v => v.id === orderPrefill.vehicleId)
-          : null) || linkedVehicles[0]
+      if (orderPrefill.serviceDescription) {
+        setMainServiceDesc(orderPrefill.serviceDescription)
+      }
 
-      if (targetVehicle) {
-        setSelectedVehicleId(targetVehicle.id)
-        setVehicleModel(`${targetVehicle.brand} ${targetVehicle.model}`)
-        setVehiclePlate(targetVehicle.plate)
-        setMileage(targetVehicle.currentMileage || 0)
+      setOrderPrefill(null)
+    } else {
+      const targetClient = clients[0]
+      if (targetClient) {
+        setSelectedClientId(targetClient.id)
+        setClientName(targetClient.name)
+        setClientPhone(targetClient.phone)
+        setClientCpfCnpj(targetClient.cpfCnpj || '')
+
+        const linkedVehicles = vehicles.filter(v => v.clientId === targetClient.id)
+        const targetVehicle = linkedVehicles[0]
+        if (targetVehicle) {
+          setSelectedVehicleId(targetVehicle.id)
+          setVehicleModel(`${targetVehicle.brand} ${targetVehicle.model}`)
+          setVehiclePlate(targetVehicle.plate)
+          setMileage(targetVehicle.currentMileage || 0)
+        } else {
+          setSelectedVehicleId('')
+          setVehicleModel('')
+          setVehiclePlate('')
+          setMileage(0)
+        }
       } else {
+        setSelectedClientId('')
+        setClientName('')
+        setClientPhone('')
+        setClientCpfCnpj('')
         setSelectedVehicleId('')
         setVehicleModel('')
         setVehiclePlate('')
         setMileage(0)
       }
+      setMainServiceDesc('')
     }
 
     setFuelLevel('medio')
@@ -210,7 +315,6 @@ export const OrdersView: React.FC = () => {
     setTireRearLeft('bom')
     setTireRearRight('bom')
     setChecklist(DEFAULT_VISUAL_CHECKLIST)
-    setMainServiceDesc('')
     setObservations('')
     setPaymentMethod('pix')
     setPaymentDueDate(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
@@ -218,8 +322,6 @@ export const OrdersView: React.FC = () => {
     setNewItemDesc('')
     setNewItemParts(0)
     setNewItemLabor(0)
-
-    if (orderPrefill) setOrderPrefill(null)
   }, [isNewOrderModalOpen])
 
   const linkedVehiclesForSelectedClient = useMemo(
@@ -378,6 +480,36 @@ export const OrdersView: React.FC = () => {
       return
     }
 
+    // Garante que o cliente e o veículo estejam salvos no sistema
+    let effectiveClientId = selectedClientId
+    let effectiveVehicleId = selectedVehicleId
+
+    if (!effectiveClientId || !clients.some(c => c.id === effectiveClientId)) {
+      const saved = handleRegisterClientAndVehicle()
+      if (saved?.client) {
+        effectiveClientId = saved.client.id
+      }
+      if (saved?.vehicle) {
+        effectiveVehicleId = saved.vehicle.id
+      }
+    } else if (
+      (!effectiveVehicleId || !vehicles.some(v => v.id === effectiveVehicleId)) &&
+      (vehicleModel.trim() || vehiclePlate.trim())
+    ) {
+      const parts = vehicleModel.trim().split(' ')
+      const brand = parts[0] || 'Geral'
+      const model = parts.slice(1).join(' ') || vehicleModel.trim() || 'Veículo'
+      const newVeh = addVehicle({
+        clientId: effectiveClientId,
+        brand,
+        model,
+        plate: vehiclePlate.toUpperCase().trim() || 'SEM PLACA',
+        year: new Date().getFullYear(),
+        currentMileage: Number(mileage) || 0,
+      })
+      effectiveVehicleId = newVeh.id
+    }
+
     const finalItems: OrderItem[] =
       serviceItems.length > 0
         ? serviceItems
@@ -397,11 +529,11 @@ export const OrdersView: React.FC = () => {
     const finalLabor = finalItems.reduce((acc, i) => acc + i.laborCost, 0)
 
     addOrder({
-      clientId: selectedClientId || `cli-${Date.now()}`,
+      clientId: effectiveClientId || `cli-${Date.now()}`,
       clientName: clientName.trim(),
       clientPhone: clientPhone.trim(),
       clientCpfCnpj: clientCpfCnpj.trim() || undefined,
-      vehicleId: selectedVehicleId || undefined,
+      vehicleId: effectiveVehicleId || undefined,
       vehicleModel: vehicleModel.trim(),
       vehiclePlate: vehiclePlate.toUpperCase().trim() || 'SEM PLACA',
       mileage: Number(mileage) || 0,
@@ -478,10 +610,17 @@ export const OrdersView: React.FC = () => {
             Pronto
           </span>
         )
+      case 'cancelado':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">
+            <XCircle className="h-3 w-3" />
+            Cancelada
+          </span>
+        )
       default:
         return (
           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-wr-elevated text-wr-muted">
-            Cancelado
+            {status}
           </span>
         )
     }
@@ -539,6 +678,7 @@ export const OrdersView: React.FC = () => {
             { id: 'aguardando', label: 'Aguardando' },
             { id: 'andamento', label: 'Em andamento' },
             { id: 'pronto', label: 'Prontas' },
+            { id: 'cancelado', label: 'Canceladas' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -663,7 +803,7 @@ export const OrdersView: React.FC = () => {
                   className="pt-3 border-t border-wr-border flex flex-wrap items-center gap-2"
                   onClick={e => e.stopPropagation()}
                 >
-                  {order.status !== 'pronto' ? (
+                  {order.status !== 'pronto' && order.status !== 'cancelado' && (
                     <button
                       type="button"
                       onClick={() => setFinalizingOrder(order)}
@@ -672,22 +812,43 @@ export const OrdersView: React.FC = () => {
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       Finalizar OS
                     </button>
-                  ) : hasFiscal ? (
+                  )}
+
+                  {order.status !== 'cancelado' && (
                     <button
-                      onClick={() => setDanfseModalOrder(order)}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white transition-colors"
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`Deseja realmente cancelar a Ordem de Serviço #${order.number}?`)) {
+                          updateOrderStatus(order.id, 'cancelado')
+                          showToast(`OS #${order.number} foi cancelada.`, 'info')
+                        }
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-500/35 bg-rose-500/10 hover:bg-rose-600 hover:text-white py-2 px-3 text-xs font-bold text-rose-500 transition-colors"
+                      title="Cancelar esta Ordem de Serviço"
                     >
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                      Ver NFS-e
+                      <XCircle className="h-3.5 w-3.5" />
+                      Cancelar OS
                     </button>
-                  ) : (
-                    <button
-                      onClick={() => issueFiscalInvoice(order.id)}
-                      className="flex-1 wr-btn-secondary py-2"
-                    >
-                      <FileCheck2 className="h-3.5 w-3.5 text-wr-orange" />
-                      Emitir NFS-e
-                    </button>
+                  )}
+
+                  {order.status === 'pronto' && (
+                    hasFiscal ? (
+                      <button
+                        onClick={() => setDanfseModalOrder(order)}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white transition-colors"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Ver NFS-e
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => issueFiscalInvoice(order.id)}
+                        className="flex-1 wr-btn-secondary py-2"
+                      >
+                        <FileCheck2 className="h-3.5 w-3.5 text-wr-orange" />
+                        Emitir NFS-e
+                      </button>
+                    )
                   )}
 
                   <button
@@ -746,12 +907,13 @@ export const OrdersView: React.FC = () => {
               <span className="text-[11px] font-bold uppercase tracking-wider text-wr-muted block">
                 Status do Serviço
               </span>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {(
                   [
                     { id: 'aguardando', label: 'Aguardando', active: 'bg-amber-500 text-white dark:text-black border-amber-500' },
                     { id: 'andamento', label: 'Em Andamento', active: 'bg-wr-orange text-white dark:text-[#0B0C10] border-wr-orange' },
                     { id: 'pronto', label: 'Pronto', active: 'bg-emerald-600 text-white border-emerald-600' },
+                    { id: 'cancelado', label: 'Cancelado', active: 'bg-rose-600 text-white border-rose-600' },
                   ] as const
                 ).map(st => (
                   <button
@@ -845,7 +1007,7 @@ export const OrdersView: React.FC = () => {
                 }
                 className="wr-input max-w-[200px] bg-wr-surface"
               >
-                {MECHANICS_LIST.map(m => (
+                {mechanics.map(m => (
                   <option key={m} value={m}>
                     {m}
                   </option>
@@ -909,7 +1071,7 @@ export const OrdersView: React.FC = () => {
 
             {/* Footer Actions */}
             <div className="flex flex-wrap items-center gap-2.5">
-              {selectedOrderForModal.status !== 'pronto' && (
+              {selectedOrderForModal.status !== 'pronto' && selectedOrderForModal.status !== 'cancelado' && (
                 <button
                   type="button"
                   onClick={() => {
@@ -920,6 +1082,22 @@ export const OrdersView: React.FC = () => {
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   Finalizar OS &amp; Pagamento
+                </button>
+              )}
+              {selectedOrderForModal.status !== 'cancelado' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`Deseja realmente cancelar a Ordem de Serviço #${selectedOrderForModal.number}?`)) {
+                      updateOrderStatus(selectedOrderForModal.id, 'cancelado')
+                      setSelectedOrderForModal(null)
+                      showToast(`OS #${selectedOrderForModal.number} cancelada.`, 'info')
+                    }
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-600 hover:text-white py-2.5 px-4 text-xs font-bold text-rose-500 transition-colors"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Cancelar OS
                 </button>
               )}
               <button
@@ -1439,6 +1617,10 @@ export const OrdersView: React.FC = () => {
                     <ClientAutocomplete
                       value={clientName}
                       onChange={name => setClientName(name)}
+                      onConfirmNewClientName={name => {
+                        setClientName(name)
+                        handleRegisterClientAndVehicle()
+                      }}
                       onSelectClient={c => {
                         setSelectedClientId(c.id)
                         setClientName(c.name)
@@ -1500,6 +1682,28 @@ export const OrdersView: React.FC = () => {
                       setMileage(v.currentMileage || 0)
                     }}
                   />
+
+                  {/* Botão de Cadastro Rápido de Cliente e Veículo */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-wr-border">
+                    <div className="flex items-center gap-2 text-[11px] text-wr-muted">
+                      {selectedClientId ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
+                          <UserCheck className="h-4 w-4" /> Cliente vinculado ao cadastro permanente
+                        </span>
+                      ) : (
+                        <span>Cliente novo. Clique ao lado para salvar em Clientes e Veículos.</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRegisterClientAndVehicle()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-wr-orange/15 border border-wr-orange/40 hover:bg-wr-orange hover:text-white text-wr-orange text-xs font-bold transition-all shadow-sm"
+                      title="Salva este cliente, telefone e veículo no banco de dados do sistema"
+                    >
+                      <UserCheck className="h-4 w-4" />
+                      OK, usar e cadastrar este usuário
+                    </button>
+                  </div>
 
                   <div>
                     <label className="block text-wr-muted font-semibold mb-1">
@@ -1677,7 +1881,7 @@ export const OrdersView: React.FC = () => {
                       onChange={e => setMechanicAssigned(e.target.value)}
                       className="wr-input bg-wr-surface"
                     >
-                      {MECHANICS_LIST.map(m => (
+                      {mechanics.map(m => (
                         <option key={m} value={m}>
                           {m}
                         </option>
@@ -1752,81 +1956,94 @@ export const OrdersView: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="rounded-xl bg-wr-surface p-3 border border-wr-orange/35 space-y-2 relative">
-                  <span className="text-[11px] font-semibold text-wr-orange flex items-center gap-1">
-                    <Sparkles className="h-3.5 w-3.5" /> Adicionar Item de Serviço / Peça:
-                  </span>
-                  <div className="grid grid-cols-12 gap-2">
-                    <div className="col-span-12 sm:col-span-5 relative">
-                      <label className="block text-[10px] font-bold text-wr-muted mb-0.5">
-                        Descrição do Serviço ou Peça
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Ex: Troca de pastilhas dianteiras..."
-                        value={newItemDesc}
-                        onFocus={() => setShowSuggestions(true)}
-                        onChange={e => {
-                          setNewItemDesc(e.target.value)
-                          setShowSuggestions(true)
-                        }}
-                        className="wr-input"
-                      />
-                      {showSuggestions &&
-                        newItemDesc.trim().length > 0 &&
-                        filteredSuggestions.length > 0 && (
-                          <div className="absolute left-0 top-full mt-1 w-full max-h-44 overflow-y-auto rounded-xl border border-wr-border bg-wr-surface p-1 shadow-elevated z-30">
-                            {filteredSuggestions.map((sug, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => handleSelectSuggestion(sug)}
-                                className="w-full text-left p-2 rounded-lg hover:bg-wr-elevated flex items-center justify-between gap-2 text-xs"
-                              >
-                                <span className="font-semibold text-wr-text truncate">
-                                  {sug.name}
-                                </span>
-                                <span className="font-mono text-[10px] text-wr-orange shrink-0">
-                                  Peças: {formatCurrency(sug.partsCost)} | M.O: {formatCurrency(sug.laborCost)}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                    </div>
+                <div className="rounded-2xl bg-wr-surface p-4 border border-wr-orange/40 space-y-3 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-wr-orange flex items-center gap-1.5">
+                      <Sparkles className="h-4 w-4" /> Adicionar Novo Item de Serviço / Peça
+                    </span>
+                    <span className="text-[11px] text-wr-muted hidden sm:inline">
+                      Sem cortes: digite a descrição e valores nos campos espaçosos abaixo
+                    </span>
+                  </div>
 
-                    <div className="col-span-5 sm:col-span-3">
-                      <label className="block text-[10px] font-bold text-wr-muted mb-0.5">
+                  {/* Linha 1: Descrição completa com largura total e sugestões sem corte */}
+                  <div className="relative">
+                    <label className="block text-xs font-bold text-wr-text mb-1">
+                      Descrição do Serviço ou Peça *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Digite a descrição (Ex: Troca de pastilhas de freio dianteiras, Óleo 5W30...)"
+                      value={newItemDesc}
+                      onFocus={() => setShowSuggestions(true)}
+                      onChange={e => {
+                        setNewItemDesc(e.target.value)
+                        setShowSuggestions(true)
+                      }}
+                      className="wr-input text-xs sm:text-sm py-2.5 px-3.5 font-medium leading-relaxed"
+                    />
+                    {showSuggestions &&
+                      newItemDesc.trim().length > 0 &&
+                      filteredSuggestions.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1 max-h-56 overflow-y-auto rounded-xl border border-wr-border bg-wr-surface p-1.5 shadow-elevated z-40">
+                          {filteredSuggestions.map((sug, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleSelectSuggestion(sug)}
+                              className="w-full text-left p-2.5 rounded-lg hover:bg-wr-elevated flex items-center justify-between gap-3 text-xs transition-colors"
+                            >
+                              <span className="font-semibold text-wr-text truncate">
+                                {sug.name}
+                              </span>
+                              <span className="font-mono text-xs text-wr-orange shrink-0 font-bold">
+                                Peças: {formatCurrency(sug.partsCost)} | M.O: {formatCurrency(sug.laborCost)}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                  </div>
+
+                  {/* Linha 2: Valores e Botão de Adição com espaço amplo */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                    <div>
+                      <label className="block text-xs font-bold text-wr-text mb-1">
                         Valor Peças (R$)
                       </label>
                       <input
                         type="number"
+                        step="0.01"
                         placeholder="0,00"
                         value={newItemParts || ''}
                         onChange={e => setNewItemParts(Number(e.target.value))}
-                        className="wr-input font-mono"
+                        className="wr-input font-mono text-xs sm:text-sm py-2.5 px-3.5 font-semibold"
                       />
                     </div>
-                    <div className="col-span-5 sm:col-span-3">
-                      <label className="block text-[10px] font-bold text-wr-muted mb-0.5">
+
+                    <div>
+                      <label className="block text-xs font-bold text-wr-text mb-1">
                         Mão de Obra (R$)
                       </label>
                       <input
                         type="number"
+                        step="0.01"
                         placeholder="0,00"
                         value={newItemLabor || ''}
                         onChange={e => setNewItemLabor(Number(e.target.value))}
-                        className="wr-input font-mono"
+                        className="wr-input font-mono text-xs sm:text-sm py-2.5 px-3.5 font-semibold"
                       />
                     </div>
-                    <div className="col-span-2 sm:col-span-1 flex items-end">
+
+                    <div>
                       <button
                         type="button"
                         onClick={handleAddItem}
-                        className="wr-btn-primary w-full h-[38px] px-0 flex items-center justify-center"
-                        title="Adicionar item"
+                        className="wr-btn-primary w-full py-2.5 px-4 text-xs font-bold flex items-center justify-center gap-2 shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all"
+                        title="Adicionar item à Ordem de Serviço"
                       >
-                        <Plus className="h-4 w-4 stroke-[2.5]" />
+                        <Plus className="h-4 w-4 stroke-[3]" />
+                        <span>Adicionar Item à OS</span>
                       </button>
                     </div>
                   </div>

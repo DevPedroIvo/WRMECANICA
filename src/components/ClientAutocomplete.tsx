@@ -7,6 +7,7 @@ interface ClientAutocompleteProps {
   value: string
   onChange: (name: string) => void
   onSelectClient?: (client: Client) => void
+  onConfirmNewClientName?: (name: string) => void
   placeholder?: string
   className?: string
   required?: boolean
@@ -17,6 +18,7 @@ export const ClientAutocomplete: React.FC<ClientAutocompleteProps> = ({
   value,
   onChange,
   onSelectClient,
+  onConfirmNewClientName,
   placeholder = 'Digite o nome do cliente...',
   className = '',
   required = false,
@@ -141,10 +143,15 @@ export const ClientAutocomplete: React.FC<ClientAutocompleteProps> = ({
               <div className="flex items-center justify-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="px-2.5 py-1 rounded-lg bg-wr-orange text-white text-[11px] font-bold"
+                  onClick={() => {
+                    setIsOpen(false)
+                    if (onConfirmNewClientName) {
+                      onConfirmNewClientName(value.trim())
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-wr-orange text-white text-xs font-bold shadow hover:bg-wr-orangeDark transition-all"
                 >
-                  OK, usar este nome
+                  OK, usar este usuário
                 </button>
               </div>
             </div>

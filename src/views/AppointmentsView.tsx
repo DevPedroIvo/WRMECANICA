@@ -25,6 +25,8 @@ export const AppointmentsView: React.FC = () => {
     addAppointment,
     updateAppointmentStatus,
     sendWhatsApp,
+    mechanics,
+    openNewOrderModal,
   } = useApp()
 
   const [filterStatus, setFilterStatus] = useState<string>('todos')
@@ -37,7 +39,7 @@ export const AppointmentsView: React.FC = () => {
   const [vehicleModel, setVehicleModel] = useState('')
   const [vehiclePlate, setVehiclePlate] = useState('')
   const [serviceDescription, setServiceDescription] = useState('')
-  const [mechanicName, setMechanicName] = useState('Roberto Silva')
+  const [mechanicName, setMechanicName] = useState(mechanics[0] || 'Roberto Silva')
   const [time, setTime] = useState('09:00')
   const [box, setBox] = useState('Box 01 (Elevador)')
 
@@ -268,11 +270,24 @@ export const AppointmentsView: React.FC = () => {
 
               {(apt.status === 'aguardando' || apt.status === 'confirmado') && (
                 <button
-                  onClick={() => updateAppointmentStatus(apt.id, 'em_atendimento')}
-                  className="wr-btn-primary py-2 px-3.5"
+                  type="button"
+                  onClick={() => {
+                    updateAppointmentStatus(apt.id, 'em_atendimento')
+                    openNewOrderModal({
+                      clientId: apt.clientId,
+                      clientName: apt.clientName,
+                      clientPhone: apt.clientPhone,
+                      vehicleId: apt.vehicleId,
+                      vehicleModel: apt.vehicleModel,
+                      vehiclePlate: apt.vehiclePlate,
+                      serviceDescription: apt.serviceDescription,
+                    })
+                  }}
+                  className="wr-btn-primary py-2 px-3.5 shadow-sm"
+                  title="Iniciar serviço e abrir Ordem de Serviço correspondente"
                 >
                   <Play className="h-3.5 w-3.5 fill-current" />
-                  Iniciar
+                  Iniciar Serviço
                 </button>
               )}
 
@@ -386,13 +401,18 @@ export const AppointmentsView: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-wr-muted font-semibold mb-1">Mecânico</label>
-                  <input
-                    type="text"
+                  <label className="block text-wr-muted font-semibold mb-1">Mecânico Responsável</label>
+                  <select
                     value={mechanicName}
                     onChange={e => setMechanicName(e.target.value)}
                     className="wr-input"
-                  />
+                  >
+                    {mechanics.map(m => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

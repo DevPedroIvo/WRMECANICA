@@ -192,8 +192,8 @@ export const Sidebar: React.FC = () => {
 
         {/* Operador Ativo */}
         {currentUserRole && (
-          <div className="p-3 mx-3 mb-2 rounded-2xl bg-wr-elevated border border-wr-border space-y-2">
-            <div className="flex items-center gap-2 min-w-0">
+          <div className="p-3 mx-3 mb-2 rounded-2xl bg-wr-elevated border border-wr-border">
+            <div className="flex items-center gap-2.5 min-w-0">
               <span
                 className={`h-2.5 w-2.5 shrink-0 rounded-full ${
                   currentUserRole === 'dono' ? 'bg-wr-orange animate-pulse' : 'bg-emerald-500'
@@ -208,13 +208,6 @@ export const Sidebar: React.FC = () => {
                 </p>
               </div>
             </div>
-            <button
-              onClick={logout}
-              className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-wr-surface hover:bg-rose-500/10 border border-wr-border hover:border-rose-500/30 text-[11px] font-bold text-wr-muted hover:text-rose-500 transition-colors"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Trocar de Usuário
-            </button>
           </div>
         )}
 

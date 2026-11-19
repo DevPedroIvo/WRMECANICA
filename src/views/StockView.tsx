@@ -9,6 +9,7 @@ export const StockView: React.FC = () => {
   const [onlyLow, setOnlyLow] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isScannerOpen, setIsScannerOpen] = useState(false)
+  const [scannerTarget, setScannerTarget] = useState<'search' | 'product_code'>('search')
 
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
@@ -122,7 +123,10 @@ export const StockView: React.FC = () => {
         {/* Botão de Leitor de Código de Barras pela Câmera */}
         <button
           type="button"
-          onClick={() => setIsScannerOpen(true)}
+          onClick={() => {
+            setScannerTarget('search')
+            setIsScannerOpen(true)
+          }}
           className="wr-btn-secondary px-3.5 py-2 text-xs font-semibold flex items-center gap-2 hover:border-wr-orange"
           title="Ler código de barras com a câmera do celular"
         >
@@ -221,15 +225,42 @@ export const StockView: React.FC = () => {
             <form onSubmit={handleCreateProduct} className="mt-4 space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-wr-muted font-semibold mb-1">Código *</label>
-                  <input
-                    type="text"
-                    value={code}
-                    onChange={e => setCode(e.target.value)}
-                    placeholder="FL-1001"
-                    className="wr-input font-mono uppercase"
-                    required
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-wr-muted font-semibold">Código *</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannerTarget('product_code')
+                        setIsScannerOpen(true)
+                      }}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-wr-orange hover:underline"
+                      title="Ler código de barras pela câmera"
+                    >
+                      <Camera className="h-3 w-3" />
+                      <span>Ler</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={code}
+                      onChange={e => setCode(e.target.value)}
+                      placeholder="Ex: 7891234567890"
+                      className="wr-input font-mono uppercase pr-9"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannerTarget('product_code')
+                        setIsScannerOpen(true)
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-wr-muted hover:text-wr-orange transition-colors"
+                      title="Escanear com a câmera"
+                    >
+                      <Scan className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-wr-muted font-semibold mb-1">Categoria *</label>
@@ -316,7 +347,11 @@ export const StockView: React.FC = () => {
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onDetected={scannedCode => {
-          setSearchTerm(scannedCode)
+          if (scannerTarget === 'product_code') {
+            setCode(scannedCode)
+          } else {
+            setSearchTerm(scannedCode)
+          }
         }}
       />
     </div>

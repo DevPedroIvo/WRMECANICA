@@ -67,6 +67,11 @@ export interface ToastMessage {
 export interface OrderPrefill {
   clientId?: string
   vehicleId?: string
+  clientName?: string
+  clientPhone?: string
+  vehiclePlate?: string
+  vehicleModel?: string
+  serviceDescription?: string
 }
 
 export interface FinishOrderOptions {
@@ -206,6 +211,10 @@ interface AppContextType {
   toggleReminderDone: (id: string) => void
   deleteReminder: (id: string) => void
 
+  mechanics: string[]
+  addMechanic: (name: string) => void
+  deleteMechanic: (name: string) => void
+
   activeShift: DailyCashShift | null
   shiftHistory: DailyCashShift[]
   openCashShift: (initialAmount: number, notes?: string) => void
@@ -233,6 +242,7 @@ const STORAGE_KEYS = {
   authRole: 'wr_auth_v2',
   employeePerms: 'wr_employee_perms_v1',
   reminders: 'wr_reminders_v1',
+  mechanics: 'wr_mechanics_v1',
   activeCashShift: 'wr_active_cash_shift_v6',
   cashShiftsHistory: 'wr_cash_shifts_v6',
 } as const
@@ -311,6 +321,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadLocalSafe(STORAGE_KEYS.reminders, [])
   )
 
+  // Lista dinâmica de Mecânicos da Oficina
+  const [mechanics, setMechanics] = useState<string[]>(() =>
+    loadLocalSafe(STORAGE_KEYS.mechanics, [
+      'Roberto Silva',
+      'Carlos Eduardo',
+      'Marcos Mecânico',
+      'Lucas Ferreira',
+    ])
+  )
+
   // Caixa Diário (Turno atual aberto e histórico)
   const [activeShift, setActiveShift] = useState<DailyCashShift | null>(() =>
     loadLocalSafe(STORAGE_KEYS.activeCashShift, null)
@@ -337,6 +357,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     saveLocalDebounced(STORAGE_KEYS.reminders, reminders)
   }, [reminders])
+
+  useEffect(() => {
+    saveLocalDebounced(STORAGE_KEYS.mechanics, mechanics)
+  }, [mechanics])
 
   useEffect(() => {
     saveLocalDebounced(STORAGE_KEYS.activeCashShift, activeShift)
@@ -485,6 +509,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     (id: string) => {
       setReminders(prev => prev.filter(r => r.id !== id))
       showToast('Lembrete excluído.', 'info')
+    },
+    [showToast]
+  )
+
+  const addMechanic = useCallback(
+    (name: string) => {
+      const trimmed = name.trim()
+      if (!trimmed) return
+      setMechanics(prev => {
+        if (prev.some(m => m.toLowerCase() === trimmed.toLowerCase())) {
+          showToast(`Mecânico "${trimmed}" já está cadastrado!`, 'warning')
+          return prev
+        }
+        showToast(`Mecânico "${trimmed}" cadastrado com sucesso!`, 'success')
+        return [...prev, trimmed]
+      })
+    },
+    [showToast]
+  )
+
+  const deleteMechanic = useCallback(
+    (name: string) => {
+      setMechanics(prev => {
+        if (prev.length <= 1) {
+          showToast('A oficina deve ter pelo menos um mecânico cadastrado.', 'warning')
+          return prev
+        }
+        showToast(`Mecânico "${name}" removido!`, 'info')
+        return prev.filter(m => m !== name)
+      })
     },
     [showToast]
   )
@@ -1365,6 +1419,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addReminder,
         toggleReminderDone,
         deleteReminder,
+        mechanics,
+        addMechanic,
+        deleteMechanic,
         activeShift,
         shiftHistory,
         openCashShift,
