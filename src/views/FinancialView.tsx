@@ -13,7 +13,53 @@ import {
   Clock,
   ArrowUpRight,
   ArrowDownRight,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
+
+const MONTH_NAMES = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+]
+
+const getRecordMonthKey = (dateStr?: string): string | null => {
+  if (!dateStr) return null
+  const clean = dateStr.trim()
+  if (clean.includes('/')) {
+    const parts = clean.split('/')
+    if (parts.length === 3) {
+      const year = parts[2].slice(0, 4)
+      const month = parts[1].padStart(2, '0')
+      return `${year}-${month}`
+    }
+  }
+  if (clean.includes('-')) {
+    const parts = clean.split('-')
+    if (parts.length >= 2) {
+      const year = parts[0]
+      const month = parts[1].padStart(2, '0')
+      return `${year}-${month}`
+    }
+  }
+  return null
+}
+
+const formatMonthDisplay = (key: string) => {
+  if (key === 'todos') return 'Todos os Meses (Geral)'
+  const [yearStr, monthStr] = key.split('-')
+  const mIndex = parseInt(monthStr, 10) - 1
+  return `${MONTH_NAMES[mIndex] || monthStr} de ${yearStr}`
+}
 
 export const FinancialView: React.FC = () => {
   const {
@@ -30,6 +76,40 @@ export const FinancialView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
+  // Filtro de Mês (padrão: mês atual; permite navegar mês a mês ou ver todos)
+  const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey)
+
+  const handlePrevMonth = () => {
+    if (selectedMonth === 'todos') {
+      setSelectedMonth(currentMonthKey)
+      return
+    }
+    const [yearStr, monthStr] = selectedMonth.split('-')
+    let year = parseInt(yearStr, 10)
+    let month = parseInt(monthStr, 10) - 1
+    if (month < 1) {
+      month = 12
+      year -= 1
+    }
+    setSelectedMonth(`${year}-${String(month).padStart(2, '0')}`)
+  }
+
+  const handleNextMonth = () => {
+    if (selectedMonth === 'todos') {
+      setSelectedMonth(currentMonthKey)
+      return
+    }
+    const [yearStr, monthStr] = selectedMonth.split('-')
+    let year = parseInt(yearStr, 10)
+    let month = parseInt(monthStr, 10) + 1
+    if (month > 12) {
+      month = 1
+      year += 1
+    }
+    setSelectedMonth(`${year}-${String(month).padStart(2, '0')}`)
+  }
+
   const [type, setType] = useState<'receita' | 'despesa'>('receita')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('Serviços')
@@ -37,11 +117,20 @@ export const FinancialView: React.FC = () => {
   const [amount, setAmount] = useState<number>(0)
   const [dueDate, setDueDate] = useState(new Date().toLocaleDateString('pt-BR'))
 
+  // Filtragem dos registros pelo mês selecionado
+  const financialInPeriod = useMemo(() => {
+    if (selectedMonth === 'todos') return financial
+    return financial.filter(f => {
+      const key = getRecordMonthKey(f.paymentDate || f.dueDate)
+      return key === selectedMonth
+    })
+  }, [financial, selectedMonth])
+
   const { totalReceitas, totalDespesas, saldoAtual, margem, totalPagarDepois } = useMemo(() => {
-    const rec = financial
+    const rec = financialInPeriod
       .filter(f => f.type === 'receita')
       .reduce((acc, f) => acc + f.amount, 0)
-    const desp = financial
+    const desp = financialInPeriod
       .filter(f => f.type === 'despesa')
       .reduce((acc, f) => acc + f.amount, 0)
     const saldo = rec - desp
@@ -57,15 +146,15 @@ export const FinancialView: React.FC = () => {
       margem: m,
       totalPagarDepois: fiado,
     }
-  }, [financial, deferredPayments])
+  }, [financialInPeriod, deferredPayments])
 
   const contasReceber = useMemo(
-    () => financial.filter(f => f.type === 'receita'),
-    [financial]
+    () => financialInPeriod.filter(f => f.type === 'receita'),
+    [financialInPeriod]
   )
   const contasPagar = useMemo(
-    () => financial.filter(f => f.type === 'despesa'),
-    [financial]
+    () => financialInPeriod.filter(f => f.type === 'despesa'),
+    [financialInPeriod]
   )
 
   const filteredItems = useMemo(() => {
@@ -129,6 +218,74 @@ export const FinancialView: React.FC = () => {
           >
             <Plus className="h-4 w-4 stroke-[2.5]" />
             Novo Lançamento
+          </button>
+        </div>
+      </div>
+
+      {/* Barra de Seleção de Mês */}
+      <div className="wr-card p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-wr-surface border-wr-border">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-wr-orange/15 text-wr-orange">
+            <Calendar className="h-4 w-4" />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-wr-muted block">
+              Mês de Referência
+            </span>
+            <span className="text-sm font-bold text-wr-text">
+              {formatMonthDisplay(selectedMonth)}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Navegador Anterior / Próximo e Seletor Direto de Mês */}
+          <div className="inline-flex items-center rounded-xl border border-wr-border bg-wr-elevated p-1">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              title="Mês anterior"
+              className="p-1.5 rounded-lg text-wr-muted hover:text-wr-text hover:bg-wr-surface transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <input
+              type="month"
+              value={selectedMonth === 'todos' ? '' : selectedMonth}
+              onChange={e => e.target.value && setSelectedMonth(e.target.value)}
+              className="bg-transparent border-none text-xs font-bold text-wr-text focus:outline-hidden px-2 font-mono cursor-pointer"
+              title="Clique para escolher qualquer mês/ano"
+            />
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              title="Próximo mês"
+              className="p-1.5 rounded-lg text-wr-muted hover:text-wr-text hover:bg-wr-surface transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          {selectedMonth !== currentMonthKey && (
+            <button
+              type="button"
+              onClick={() => setSelectedMonth(currentMonthKey)}
+              className="px-3 py-1.5 rounded-xl border border-wr-orange/40 bg-wr-orange/10 hover:bg-wr-orange/20 text-wr-orange text-xs font-bold transition-colors"
+            >
+              Mês Atual
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setSelectedMonth(selectedMonth === 'todos' ? currentMonthKey : 'todos')}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors ${
+              selectedMonth === 'todos'
+                ? 'border-wr-orange bg-wr-orange text-white dark:text-[#0B0C10]'
+                : 'border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text'
+            }`}
+          >
+            {selectedMonth === 'todos' ? 'Vendo Geral' : 'Todos os Meses'}
           </button>
         </div>
       </div>
@@ -271,9 +428,14 @@ export const FinancialView: React.FC = () => {
             </p>
           </div>
 
-          <span className="font-mono text-xs font-bold text-wr-muted">
-            {filteredItems.length} registro(s)
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-wr-elevated border border-wr-border px-2.5 py-0.5 text-[10px] font-bold text-wr-muted font-mono">
+              {formatMonthDisplay(selectedMonth)}
+            </span>
+            <span className="font-mono text-xs font-bold text-wr-muted">
+              {filteredItems.length} registro(s)
+            </span>
+          </div>
         </div>
 
         {filteredItems.length === 0 ? (
@@ -284,8 +446,8 @@ export const FinancialView: React.FC = () => {
               {searchTerm
                 ? `Nenhum lançamento corresponde a "${searchTerm}"`
                 : subTab === 'receitas'
-                ? 'Nenhuma receita registrada ainda.'
-                : 'Nenhuma despesa registrada ainda.'}
+                ? `Nenhuma receita registrada em ${formatMonthDisplay(selectedMonth)}.`
+                : `Nenhuma despesa registrada em ${formatMonthDisplay(selectedMonth)}.`}
             </p>
           </div>
         ) : (

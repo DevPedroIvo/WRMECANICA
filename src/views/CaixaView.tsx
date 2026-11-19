@@ -40,7 +40,7 @@ export const CaixaView: React.FC = () => {
   const [movementModalType, setMovementModalType] = useState<'sangria' | 'suprimento' | null>(null)
 
   // Estados dos formulários
-  const [initialAmount, setInitialAmount] = useState('150.00')
+  const [initialAmount, setInitialAmount] = useState('0.00')
   const [openNotes, setOpenNotes] = useState('')
 
   const [physicalCash, setPhysicalCash] = useState('')
@@ -48,6 +48,12 @@ export const CaixaView: React.FC = () => {
 
   const [movementAmount, setMovementAmount] = useState('')
   const [movementDesc, setMovementDesc] = useState('')
+
+  const handleOpenModal = () => {
+    setInitialAmount('0.00')
+    setOpenNotes('')
+    setOpenModalVisible(true)
+  }
 
   // Totais do turno ativo
   const movements = activeShift?.movements || []
@@ -86,7 +92,7 @@ export const CaixaView: React.FC = () => {
     e.preventDefault()
     openCashShift(parseFloat(initialAmount) || 0, openNotes)
     setOpenModalVisible(false)
-    setInitialAmount('150.00')
+    setInitialAmount('0.00')
     setOpenNotes('')
   }
 
@@ -186,7 +192,7 @@ export const CaixaView: React.FC = () => {
           ) : (
             <button
               type="button"
-              onClick={() => setOpenModalVisible(true)}
+              onClick={handleOpenModal}
               className="wr-btn-primary px-4 py-2 text-xs font-bold"
             >
               <Unlock className="h-4 w-4" /> Abrir Caixa Diário
@@ -276,7 +282,7 @@ export const CaixaView: React.FC = () => {
           </div>
           <button
             type="button"
-            onClick={() => setOpenModalVisible(true)}
+            onClick={handleOpenModal}
             className="wr-btn-primary px-6 py-2.5 font-bold text-xs uppercase tracking-wider"
           >
             <Unlock className="h-4 w-4" /> Abrir Caixa Agora

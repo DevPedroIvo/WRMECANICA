@@ -126,7 +126,7 @@ export const DEFAULT_EMPLOYEE_PERMISSIONS: TabType[] = [
 // Logins do sistema
 const SYSTEM_USERS: { username: string; password: string; role: UserRole; displayName: string }[] = [
   { username: 'Samilly Martins', password: 'Sami2026@', role: 'dono', displayName: 'Samilly Martins' },
-  { username: 'Wr_mecanica', password: 'We2023@', role: 'funcionario', displayName: 'Funcionário WR' },
+  { username: 'Wr_mecanica', password: 'Wr2023@', role: 'funcionario', displayName: 'Funcionário WR' },
 ]
 
 export const PAYMENT_DESCRIPTIONS: Record<PaymentMethod, string> = {
@@ -502,7 +502,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = useCallback(() => {
     setCurrentUserRole(null)
     setCurrentUserName(null)
-    showToast('Sessão encerrada com segurança.', 'info')
+    localStorage.removeItem(STORAGE_KEYS.authRole)
+    try {
+      localStorage.removeItem('wr_saved_passwords_v1')
+    } catch {}
+    showToast('Sessão encerrada com segurança. Digite a senha para novo acesso.', 'info')
   }, [showToast])
 
   const updateEmployeePermissions = useCallback((perms: TabType[]) => {

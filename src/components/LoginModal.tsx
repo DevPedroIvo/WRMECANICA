@@ -1,33 +1,19 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { WrLogo } from './WrLogo'
-import { ShieldCheck, Users, Lock, ArrowRight, Eye, EyeOff, CheckCircle2, Check } from 'lucide-react'
+import { ShieldCheck, Users, Lock, ArrowRight, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
-const SAVED_PASSWORDS_KEY = 'wr_saved_passwords_v1'
 const DEFAULT_PASSWORDS: Record<'dono' | 'funcionario', string> = {
   dono: 'Sami2026@',
-  funcionario: 'We2023@',
+  funcionario: 'Wr2023@',
 }
 
 export const LoginModal: React.FC = () => {
   const { login } = useApp()
-  const [selectedRole, setSelectedRole] = useState<'dono' | 'funcionario'>('dono')
+  const [selectedRole, setSelectedRole] = useState<'dono' | 'funcionario'>('funcionario')
   
-  // Carrega as senhas salvas do dispositivo
-  const [savedPasswords, setSavedPasswords] = useState<Record<'dono' | 'funcionario', string>>(() => {
-    try {
-      const stored = localStorage.getItem(SAVED_PASSWORDS_KEY)
-      if (stored) {
-        return { ...DEFAULT_PASSWORDS, ...JSON.parse(stored) }
-      }
-    } catch {
-      // fallback
-    }
-    return DEFAULT_PASSWORDS
-  })
-
-  const [password, setPassword] = useState<string>(() => savedPasswords['dono'] || DEFAULT_PASSWORDS.dono)
-  const [rememberPassword, setRememberPassword] = useState(true)
+  // Senha sempre em branco para forçar digitação na troca de usuário
+  const [password, setPassword] = useState<string>('')
   const [showPassword, setShowPassword] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -36,29 +22,21 @@ export const LoginModal: React.FC = () => {
 
   const handleRoleSelect = (role: 'dono' | 'funcionario') => {
     setSelectedRole(role)
-    const savedForRole = savedPasswords[role] || DEFAULT_PASSWORDS[role]
-    setPassword(savedForRole)
+    setPassword('')
     setErrorMsg('')
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!password.trim()) {
-      setErrorMsg('Por favor, digite a sua senha de acesso.')
+      setErrorMsg('Por favor, digite a senha do perfil selecionado.')
       return
     }
 
-    const res = login(targetUsername, password)
+    const res = login(targetUsername, password.trim())
     if (!res.success) {
-      setErrorMsg('Senha incorreta para o perfil selecionado! Tente novamente.')
+      setErrorMsg('Senha incorreta! Digite a senha correta para entrar.')
       setPassword('')
-    } else {
-      // Salva a senha no dispositivo se solicitado
-      if (rememberPassword) {
-        const updated = { ...savedPasswords, [selectedRole]: password }
-        setSavedPasswords(updated)
-        localStorage.setItem(SAVED_PASSWORDS_KEY, JSON.stringify(updated))
-      }
     }
   }
 
@@ -181,17 +159,10 @@ export const LoginModal: React.FC = () => {
             </div>
           )}
 
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              id="rememberPassword"
-              checked={rememberPassword}
-              onChange={e => setRememberPassword(e.target.checked)}
-              className="rounded border-wr-border text-wr-orange focus:ring-wr-orange h-4 w-4 cursor-pointer"
-            />
-            <label htmlFor="rememberPassword" className="text-xs font-semibold text-wr-muted cursor-pointer select-none">
-              Salvar senha para não pedir novamente
-            </label>
+          <div className="rounded-xl bg-wr-elevated/60 border border-wr-border p-2.5 text-center">
+            <p className="text-[11px] text-wr-muted">
+              🔒 <strong>Acesso Protegido:</strong> Por segurança, a senha é sempre exigida ao alternar usuários.
+            </p>
           </div>
 
           <button
