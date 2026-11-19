@@ -27,6 +27,7 @@ export const usePwaInstall = () => {
     const userAgent = window.navigator.userAgent.toLowerCase()
     const isAppleDevice = /iphone|ipad|ipod/.test(userAgent)
     setIsIOS(isAppleDevice && !isStandalone)
+    const isMobileDevice = /android|iphone|ipad|ipod|mobile/.test(userAgent)
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
@@ -51,13 +52,23 @@ export const usePwaInstall = () => {
 
   const installApp = useCallback(async () => {
     if (!deferredPrompt) {
+      const userAgent = window.navigator.userAgent.toLowerCase()
+      const isMobileDevice = /android|iphone|ipad|ipod|mobile/.test(userAgent)
+
       if (isIOS) {
         alert(
-          'Para baixar no iPhone/iPad:\n1. Toque no botão de Compartilhar (ícone com seta para cima)\n2. Role para baixo e selecione "Adicionar à Tela de Início"'
+          '📱 Para instalar no iPhone/iPad:\n\n1. Toque no botão de Compartilhar (ícone com seta para cima)\n2. Role para baixo e selecione "Adicionar à Tela de Início"'
+        )
+      } else if (isMobileDevice) {
+        alert(
+          '📱 Para instalar no celular:\n\nAbra o menu do navegador (três pontinhos no canto) e toque em "Instalar Aplicativo" ou "Adicionar à tela inicial".'
         )
       } else {
         alert(
-          'Para baixar o aplicativo:\nAbra o menu do seu navegador (três pontinhos no canto) e toque em "Instalar Aplicativo" ou "Adicionar à tela inicial".'
+          '🖥️ Como Instalar o Aplicativo no PC (Windows / Mac):\n\n' +
+          '1. Na barra de endereços do seu navegador (ao lado da estrela de favoritos), clique no ícone de "Instalar aplicativo" (ícone de computador/tela com seta para baixo).\n' +
+          '2. Ou clique nos 3 pontinhos no canto superior direito do Chrome/Edge e selecione "Instalar WR Mecânica & Cia...".\n\n' +
+          'O aplicativo será instalado como programa independente no seu computador, com atalho na Área de Trabalho e inicialização rápida sem precisar abrir o navegador!'
         )
       }
       return false

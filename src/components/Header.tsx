@@ -17,6 +17,7 @@ import {
   X,
   LogOut,
   Download,
+  Monitor,
 } from 'lucide-react'
 import { usePwaInstall } from '../hooks/usePwaInstall'
 
@@ -315,14 +316,14 @@ export const Header: React.FC = () => {
           )}
         </button>
 
-        {/* Baixar / Instalar App */}
+        {/* Instalar no PC / Baixar App */}
         <button
           onClick={installApp}
-          title="Baixar ou instalar o aplicativo WR Mecânica no aparelho"
+          title="Instalar aplicativo WR Mecânica no computador ou celular"
           className="flex items-center gap-1.5 rounded-xl border border-wr-orange/40 bg-wr-orange/10 hover:bg-wr-orange/20 px-2.5 sm:px-3 py-2 text-xs font-bold text-wr-orange transition-colors"
         >
-          <Download className="h-4 w-4 shrink-0" />
-          <span className="hidden lg:inline">{isInstalled ? 'App Instalado' : 'Baixar App'}</span>
+          <Monitor className="h-4 w-4 shrink-0" />
+          <span className="hidden sm:inline">{isInstalled ? 'App Instalado' : 'Instalar no PC'}</span>
         </button>
 
         {/* Operator Badge & Trocar Usuário */}
