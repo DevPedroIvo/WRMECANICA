@@ -45,23 +45,20 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
     (order.paymentMethod ? `PAGO VIA ${order.paymentMethod.replace('_', ' ').toUpperCase()}` : 'À VISTA')
 
   const handleShareInvoice = async () => {
-    const text = `*NOTA FISCAL DE SERVIÇOS ELETRÔNICA (NFS-e)*\nNº: ${invoice.invoiceNumber}\nCliente: ${order.clientName}\nVeículo: ${order.vehicleModel} (${order.vehiclePlate})\nValor Serviços: ${formatCurrency(order.laborTotal)}\nValor Peças: ${formatCurrency(order.partsTotal || 0)}\nTotal: ${formatCurrency(order.totalAmount)}\nForma de Pagamento: ${paymentDesc}\nCód. Verificação: ${invoice.verificationCode}\nChave de Acesso: ${invoice.accessKey}\nConsulta Pública: https://www.nfse.gov.br/emissornacional/ConsultaPublica\n\nWR Mecânica & Cia • Porto Nacional - TO`
+    const cleanNumber = (order.clientPhone || '').replace(/\D/g, '')
+    const fullNumber = cleanNumber.startsWith('55') ? cleanNumber : `55${cleanNumber}`
 
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `NFS-e #${invoice.invoiceNumber} - ${order.clientName}`,
-          text,
-        })
-        return
-      } catch (err: unknown) {
-        if (err instanceof Error && err.name === 'AbortError') return
-      }
+    const message = `Olá *${order.clientName}*, segue a sua *Nota Fiscal de Serviços (NFS-e nº ${invoice.invoiceNumber})* emitida pela *WR Mecânica & Cia* referente ao serviço no veículo *${order.vehicleModel}* (${order.vehiclePlate}).\n\n📄 *Valor Total:* ${formatCurrency(order.totalAmount)}\n🔑 *Chave de Acesso:* ${invoice.accessKey}\n🔗 *Consulta Pública:* https://www.nfse.gov.br/emissornacional/ConsultaPublica\n\n_Segue o documento em anexo (PDF / Impressão)._`
+
+    // Abre o WhatsApp direto no número cadastrado do cliente
+    if (cleanNumber) {
+      window.open(`https://wa.me/${fullNumber}?text=${encodeURIComponent(message)}`, '_blank')
     }
 
-    const cleanNumber = order.clientPhone.replace(/\D/g, '')
-    const fullNumber = cleanNumber.startsWith('55') ? cleanNumber : `55${cleanNumber}`
-    window.open(`https://wa.me/${fullNumber}?text=${encodeURIComponent(text)}`, '_blank')
+    // Abre a janela de impressão / Salvar em PDF oficial
+    setTimeout(() => {
+      window.print()
+    }, 350)
   }
 
   // Download do XML com validade jurídica (ABRASF 2.04 / Padrão Nacional)

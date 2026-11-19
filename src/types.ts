@@ -297,3 +297,11 @@ export interface FiscalSettings {
   warrantyDaysParts?: number
   warrantyTerms?: string
 }
+
+export interface ServicePreset {
+  id: string
+  name: string
+  partsCost: number
+  laborCost: number
+  category?: string
+}

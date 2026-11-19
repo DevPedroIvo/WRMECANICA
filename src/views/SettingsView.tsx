@@ -142,157 +142,96 @@ export const SettingsView: React.FC = () => {
         </p>
       </div>
 
-      {/* SEÇÃO PRINCIPAL: Permissões de Funcionários & Controle de Acesso */}
-      <div className="wr-card p-6 space-y-5 border-wr-orange/40">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-wr-border pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-wr-orange/15 text-wr-orange border border-wr-orange/30">
+      {/* SEÇÃO: Funcionários & Permissões de Acesso */}
+      <div className="wr-card p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-wr-border">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-wr-orange/15 text-wr-orange">
               <Users className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-wr-text flex items-center gap-2">
-                Funcionários &amp; Controle de Acesso
-                <span className="rounded-full bg-wr-orange/15 px-2 py-0.5 text-[10px] font-bold text-wr-orange">
-                  Usuário: Wr_mecanica
-                </span>
-              </h3>
-              <p className="text-[11px] text-wr-muted mt-0.5">
-                Marque abaixo quais telas e funções os funcionários têm permissão para acessar
-              </p>
+              <h3 className="text-sm font-bold text-wr-text">Funcionários &amp; Permissões</h3>
+              <p className="text-[11px] text-wr-muted">Escolha as telas liberadas para o usuário <strong>Wr_mecanica</strong></p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleSelectStandardPermissions}
-              className="wr-btn-secondary px-3 py-1.5 text-xs"
+              className="wr-btn-secondary px-3 py-1.5 text-xs font-semibold"
             >
-              Padrão Operacional
+              Padrão
             </button>
             <button
               type="button"
               onClick={handleSelectAllPermissions}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-wr-orange/15 hover:bg-wr-orange text-wr-orange hover:text-white dark:hover:text-[#0B0C10] px-3 py-1.5 text-xs font-bold transition-colors"
+              className="wr-btn-primary px-3 py-1.5 text-xs font-semibold"
             >
-              <CheckSquare className="h-3.5 w-3.5" />
               Liberar Tudo
             </button>
           </div>
         </div>
 
-        {/* Estrutura de Usuários em Cascata (Hierarquia) - Sem exibir senhas */}
-        <div className="space-y-4">
-          <label className="block text-xs font-bold uppercase tracking-wider text-wr-muted">
-            Hierarquia de Usuários do Sistema
-          </label>
-
-          {/* Nível 1: Dono / Administrador Geral */}
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-500 shrink-0">
-                  <UserCheck className="h-5 w-5" />
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-emerald-500 block">
-                    Nível 1 &bull; Administrador / Dono
-                  </span>
-                  <h4 className="font-bold text-wr-text text-sm">Samilly Martins</h4>
-                  <p className="text-[11px] text-wr-muted font-mono mt-0.5">
-                    Usuário: <strong>Samilly Martins</strong> &bull; Senha: <span className="tracking-widest">••••••••</span>
-                  </p>
-                </div>
+        {/* Perfis Resumidos */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <UserCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+              <div>
+                <span className="text-xs font-bold text-wr-text block">Dono (Samilly Martins)</span>
+                <span className="text-[10px] text-wr-muted">Administrador Geral</span>
               </div>
-
-              <span className="self-start sm:self-center px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                Acesso Total Irrestrito
-              </span>
             </div>
-            <p className="text-[11px] text-wr-muted pl-0 sm:pl-11">
-              Controle irrestrito sobre financeiro, caixa, relatórios, configurações e validade fiscal.
-            </p>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+              Acesso Total
+            </span>
           </div>
 
-          {/* Nível 2 (Cascata): Equipe de Funcionários */}
-          <div className="ml-2 sm:ml-6 pl-4 border-l-2 border-wr-orange/40 space-y-4 pt-1">
-            <div className="rounded-2xl border border-wr-orange/30 bg-wr-orange/10 p-4 space-y-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-wr-orange/20 text-wr-orange shrink-0">
-                    <Key className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-wr-orange block">
-                      Nível 2 &bull; Operador / Funcionários
-                    </span>
-                    <h4 className="font-bold text-wr-text text-sm">Funcionário WR</h4>
-                    <p className="text-[11px] text-wr-muted font-mono mt-0.5">
-                      Usuário: <strong>Wr_mecanica</strong> &bull; Senha: <span className="tracking-widest">••••••••</span>
-                    </p>
-                  </div>
-                </div>
-
-                <span className="self-start sm:self-center px-3 py-1 rounded-full text-[10px] font-bold bg-wr-orange/20 text-wr-orange border border-wr-orange/30">
-                  {employeePermissions.length} tela(s) liberada(s)
-                </span>
-              </div>
-              <p className="text-[11px] text-wr-muted pl-0 sm:pl-11">
-                Acesso controlado pelo Dono. Marque ou desmarque abaixo os módulos que este usuário pode ver:
-              </p>
-            </div>
-
-            {/* Módulos em cascata logo abaixo do Funcionário */}
-            <div className="space-y-2 pt-1">
-              <span className="text-xs font-bold text-wr-text block">
-                Módulos Permitidos para o Funcionário:
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {PERMISSION_TABS.map(tab => {
-                  const isAllowed = employeePermissions.includes(tab.id)
-
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => handleTogglePermission(tab.id)}
-                      className={`text-left p-3.5 rounded-2xl border transition-all flex items-start gap-3 ${
-                        isAllowed
-                          ? 'border-wr-orange/60 bg-wr-surface shadow-sm ring-1 ring-wr-orange/20'
-                          : 'border-wr-border bg-wr-elevated/40 opacity-60 hover:opacity-100 hover:border-wr-borderHover'
-                      }`}
-                    >
-                      <div className="mt-0.5 shrink-0">
-                        {isAllowed ? (
-                          <CheckSquare className="h-4 w-4 text-wr-orange" />
-                        ) : (
-                          <Square className="h-4 w-4 text-wr-muted" />
-                        )}
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="font-bold text-xs text-wr-text">{tab.label}</span>
-                          <span
-                            className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
-                              isAllowed
-                                ? 'bg-emerald-500/15 text-emerald-500'
-                                : 'bg-wr-border text-wr-muted'
-                            }`}
-                          >
-                            {isAllowed ? 'Liberado' : 'Oculto'}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-wr-muted mt-0.5 leading-tight">
-                          {tab.description}
-                        </p>
-                      </div>
-                    </button>
-                  )
-                })}
+          <div className="rounded-xl border border-wr-orange/30 bg-wr-orange/10 p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Users className="h-4 w-4 text-wr-orange shrink-0" />
+              <div>
+                <span className="text-xs font-bold text-wr-text block">Funcionário (Wr_mecanica)</span>
+                <span className="text-[10px] text-wr-muted">Operador</span>
               </div>
             </div>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-wr-orange/20 text-wr-orange">
+              {employeePermissions.length} liberadas
+            </span>
+          </div>
+        </div>
+
+        {/* Grid de Permissões Direto e Limpo */}
+        <div className="pt-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {PERMISSION_TABS.map(tab => {
+              const isAllowed = employeePermissions.includes(tab.id)
+
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTogglePermission(tab.id)}
+                  className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2 ${
+                    isAllowed
+                      ? 'border-wr-orange/50 bg-wr-orange/10 text-wr-text font-bold'
+                      : 'border-wr-border bg-wr-elevated/40 text-wr-muted hover:text-wr-text'
+                  }`}
+                >
+                  <span className="text-xs truncate">{tab.label}</span>
+                  <span
+                    className={`h-5 px-2 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                      isAllowed
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-wr-border text-wr-muted'
+                    }`}
+                  >
+                    {isAllowed ? 'SIM' : 'NÃO'}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>

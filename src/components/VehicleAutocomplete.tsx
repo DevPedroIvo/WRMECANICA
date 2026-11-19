@@ -40,7 +40,7 @@ export const VehicleAutocomplete: React.FC<VehicleAutocompleteProps> = ({
     const qPlate = plateValue.trim().toLowerCase().replace(/[^a-z0-9]/g, '')
 
     if (!qModel && !qPlate) {
-      return availableVehicles.slice(0, 5)
+      return []
     }
 
     return availableVehicles.filter(v => {
@@ -69,6 +69,15 @@ export const VehicleAutocomplete: React.FC<VehicleAutocompleteProps> = ({
     setIsOpen(false)
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      setIsOpen(false)
+    } else if (e.key === 'Escape') {
+      setIsOpen(false)
+    }
+  }
+
   return (
     <div ref={containerRef} className={`relative w-full ${className}`}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -84,7 +93,12 @@ export const VehicleAutocomplete: React.FC<VehicleAutocompleteProps> = ({
                 onModelChange(e.target.value)
                 setIsOpen(true)
               }}
-              onFocus={() => setIsOpen(true)}
+              onFocus={() => {
+                if (modelValue.trim().length > 0 || plateValue.trim().length > 0) {
+                  setIsOpen(true)
+                }
+              }}
+              onKeyDown={handleKeyDown}
               placeholder="Ex: Fiat Strada 1.4"
               className="wr-input pr-8"
               required
@@ -104,7 +118,12 @@ export const VehicleAutocomplete: React.FC<VehicleAutocompleteProps> = ({
               onPlateChange(e.target.value.toUpperCase())
               setIsOpen(true)
             }}
-            onFocus={() => setIsOpen(true)}
+            onFocus={() => {
+              if (modelValue.trim().length > 0 || plateValue.trim().length > 0) {
+                setIsOpen(true)
+              }
+            }}
+            onKeyDown={handleKeyDown}
             placeholder="Ex: BRA2E19"
             className="wr-input uppercase font-mono"
             required
@@ -112,7 +131,7 @@ export const VehicleAutocomplete: React.FC<VehicleAutocompleteProps> = ({
         </div>
       </div>
 
-      {isOpen && filteredVehicles.length > 0 && (
+      {isOpen && (modelValue.trim().length > 0 || plateValue.trim().length > 0) && filteredVehicles.length > 0 && (
         <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl border border-wr-border bg-wr-surface shadow-2xl max-h-56 overflow-y-auto p-1.5 space-y-1 animate-fadeIn">
           <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-wr-muted border-b border-wr-border mb-1">
             {clientId ? 'Veículos vinculados a este cliente' : 'Veículos encontrados'}

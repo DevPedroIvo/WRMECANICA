@@ -17,6 +17,7 @@ import {
   CashMovement,
   PaymentMethod,
   ClientReminder,
+  ServicePreset,
 } from '../types'
 import {
   INITIAL_CLIENTS,
@@ -35,6 +36,23 @@ import {
   DEMO_APPOINTMENTS,
   DEMO_DEFERRED_PAYMENTS,
 } from '../mockData'
+
+export const INITIAL_SERVICE_PRESETS: ServicePreset[] = [
+  { id: 'srv-1', name: 'Troca de Óleo e Filtros', partsCost: 180, laborCost: 120, category: 'Revisão' },
+  { id: 'srv-2', name: 'Troca de Pastilhas de Freio Dianteiras', partsCost: 185, laborCost: 150, category: 'Freios' },
+  { id: 'srv-3', name: 'Troca de Pastilhas de Freio Traseiras', partsCost: 160, laborCost: 140, category: 'Freios' },
+  { id: 'srv-4', name: 'Alinhamento 3D e Balanceamento', partsCost: 0, laborCost: 150, category: 'Suspensão' },
+  { id: 'srv-5', name: 'Sangria e Troca de Fluido de Freio DOT 4', partsCost: 90, laborCost: 120, category: 'Freios' },
+  { id: 'srv-6', name: 'Higienização de Ar Condicionado + Filtro de Cabine', partsCost: 75, laborCost: 110, category: 'Ar Condicionado' },
+  { id: 'srv-7', name: 'Diagnóstico Eletrônico Computadorizado', partsCost: 0, laborCost: 200, category: 'Diagnóstico' },
+  { id: 'srv-8', name: 'Troca de Bateria Automotiva 60Ah', partsCost: 470, laborCost: 60, category: 'Elétrica' },
+  { id: 'srv-9', name: 'Troca de Amortecedores Dianteiros (Par)', partsCost: 720, laborCost: 260, category: 'Suspensão' },
+  { id: 'srv-10', name: 'Troca de Velas de Ignição Iridium (Jogo)', partsCost: 240, laborCost: 120, category: 'Motor' },
+  { id: 'srv-11', name: 'Revisão Preventiva Completa', partsCost: 350, laborCost: 280, category: 'Revisão' },
+  { id: 'srv-12', name: 'Troca de Correia Dentada e Tensor', partsCost: 380, laborCost: 320, category: 'Motor' },
+  { id: 'srv-13', name: 'Limpeza de Bicos Injetores e TBI', partsCost: 60, laborCost: 190, category: 'Injeção' },
+  { id: 'srv-14', name: 'Substituição de Embreagem Completa', partsCost: 650, laborCost: 450, category: 'Transmissão' },
+]
 import {
   saveLocalDebounced,
   loadLocalSafe,
@@ -215,6 +233,11 @@ interface AppContextType {
   addMechanic: (name: string) => void
   deleteMechanic: (name: string) => void
 
+  servicePresets: ServicePreset[]
+  addServicePreset: (preset: Omit<ServicePreset, 'id'>) => ServicePreset
+  updateServicePreset: (id: string, preset: Partial<ServicePreset>) => void
+  deleteServicePreset: (id: string) => void
+
   activeShift: DailyCashShift | null
   shiftHistory: DailyCashShift[]
   openCashShift: (initialAmount: number, notes?: string) => void
@@ -243,6 +266,7 @@ const STORAGE_KEYS = {
   employeePerms: 'wr_employee_perms_v1',
   reminders: 'wr_reminders_v1',
   mechanics: 'wr_mechanics_v1',
+  servicePresets: 'wr_service_presets_v1',
   activeCashShift: 'wr_active_cash_shift_v6',
   cashShiftsHistory: 'wr_cash_shifts_v6',
 } as const
@@ -291,21 +315,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Autenticação de Operadores (Dono: Samilly Martins / Funcionário: Wr_mecanica)
   const [currentUserRole, setCurrentUserRole] = useState<UserRole | null>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.authRole)
-    if (!saved) return null
+    if (!saved) return 'dono' // Fica autenticado por padrão para não ficar pedindo senha ao entrar
     try {
       const parsed = JSON.parse(saved)
-      return parsed.role === 'dono' || parsed.role === 'funcionario' ? parsed.role : null
+      return parsed.role === 'dono' || parsed.role === 'funcionario' ? parsed.role : 'dono'
     } catch {
-      return saved === 'dono' || saved === 'funcionario' ? (saved as UserRole) : null
+      return saved === 'dono' || saved === 'funcionario' ? (saved as UserRole) : 'dono'
     }
   })
 
   const [currentUserName, setCurrentUserName] = useState<string | null>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.authRole)
-    if (!saved) return null
+    if (!saved) return 'Samilly Martins'
     try {
       const parsed = JSON.parse(saved)
-      return parsed.username || null
+      return parsed.username || 'Samilly Martins'
     } catch {
       return saved === 'dono' ? 'Samilly Martins' : 'Wr_mecanica'
     }
@@ -330,6 +354,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       'Lucas Ferreira',
     ])
   )
+
+  // Predefinições dinâmicas de Serviços da Oficina
+  const [servicePresets, setServicePresets] = useState<ServicePreset[]>(() =>
+    loadLocalSafe(STORAGE_KEYS.servicePresets, INITIAL_SERVICE_PRESETS)
+  )
+
+  useEffect(() => {
+    saveLocalDebounced(STORAGE_KEYS.servicePresets, servicePresets)
+  }, [servicePresets])
 
   // Caixa Diário (Turno atual aberto e histórico)
   const [activeShift, setActiveShift] = useState<DailyCashShift | null>(() =>
@@ -539,6 +572,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         showToast(`Mecânico "${name}" removido!`, 'info')
         return prev.filter(m => m !== name)
       })
+    },
+    [showToast]
+  )
+
+  const addServicePreset = useCallback(
+    (preset: Omit<ServicePreset, 'id'>) => {
+      const newPreset: ServicePreset = {
+        id: `srv-${Date.now()}`,
+        ...preset,
+      }
+      setServicePresets(prev => [newPreset, ...prev])
+      showToast(`Predefinição "${newPreset.name}" adicionada com sucesso!`, 'success')
+      return newPreset
+    },
+    [showToast]
+  )
+
+  const updateServicePreset = useCallback(
+    (id: string, updated: Partial<ServicePreset>) => {
+      setServicePresets(prev =>
+        prev.map(p => (p.id === id ? { ...p, ...updated } : p))
+      )
+      showToast('Predefinição atualizada!', 'success')
+    },
+    [showToast]
+  )
+
+  const deleteServicePreset = useCallback(
+    (id: string) => {
+      setServicePresets(prev => prev.filter(p => p.id !== id))
+      showToast('Predefinição removida.', 'info')
     },
     [showToast]
   )
@@ -1422,6 +1486,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         mechanics,
         addMechanic,
         deleteMechanic,
+        servicePresets,
+        addServicePreset,
+        updateServicePreset,
+        deleteServicePreset,
         activeShift,
         shiftHistory,
         openCashShift,

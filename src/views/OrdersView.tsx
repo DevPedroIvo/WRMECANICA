@@ -10,6 +10,7 @@ import {
   PaymentMethod,
   VehicleInspectionChecklist,
   VisualItemStatus,
+  ServicePreset,
 } from '../types'
 import { generateOsCanvas, DEFAULT_WORKSHOP_INFO } from '../utils/osImageGenerator'
 import { DanfseModal } from '../components/DanfseModal'
@@ -41,6 +42,7 @@ import {
   Eye,
   XCircle,
   UserCheck,
+  ArrowRight,
 } from 'lucide-react'
 
 const PRE_REGISTERED_SERVICES = [
@@ -102,6 +104,7 @@ export const OrdersView: React.FC = () => {
     clients,
     vehicles,
     mechanics,
+    servicePresets,
     addClient,
     addVehicle,
     addOrder,
@@ -121,7 +124,7 @@ export const OrdersView: React.FC = () => {
   } = useApp()
 
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState<string>('todos')
+  const [filterStatus, setFilterStatus] = useState<string>('ativas')
 
   const [pdfModalOrder, setPdfModalOrder] = useState<ServiceOrder | null>(null)
   const [whatsAppModalOrder, setWhatsAppModalOrder] = useState<ServiceOrder | null>(null)
@@ -369,11 +372,11 @@ export const OrdersView: React.FC = () => {
   const laborSum = serviceItems.reduce((acc, it) => acc + (Number(it.laborCost) || 0), 0)
   const totalSum = partsSum + laborSum
 
-  const filteredSuggestions = PRE_REGISTERED_SERVICES.filter(s =>
-    s.name.toLowerCase().includes(newItemDesc.toLowerCase())
+  const filteredSuggestions = (servicePresets || []).filter(s =>
+    s.name.toLowerCase().includes(newItemDesc.toLowerCase().trim())
   )
 
-  const handleSelectSuggestion = (service: (typeof PRE_REGISTERED_SERVICES)[0]) => {
+  const handleSelectSuggestion = (service: ServicePreset) => {
     setNewItemDesc(service.name)
     setNewItemParts(service.partsCost)
     setNewItemLabor(service.laborCost)
@@ -555,8 +558,7 @@ export const OrdersView: React.FC = () => {
       date: new Date().toLocaleDateString('pt-BR'),
       time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       status: 'aguardando',
-      paymentMethod,
-      paymentDueDate: paymentMethod === 'pagar_depois' ? paymentDueDate : undefined,
+      paymentMethod: 'pendente',
       warranty: {
         days: 90,
         expirationDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
@@ -583,7 +585,15 @@ export const OrdersView: React.FC = () => {
       (o.mechanicAssigned?.toLowerCase() || '').includes(q) ||
       (o.fiscalInvoice?.invoiceNumber || '').includes(searchTerm)
 
-    const matchesFilter = filterStatus === 'todos' || o.status === filterStatus
+    let matchesFilter = true
+    if (filterStatus === 'ativas') {
+      // Exibe apenas as ordens ativas na oficina. Ao concluir pagamento ou cancelar, a OS some desta tela!
+      matchesFilter = o.status === 'aguardando' || o.status === 'andamento'
+    } else if (filterStatus === 'todos') {
+      matchesFilter = true
+    } else {
+      matchesFilter = o.status === filterStatus
+    }
     return matchesSearch && matchesFilter
   })
 
@@ -674,11 +684,12 @@ export const OrdersView: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-wr-border bg-wr-surface p-1">
           {[
-            { id: 'todos', label: 'Todas' },
+            { id: 'ativas', label: 'Em Aberto' },
             { id: 'aguardando', label: 'Aguardando' },
             { id: 'andamento', label: 'Em andamento' },
-            { id: 'pronto', label: 'Prontas' },
+            { id: 'pronto', label: 'Concluídas / Pagas' },
             { id: 'cancelado', label: 'Canceladas' },
+            { id: 'todos', label: 'Todas as OS' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -710,162 +721,73 @@ export const OrdersView: React.FC = () => {
               <div
                 key={order.id}
                 onClick={() => setSelectedOrderForModal(order)}
-                className="wr-card-interactive p-5 cursor-pointer flex flex-col justify-between gap-4 group"
+                className="wr-card-interactive p-4 sm:p-5 cursor-pointer flex flex-col justify-between gap-3 group active:scale-[0.99] transition-all hover:border-wr-orange shadow-sm"
               >
-                <div className="space-y-3.5">
-                  {/* Top Strip */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-wr-border">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-wr-orange bg-wr-elevated px-2.5 py-1 rounded-lg border border-wr-border">
-                        {order.number}
+                {/* Linha Superior: Número da OS, Data e Status */}
+                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-wr-border">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-wr-orange bg-wr-elevated px-2.5 py-1 rounded-lg border border-wr-border">
+                      {order.number}
+                    </span>
+                    <span className="text-[11px] text-wr-muted font-medium">{order.date}</span>
+                    {hasFiscal && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                        <ShieldCheck className="h-3 w-3" /> NFS-e
                       </span>
-                      <span className="text-[11px] text-wr-muted">{order.date}</span>
-                      {hasFiscal && (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                          <ShieldCheck className="h-3 w-3" /> NFS-e
-                        </span>
-                      )}
-                      {isDeferred && (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                          <Wallet className="h-3 w-3" /> Pagar Depois
-                        </span>
-                      )}
-                    </div>
-                    {getStatusBadge(order.status)}
+                    )}
                   </div>
+                  {getStatusBadge(order.status)}
+                </div>
 
-                  {/* Client & Vehicle */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-wr-orange shrink-0" />
-                        <h3 className="text-sm font-bold text-wr-text group-hover:text-wr-orange transition-colors">
+                {/* Informações Principais do Card: Nome, Carro e Serviço */}
+                <div className="space-y-2">
+                  {/* 1. Nome do Cliente */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-8 w-8 rounded-xl bg-wr-orange/15 border border-wr-orange/30 flex items-center justify-center text-wr-orange shrink-0">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] uppercase font-bold text-wr-muted block">Cliente</span>
+                        <h3 className="text-sm font-bold text-wr-text group-hover:text-wr-orange transition-colors truncate">
                           {order.clientName}
                         </h3>
                       </div>
-                      <span className="font-mono text-xs font-bold bg-wr-elevated border border-wr-border px-2 py-0.5 rounded-md text-wr-text">
-                        {order.vehiclePlate}
-                      </span>
                     </div>
-
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-wr-muted pl-6">
-                      <span className="inline-flex items-center gap-1 font-semibold text-wr-gold">
-                        <Car className="h-3.5 w-3.5" />
-                        {order.vehicleModel}
-                      </span>
-                      <span className="inline-flex items-center gap-1 font-mono text-[11px]">
-                        <Gauge className="h-3 w-3" />
-                        {Number(order.mileage).toLocaleString('pt-BR')} km
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-[11px]">
-                        <Fuel className="h-3 w-3" />
-                        {getFuelBadge(order.fuelLevel)}
-                      </span>
-                    </div>
+                    <span className="font-mono text-xs font-bold bg-wr-elevated border border-wr-border px-2.5 py-1 rounded-lg text-wr-text shrink-0">
+                      {order.vehiclePlate}
+                    </span>
                   </div>
 
-                  {/* Service Description */}
-                  <div className="wr-surface-muted p-3 text-xs">
-                    <div className="flex items-center justify-between text-[10px] text-wr-muted font-bold uppercase mb-0.5">
-                      <span>Serviço</span>
-                      <span>Mecânico: {order.mechanicAssigned}</span>
-                    </div>
-                    <p className="text-wr-text font-semibold line-clamp-2">
-                      {order.serviceDescription}
+                  {/* 2. Carro */}
+                  <div className="flex items-center gap-2 text-xs text-wr-gold font-bold bg-wr-elevated/60 border border-wr-border/70 rounded-xl px-3 py-2">
+                    <Car className="h-4 w-4 shrink-0 text-wr-gold" />
+                    <span className="truncate">{order.vehicleModel}</span>
+                  </div>
+
+                  {/* 3. Serviço Principal */}
+                  <div className="rounded-xl bg-wr-surface border border-wr-border p-3 text-xs space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-wr-muted block">
+                      Serviço
+                    </span>
+                    <p className="font-semibold text-wr-text line-clamp-2 text-xs">
+                      {order.serviceDescription || 'Serviço Geral'}
                     </p>
-                  </div>
-
-                  {/* Totals */}
-                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="wr-surface-muted p-2">
-                      <span className="text-[10px] text-wr-muted block">Peças</span>
-                      <span className="font-mono font-bold text-wr-text">
-                        {formatCurrency(order.partsTotal || 0)}
-                      </span>
-                    </div>
-                    <div className="wr-surface-muted p-2">
-                      <span className="text-[10px] text-wr-muted block">Mão de Obra</span>
-                      <span className="font-mono font-bold text-wr-text">
-                        {formatCurrency(order.laborTotal || 0)}
-                      </span>
-                    </div>
-                    <div className="rounded-xl bg-wr-orange/10 border border-wr-orange/30 p-2">
-                      <span className="text-[10px] text-wr-orange font-bold block">Total</span>
-                      <span className="font-mono font-extrabold text-wr-orange">
-                        {formatCurrency(order.totalAmount || 0)}
-                      </span>
-                    </div>
                   </div>
                 </div>
 
-                {/* Action Footer */}
-                <div
-                  className="pt-3 border-t border-wr-border flex flex-wrap items-center gap-2"
-                  onClick={e => e.stopPropagation()}
-                >
-                  {order.status !== 'pronto' && order.status !== 'cancelado' && (
-                    <button
-                      type="button"
-                      onClick={() => setFinalizingOrder(order)}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 py-2 text-xs font-bold text-white transition-colors shadow-sm"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Finalizar OS
-                    </button>
-                  )}
+                {/* Rodapé: Valor Total e Ação de Toque */}
+                <div className="pt-2.5 border-t border-wr-border flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-[10px] text-wr-muted font-bold uppercase block">Total</span>
+                    <span className="font-mono text-base font-extrabold text-wr-orange">
+                      {formatCurrency(order.totalAmount || 0)}
+                    </span>
+                  </div>
 
-                  {order.status !== 'cancelado' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (window.confirm(`Deseja realmente cancelar a Ordem de Serviço #${order.number}?`)) {
-                          updateOrderStatus(order.id, 'cancelado')
-                          showToast(`OS #${order.number} foi cancelada.`, 'info')
-                        }
-                      }}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-500/35 bg-rose-500/10 hover:bg-rose-600 hover:text-white py-2 px-3 text-xs font-bold text-rose-500 transition-colors"
-                      title="Cancelar esta Ordem de Serviço"
-                    >
-                      <XCircle className="h-3.5 w-3.5" />
-                      Cancelar OS
-                    </button>
-                  )}
-
-                  {order.status === 'pronto' && (
-                    hasFiscal ? (
-                      <button
-                        onClick={() => setDanfseModalOrder(order)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white transition-colors"
-                      >
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        Ver NFS-e
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => issueFiscalInvoice(order.id)}
-                        className="flex-1 wr-btn-secondary py-2"
-                      >
-                        <FileCheck2 className="h-3.5 w-3.5 text-wr-orange" />
-                        Emitir NFS-e
-                      </button>
-                    )
-                  )}
-
-                  <button
-                    onClick={() => setWhatsAppModalOrder(order)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-wr-border bg-wr-elevated py-2 text-xs font-semibold text-wr-text hover:border-emerald-500 transition-colors"
-                  >
-                    <MessageCircle className="h-3.5 w-3.5 text-emerald-500" />
-                    WhatsApp
-                  </button>
-
-                  <button
-                    onClick={() => setPdfModalOrder(order)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-wr-border bg-wr-elevated py-2 text-xs font-semibold text-wr-text hover:border-wr-orange transition-colors"
-                  >
-                    <Printer className="h-3.5 w-3.5 text-wr-orange" />
-                    Imprimir OS
-                  </button>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-wr-orange/10 border border-wr-orange/20 text-xs font-bold text-wr-orange group-hover:bg-wr-orange group-hover:text-white transition-all shadow-xs">
+                    Abrir Detalhes <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
                 </div>
               </div>
             )
@@ -1424,18 +1346,13 @@ export const OrdersView: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Campo de Desconto */}
-                    <div className="pt-2 border-t border-wr-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="space-y-0.5">
-                        <label className="text-xs font-bold text-wr-text block">
-                          Conceder Desconto na OS:
-                        </label>
-                        <span className="text-[10px] text-wr-muted">
-                          Abatimento aplicado direto no valor a pagar
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-wr-muted">R$</span>
+                    {/* Campo de Desconto Simples e Prático */}
+                    <div className="pt-2 border-t border-wr-border flex items-center justify-between gap-3">
+                      <label className="text-xs font-bold text-wr-text">
+                        Desconto
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-wr-muted font-mono">R$</span>
                         <input
                           type="number"
                           min="0"
@@ -1444,7 +1361,7 @@ export const OrdersView: React.FC = () => {
                           value={finalizingDiscount || ''}
                           onChange={e => setFinalizingDiscount(Math.max(0, Number(e.target.value)))}
                           placeholder="0,00"
-                          className="wr-input w-28 bg-wr-elevated font-mono font-bold text-right"
+                          className="wr-input w-28 bg-wr-elevated font-mono font-bold text-right py-1.5"
                         />
                       </div>
                     </div>
@@ -1853,13 +1770,13 @@ export const OrdersView: React.FC = () => {
                 />
               </div>
 
-              {/* 3. SERVIÇO, MECÂNICO & PAGAMENTO (COM PAGAR DEPOIS) */}
+              {/* 3. SERVIÇO & MECÂNICO RESPONSÁVEL */}
               <div className="wr-surface-muted p-4 space-y-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-wr-orange block">
-                  Serviço, Responsável &amp; Pagamento
+                  Serviço &amp; Mecânico Responsável
                 </span>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-wr-muted font-semibold mb-1">
                       Serviço Principal *
@@ -1888,48 +1805,7 @@ export const OrdersView: React.FC = () => {
                       ))}
                     </select>
                   </div>
-
-                  <div>
-                    <label className="block text-wr-muted font-semibold mb-1">
-                      Previsão de Pagamento (definida na conclusão)
-                    </label>
-                    <select
-                      value={paymentMethod}
-                      onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
-                      className="wr-input bg-wr-surface"
-                    >
-                      <option value="pendente">A Definir na Conclusão da OS</option>
-                      <option value="pix">PIX</option>
-                      <option value="dinheiro">Dinheiro</option>
-                      <option value="cartao_debito">Cartão de Débito</option>
-                      <option value="cartao_credito">Cartão de Crédito</option>
-                      <option value="pagar_depois">A Prazo / Fiado</option>
-                      <option value="boleto">Boleto Bancário</option>
-                    </select>
-                  </div>
                 </div>
-
-                {paymentMethod === 'pagar_depois' && (
-                  <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-xs">
-                      <Wallet className="h-4 w-4 text-amber-500 shrink-0" />
-                      <span className="font-semibold text-wr-text">
-                        Esta OS será lançada automaticamente na aba <strong>Pagar Depois</strong> ao ser concluída.
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <label className="text-[11px] font-bold text-wr-muted whitespace-nowrap">
-                        Combinado para:
-                      </label>
-                      <input
-                        type="date"
-                        value={paymentDueDate}
-                        onChange={e => setPaymentDueDate(e.target.value)}
-                        className="wr-input bg-wr-surface font-mono w-auto"
-                      />
-                    </div>
-                  </div>
-                )}
 
                 <input
                   type="text"
@@ -1975,30 +1851,35 @@ export const OrdersView: React.FC = () => {
                       type="text"
                       placeholder="Digite a descrição (Ex: Troca de pastilhas de freio dianteiras, Óleo 5W30...)"
                       value={newItemDesc}
-                      onFocus={() => setShowSuggestions(true)}
+                      onFocus={() => {
+                        if (newItemDesc.trim().length > 0) setShowSuggestions(true)
+                      }}
                       onChange={e => {
                         setNewItemDesc(e.target.value)
                         setShowSuggestions(true)
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          setShowSuggestions(false)
+                        } else if (e.key === 'Escape') {
+                          setShowSuggestions(false)
+                        }
                       }}
                       className="wr-input text-xs sm:text-sm py-2.5 px-3.5 font-medium leading-relaxed"
                     />
                     {showSuggestions &&
                       newItemDesc.trim().length > 0 &&
                       filteredSuggestions.length > 0 && (
-                        <div className="absolute left-0 right-0 top-full mt-1 max-h-56 overflow-y-auto rounded-xl border border-wr-border bg-wr-surface p-1.5 shadow-elevated z-40">
+                        <div className="absolute left-0 right-0 top-full mt-1.5 max-h-56 overflow-y-auto rounded-2xl border border-wr-border bg-wr-surface shadow-2xl p-1.5 space-y-1 z-50 animate-fadeIn">
                           {filteredSuggestions.map((sug, idx) => (
                             <button
                               key={idx}
                               type="button"
                               onClick={() => handleSelectSuggestion(sug)}
-                              className="w-full text-left p-2.5 rounded-lg hover:bg-wr-elevated flex items-center justify-between gap-3 text-xs transition-colors"
+                              className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-wr-orange/15 hover:text-wr-orange text-wr-text text-xs font-bold transition-all truncate"
                             >
-                              <span className="font-semibold text-wr-text truncate">
-                                {sug.name}
-                              </span>
-                              <span className="font-mono text-xs text-wr-orange shrink-0 font-bold">
-                                Peças: {formatCurrency(sug.partsCost)} | M.O: {formatCurrency(sug.laborCost)}
-                              </span>
+                              {sug.name}
                             </button>
                           ))}
                         </div>

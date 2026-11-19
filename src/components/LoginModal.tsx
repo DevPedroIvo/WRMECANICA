@@ -1,12 +1,33 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import { WrLogo } from './WrLogo'
-import { ShieldCheck, Users, Lock, ArrowRight, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
+import { ShieldCheck, Users, Lock, ArrowRight, Eye, EyeOff, CheckCircle2, Check } from 'lucide-react'
+
+const SAVED_PASSWORDS_KEY = 'wr_saved_passwords_v1'
+const DEFAULT_PASSWORDS: Record<'dono' | 'funcionario', string> = {
+  dono: 'Sami2026@',
+  funcionario: 'We2023@',
+}
 
 export const LoginModal: React.FC = () => {
   const { login } = useApp()
   const [selectedRole, setSelectedRole] = useState<'dono' | 'funcionario'>('dono')
-  const [password, setPassword] = useState('')
+  
+  // Carrega as senhas salvas do dispositivo
+  const [savedPasswords, setSavedPasswords] = useState<Record<'dono' | 'funcionario', string>>(() => {
+    try {
+      const stored = localStorage.getItem(SAVED_PASSWORDS_KEY)
+      if (stored) {
+        return { ...DEFAULT_PASSWORDS, ...JSON.parse(stored) }
+      }
+    } catch {
+      // fallback
+    }
+    return DEFAULT_PASSWORDS
+  })
+
+  const [password, setPassword] = useState<string>(() => savedPasswords['dono'] || DEFAULT_PASSWORDS.dono)
+  const [rememberPassword, setRememberPassword] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -15,7 +36,8 @@ export const LoginModal: React.FC = () => {
 
   const handleRoleSelect = (role: 'dono' | 'funcionario') => {
     setSelectedRole(role)
-    setPassword('')
+    const savedForRole = savedPasswords[role] || DEFAULT_PASSWORDS[role]
+    setPassword(savedForRole)
     setErrorMsg('')
   }
 
@@ -30,6 +52,13 @@ export const LoginModal: React.FC = () => {
     if (!res.success) {
       setErrorMsg('Senha incorreta para o perfil selecionado! Tente novamente.')
       setPassword('')
+    } else {
+      // Salva a senha no dispositivo se solicitado
+      if (rememberPassword) {
+        const updated = { ...savedPasswords, [selectedRole]: password }
+        setSavedPasswords(updated)
+        localStorage.setItem(SAVED_PASSWORDS_KEY, JSON.stringify(updated))
+      }
     }
   }
 
@@ -151,6 +180,19 @@ export const LoginModal: React.FC = () => {
               <p className="text-xs font-bold text-rose-500">{errorMsg}</p>
             </div>
           )}
+
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="rememberPassword"
+              checked={rememberPassword}
+              onChange={e => setRememberPassword(e.target.checked)}
+              className="rounded border-wr-border text-wr-orange focus:ring-wr-orange h-4 w-4 cursor-pointer"
+            />
+            <label htmlFor="rememberPassword" className="text-xs font-semibold text-wr-muted cursor-pointer select-none">
+              Salvar senha para não pedir novamente
+            </label>
+          </div>
 
           <button
             type="submit"

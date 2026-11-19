@@ -104,7 +104,7 @@ export const BottomNav: React.FC = () => {
         </div>
       )}
 
-      <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-wr-border bg-wr-surface/95 backdrop-blur-md py-2 px-2 lg:hidden">
+      <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-wr-border bg-wr-surface/95 backdrop-blur-md py-2 px-1 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden shadow-lg">
         {accessibleMain.map(tab => {
           const Icon = tab.icon
           const active = activeTab === tab.id
@@ -115,8 +115,8 @@ export const BottomNav: React.FC = () => {
                 setActiveTab(tab.id)
                 setMoreOpen(false)
               }}
-              className={`flex flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 text-[10px] font-semibold transition-colors ${
-                active ? 'text-wr-orange' : 'text-wr-muted'
+              className={`flex flex-col items-center justify-center gap-1 rounded-xl py-1.5 px-3 min-w-[56px] text-[11px] font-bold transition-all active:scale-95 ${
+                active ? 'text-wr-orange bg-wr-orange/15 shadow-xs' : 'text-wr-muted hover:text-wr-text'
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -127,8 +127,8 @@ export const BottomNav: React.FC = () => {
 
         <button
           onClick={() => setMoreOpen(prev => !prev)}
-          className={`flex flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 text-[10px] font-semibold transition-colors ${
-            isExtraActive || moreOpen ? 'text-wr-orange' : 'text-wr-muted'
+          className={`flex flex-col items-center justify-center gap-1 rounded-xl py-1.5 px-3 min-w-[56px] text-[11px] font-bold transition-all active:scale-95 ${
+            isExtraActive || moreOpen ? 'text-wr-orange bg-wr-orange/15 shadow-xs' : 'text-wr-muted hover:text-wr-text'
           }`}
         >
           <MoreHorizontal className="h-4 w-4" />
