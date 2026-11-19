@@ -16,10 +16,7 @@ import {
   Wallet,
   X,
   LogOut,
-  Download,
-  Monitor,
 } from 'lucide-react'
-import { usePwaInstall } from '../hooks/usePwaInstall'
 
 const TAB_TITLES: Record<string, { title: string; subtitle: string }> = {
   inicio: { title: 'Visão Geral', subtitle: 'Resumo operacional da oficina em tempo real' },
@@ -54,7 +51,6 @@ export const Header: React.FC = () => {
     logout,
   } = useApp()
 
-  const { installApp, isInstalled } = usePwaInstall()
   const [showNotifications, setShowNotifications] = useState(false)
   const [globalQuery, setGlobalQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
@@ -314,16 +310,6 @@ export const Header: React.FC = () => {
               <span className="hidden xl:inline">Escuro</span>
             </>
           )}
-        </button>
-
-        {/* Instalar no PC / Baixar App */}
-        <button
-          onClick={installApp}
-          title="Instalar aplicativo WR Mecânica no computador ou celular"
-          className="flex items-center gap-1.5 rounded-xl border border-wr-orange/40 bg-wr-orange/10 hover:bg-wr-orange/20 px-2.5 sm:px-3 py-2 text-xs font-bold text-wr-orange transition-colors"
-        >
-          <Monitor className="h-4 w-4 shrink-0" />
-          <span className="hidden sm:inline">{isInstalled ? 'App Instalado' : 'Instalar no PC'}</span>
         </button>
 
         {/* Operator Badge & Trocar Usuário */}

@@ -30,7 +30,8 @@ export const usePwaInstall = () => {
     const isMobileDevice = /android|iphone|ipad|ipod|mobile/.test(userAgent)
 
     const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault()
+      // Não suprime o comportamento padrão do navegador
+      // Isso permite que o Chrome/Edge exiba o botão nativo de instalação ao lado da estrela na barra de endereços
       setDeferredPrompt(e as BeforeInstallPromptEvent)
       setIsInstallable(true)
     }

@@ -14,13 +14,10 @@ import {
   X,
   Receipt,
   LogOut,
-  Download,
 } from 'lucide-react'
-import { usePwaInstall } from '../hooks/usePwaInstall'
 
 export const BottomNav: React.FC = () => {
   const { activeTab, setActiveTab, canAccess, logout, currentUserRole } = useApp()
-  const { installApp } = usePwaInstall()
   const [moreOpen, setMoreOpen] = useState(false)
 
   const mainTabs: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -85,20 +82,12 @@ export const BottomNav: React.FC = () => {
             })}
           </div>
 
-          {/* Trocar de Usuário & Baixar App (Mobile) */}
-          <div className="pt-2.5 mt-2.5 border-t border-wr-border flex items-center justify-between gap-2 px-1">
-            <button
-              type="button"
-              onClick={() => {
-                setMoreOpen(false)
-                void installApp()
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-wr-orange/15 text-wr-orange font-bold text-xs"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Baixar App
-            </button>
-            {currentUserRole && (
+          {/* Trocar de Usuário (Mobile) */}
+          {currentUserRole && (
+            <div className="pt-2.5 mt-2.5 border-t border-wr-border flex items-center justify-between px-1">
+              <span className="text-[11px] text-wr-muted font-medium truncate max-w-[150px]">
+                {currentUserRole === 'dono' ? 'Dono (Samilly)' : 'Wr_mecanica'}
+              </span>
               <button
                 type="button"
                 onClick={() => {
@@ -110,8 +99,8 @@ export const BottomNav: React.FC = () => {
                 <LogOut className="h-3.5 w-3.5" />
                 Trocar Usuário
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

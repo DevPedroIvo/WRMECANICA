@@ -14,9 +14,7 @@ import {
   X,
   Receipt,
   LogOut,
-  Monitor,
 } from 'lucide-react'
-import { usePwaInstall } from '../hooks/usePwaInstall'
 
 export const Sidebar: React.FC = () => {
   const {
@@ -33,8 +31,6 @@ export const Sidebar: React.FC = () => {
     canAccess,
     logout,
   } = useApp()
-
-  const { installApp, isInstalled } = usePwaInstall()
 
   const pendingOrdersCount = orders.filter(
     o => o.status === 'andamento' || o.status === 'aguardando'
@@ -214,19 +210,6 @@ export const Sidebar: React.FC = () => {
             </div>
           </div>
         )}
-
-        {/* Botão de Instalar no PC */}
-        <div className="px-3 pb-2">
-          <button
-            type="button"
-            onClick={installApp}
-            title="Instalar aplicativo WR Mecânica no computador"
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-wr-orange/40 bg-wr-orange/15 hover:bg-wr-orange/25 p-2.5 text-xs font-bold text-wr-orange transition-all shadow-xs"
-          >
-            <Monitor className="h-4 w-4 shrink-0" />
-            <span>{isInstalled ? 'App Instalado no PC' : 'Instalar no PC'}</span>
-          </button>
-        </div>
 
         {/* Rodapé institucional limpo */}
         <div className="p-4 border-t border-wr-border text-center">
