@@ -11,8 +11,6 @@ import {
 } from '../types'
 import { generateOsCanvas, DEFAULT_WORKSHOP_INFO } from '../utils/osImageGenerator'
 import { DanfseModal } from '../components/DanfseModal'
-import { ClientAutocomplete } from '../components/ClientAutocomplete'
-import { VehicleAutocomplete } from '../components/VehicleAutocomplete'
 import {
   ClipboardList,
   Search,
@@ -33,42 +31,23 @@ import {
   ExternalLink,
   Sparkles,
   ShieldCheck,
-  FileCheck2,
-  Wallet,
-  Eye,
   XCircle,
-  UserCheck,
-  ArrowRight,
   Edit2,
   Save,
   Wrench,
+  DollarSign,
+  Phone,
+  ArrowRight,
+  Hash,
 } from 'lucide-react'
 
-const PRE_REGISTERED_SERVICES = [
-  { name: 'Troca de Óleo e Filtros', partsCost: 180, laborCost: 120 },
-  { name: 'Troca de Pastilhas de Freio Dianteiras', partsCost: 185, laborCost: 150 },
-  { name: 'Troca de Pastilhas de Freio Traseiras', partsCost: 160, laborCost: 140 },
-  { name: 'Alinhamento 3D e Balanceamento', partsCost: 0, laborCost: 150 },
-  { name: 'Sangria e Troca de Fluido de Freio DOT 4', partsCost: 90, laborCost: 120 },
-  { name: 'Higienização de Ar Condicionado + Filtro de Cabine', partsCost: 75, laborCost: 110 },
-  { name: 'Diagnóstico Eletrônico Computadorizado', partsCost: 0, laborCost: 200 },
-  { name: 'Troca de Bateria Automotiva 60Ah', partsCost: 470, laborCost: 60 },
-  { name: 'Troca de Amortecedores Dianteiros (Par)', partsCost: 720, laborCost: 260 },
-  { name: 'Troca de Velas de Ignição Iridium (Jogo)', partsCost: 240, laborCost: 120 },
-  { name: 'Revisão Preventiva Completa', partsCost: 350, laborCost: 280 },
-  { name: 'Troca de Correia Dentada e Tensor', partsCost: 380, laborCost: 320 },
-  { name: 'Limpeza de Bicos Injetores e TBI', partsCost: 60, laborCost: 190 },
-  { name: 'Substituição de Embreagem Completa', partsCost: 650, laborCost: 450 },
-]
-
-
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
-  pix: 'Pix',
-  cartao_credito: 'Crédito',
-  cartao_debito: 'Débito',
+  pix: 'PIX',
+  cartao_credito: 'Cartão de Crédito',
+  cartao_debito: 'Cartão de Débito',
   dinheiro: 'Dinheiro',
   boleto: 'Boleto',
-  pagar_depois: 'Pagar Depois',
+  pagar_depois: 'A Prazo (Fiado)',
   pendente: 'Pendente',
 }
 
@@ -85,11 +64,8 @@ export const OrdersView: React.FC = () => {
     updateOrder,
     updateOrderStatus,
     finishOrder,
-    issueFiscalInvoice,
     fiscalSettings,
     formatCurrency,
-    selectedOrderForModal,
-    setSelectedOrderForModal,
     isNewOrderModalOpen,
     setIsNewOrderModalOpen,
     orderPrefill,
@@ -97,364 +73,137 @@ export const OrdersView: React.FC = () => {
     showToast,
   } = useApp()
 
+  // Filtros e busca
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState<string>('ativas')
+  const [activeTab, setActiveTab] = useState<
+    'ativas' | 'aguardando' | 'andamento' | 'pronto' | 'pago' | 'cancelado' | 'todas'
+  >('ativas')
 
-  const [pdfModalOrder, setPdfModalOrder] = useState<ServiceOrder | null>(null)
+  // Modais de Controle
+  const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null)
+  const [finalizingOrder, setFinalizingOrder] = useState<ServiceOrder | null>(null)
+  const [completedPaymentOrder, setCompletedPaymentOrder] = useState<ServiceOrder | null>(null)
   const [whatsAppModalOrder, setWhatsAppModalOrder] = useState<ServiceOrder | null>(null)
   const [danfseModalOrder, setDanfseModalOrder] = useState<ServiceOrder | null>(null)
-  const [finalizingOrder, setFinalizingOrder] = useState<ServiceOrder | null>(null)
-  const [finalizingPaymentMethod, setFinalizingPaymentMethod] = useState<PaymentMethod>('pix')
-  const [finalizingInstallments, setFinalizingInstallments] = useState<number>(1)
-  const [finalizingDiscount, setFinalizingDiscount] = useState<number>(0)
-  const [finalizingDueDate, setFinalizingDueDate] = useState(() =>
-    new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-  )
-  const [finalizingEmitNfse, setFinalizingEmitNfse] = useState(true)
+  const [pdfModalOrder, setPdfModalOrder] = useState<ServiceOrder | null>(null)
 
-  // WhatsApp Image Generator State
-  const [generatedImageUrl, setGeneratedImageUrl] = useState('')
+  // WhatsApp Canvas State
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string>('')
   const [imageBlob, setImageBlob] = useState<Blob | null>(null)
   const [copyFeedback, setCopyFeedback] = useState(false)
 
-  // Estados para alteração posterior de itens e valores da OS
-  const [isEditingItems, setIsEditingItems] = useState(false)
-  const [editableItems, setEditableItems] = useState<OrderItem[]>([])
-  const [newEditServiceDesc, setNewEditServiceDesc] = useState('')
-  const [newEditPartsCost, setNewEditPartsCost] = useState('')
-  const [newEditLaborCost, setNewEditLaborCost] = useState('')
-
-  useEffect(() => {
-    if (selectedOrderForModal) {
-      setEditableItems(selectedOrderForModal.items || [])
-      setIsEditingItems(false)
-      setNewEditServiceDesc('')
-      setNewEditPartsCost('')
-      setNewEditLaborCost('')
-    }
-  }, [selectedOrderForModal?.id])
-
-  const handleUpdateItemValue = (id: string, field: 'partsCost' | 'laborCost' | 'serviceDescription', value: any) => {
-    setEditableItems(prev =>
-      prev.map(it => {
-        if (it.id !== id) return it
-        const next = { ...it, [field]: value }
-        if (field === 'partsCost' || field === 'laborCost') {
-          const p = field === 'partsCost' ? (parseFloat(value) || 0) : it.partsCost
-          const l = field === 'laborCost' ? (parseFloat(value) || 0) : it.laborCost
-          next.total = p + l
-        }
-        return next
-      })
-    )
-  }
-
-  const handleRemoveEditableItem = (id: string) => {
-    setEditableItems(prev => prev.filter(it => it.id !== id))
-  }
-
-  const handleAddEditableItem = () => {
-    if (!newEditServiceDesc.trim()) {
-      showToast('Digite a descrição do serviço ou peça.', 'warning')
-      return
-    }
-    const pCost = parseFloat(newEditPartsCost) || 0
-    const lCost = parseFloat(newEditLaborCost) || 0
-    const newItem: OrderItem = {
-      id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      serviceDescription: newEditServiceDesc.trim(),
-      partsCost: pCost,
-      laborCost: lCost,
-      total: pCost + lCost,
-      serviceCode: '14.01',
-      cnae: '4520-0/01',
-    }
-    setEditableItems(prev => [...prev, newItem])
-    setNewEditServiceDesc('')
-    setNewEditPartsCost('')
-    setNewEditLaborCost('')
-  }
-
-  const handleSaveEditableItems = () => {
-    if (!selectedOrderForModal) return
-    const partsTotal = editableItems.reduce((acc, i) => acc + (Number(i.partsCost) || 0), 0)
-    const laborTotal = editableItems.reduce((acc, i) => acc + (Number(i.laborCost) || 0), 0)
-    const rawTotal = partsTotal + laborTotal
-    const discount = selectedOrderForModal.discount || 0
-    const totalAmount = Math.max(0, rawTotal - discount)
-    const serviceDescription =
-      editableItems.map(i => i.serviceDescription).filter(Boolean).join(', ') || 'Serviço Geral'
-
-    const updatedData: Partial<ServiceOrder> = {
-      items: editableItems,
-      partsTotal,
-      laborTotal,
-      totalAmount,
-      serviceDescription,
-    }
-
-    updateOrder(selectedOrderForModal.id, updatedData)
-    setSelectedOrderForModal({
-      ...selectedOrderForModal,
-      ...updatedData,
-    })
-    setIsEditingItems(false)
-    showToast('Valores e itens da OS atualizados com sucesso!', 'success')
-  }
-
-  // ===================== NEW OS FORM STATE =====================
-  const [selectedClientId, setSelectedClientId] = useState<string>('')
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('')
+  // ===================== ESTADO DO FORMULÁRIO (NOVA / EDITAR OS) =====================
+  const [formStatus, setFormStatus] = useState<OrderStatus>('aguardando')
+  const [selectedClientId, setSelectedClientId] = useState('')
   const [clientName, setClientName] = useState('')
   const [clientPhone, setClientPhone] = useState('')
   const [clientCpfCnpj, setClientCpfCnpj] = useState('')
+
   const [vehicleModel, setVehicleModel] = useState('')
   const [vehiclePlate, setVehiclePlate] = useState('')
   const [mileage, setMileage] = useState<number>(0)
   const [fuelLevel, setFuelLevel] = useState<FuelStatus>('medio')
 
-
-  const [mainServiceDesc, setMainServiceDesc] = useState('')
+  const [serviceDescription, setServiceDescription] = useState('')
   const [mechanicAssigned, setMechanicAssigned] = useState(mechanics?.[0] || 'Roberto Silva')
   const [observations, setObservations] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
-  const [paymentDueDate, setPaymentDueDate] = useState(() =>
+
+  // Itens de serviço e peças (aparece quando marcado em andamento ou pronto)
+  const [items, setItems] = useState<OrderItem[]>([])
+  const [itemDesc, setItemDesc] = useState('')
+  const [itemPartsCost, setItemPartsCost] = useState('')
+  const [itemLaborCost, setItemLaborCost] = useState('')
+  const [showPresetsDropdown, setShowPresetsDropdown] = useState(false)
+
+  // ===================== ESTADO DO PAINEL DE VENDA (CHECKOUT) =====================
+  const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<PaymentMethod>('pix')
+  const [checkoutInstallments, setCheckoutInstallments] = useState(1)
+  const [checkoutDiscount, setCheckoutDiscount] = useState<number>(0)
+  const [checkoutDueDate, setCheckoutDueDate] = useState(() =>
     new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   )
 
+  // Garante seleção padrão de mecânico
   useEffect(() => {
     if (!mechanicAssigned && mechanics?.length > 0) {
       setMechanicAssigned(mechanics[0])
     }
   }, [mechanics])
 
-  const [serviceItems, setServiceItems] = useState<OrderItem[]>([])
-  const [newItemDesc, setNewItemDesc] = useState('')
-  const [newItemParts, setNewItemParts] = useState<number>(0)
-  const [newItemLabor, setNewItemLabor] = useState<number>(0)
-  const [showSuggestions, setShowSuggestions] = useState(false)
-
-  // Função para salvar imediatamente cliente e carro no cadastro permanente
-  const handleRegisterClientAndVehicle = () => {
-    if (!clientName.trim()) {
-      showToast('Digite o nome do cliente.', 'warning')
-      return null
-    }
-
-    // Procura se já existe um cliente com mesmo nome ou telefone
-    let clientToUse = clients.find(
-      c =>
-        c.name.trim().toLowerCase() === clientName.trim().toLowerCase() ||
-        (clientPhone.trim() && c.phone.replace(/\D/g, '') === clientPhone.replace(/\D/g, ''))
-    )
-
-    if (!clientToUse) {
-      clientToUse = addClient({
-        name: clientName.trim(),
-        phone: clientPhone.trim() || '(63) 99999-0000',
-        cpfCnpj: clientCpfCnpj.trim() || undefined,
-      })
-      showToast(`Cliente "${clientToUse.name}" cadastrado com sucesso!`, 'success')
-    }
-    setSelectedClientId(clientToUse.id)
-
-    // Se informou dados de veículo, cadastra ou vincula
-    let vehicleToUse = null
-    if (vehicleModel.trim() || vehiclePlate.trim()) {
-      const cleanPlate = vehiclePlate.toUpperCase().trim() || 'SEM PLACA'
-      const existingVehicle = vehicles.find(
-        v => v.plate === cleanPlate && cleanPlate !== 'SEM PLACA'
-      )
-      if (existingVehicle) {
-        vehicleToUse = existingVehicle
-        setSelectedVehicleId(existingVehicle.id)
-      } else {
-        const parts = vehicleModel.trim().split(' ')
-        const brand = parts[0] || 'Geral'
-        const model = parts.slice(1).join(' ') || vehicleModel.trim() || 'Veículo'
-
-        vehicleToUse = addVehicle({
-          clientId: clientToUse.id,
-          brand,
-          model,
-          plate: cleanPlate,
-          year: new Date().getFullYear(),
-          currentMileage: Number(mileage) || 0,
-        })
-        setSelectedVehicleId(vehicleToUse.id)
-        showToast(`Veículo "${vehicleToUse.model} (${vehicleToUse.plate})" cadastrado!`, 'success')
-      }
-    }
-
-    return { client: clientToUse, vehicle: vehicleToUse }
-  }
-
-  // Aplicar pré-preenchimento quando abrir OS direto de um agendamento / cliente / veículo
+  // Trata abertura do modal de Nova OS com ou sem prefill
   useEffect(() => {
     if (!isNewOrderModalOpen) return
 
     if (orderPrefill) {
       if (orderPrefill.clientId) {
-        const targetClient = clients.find(c => c.id === orderPrefill.clientId)
-        if (targetClient) {
-          setSelectedClientId(targetClient.id)
-          setClientName(targetClient.name)
-          setClientPhone(targetClient.phone)
-          setClientCpfCnpj(targetClient.cpfCnpj || '')
+        const c = clients.find(cl => cl.id === orderPrefill.clientId)
+        if (c) {
+          setSelectedClientId(c.id)
+          setClientName(c.name)
+          setClientPhone(c.phone)
+          setClientCpfCnpj(c.cpfCnpj || '')
         }
-      } else if (orderPrefill.clientName) {
+      } else {
         setSelectedClientId('')
-        setClientName(orderPrefill.clientName)
+        setClientName(orderPrefill.clientName || '')
         setClientPhone(orderPrefill.clientPhone || '')
         setClientCpfCnpj('')
       }
 
-      if (orderPrefill.vehicleId) {
-        const targetVehicle = vehicles.find(v => v.id === orderPrefill.vehicleId)
-        if (targetVehicle) {
-          setSelectedVehicleId(targetVehicle.id)
-          setVehicleModel(`${targetVehicle.brand} ${targetVehicle.model}`)
-          setVehiclePlate(targetVehicle.plate)
-          setMileage(targetVehicle.currentMileage || 0)
-        }
-      } else if (orderPrefill.vehicleModel || orderPrefill.vehiclePlate) {
-        setSelectedVehicleId('')
-        setVehicleModel(orderPrefill.vehicleModel || '')
-        setVehiclePlate(orderPrefill.vehiclePlate || '')
-        setMileage(0)
-      }
-
-      if (orderPrefill.serviceDescription) {
-        setMainServiceDesc(orderPrefill.serviceDescription)
-      }
-
+      setVehicleModel(orderPrefill.vehicleModel || '')
+      setVehiclePlate(orderPrefill.vehiclePlate || '')
+      setMileage(0)
+      setFuelLevel('medio')
+      setServiceDescription(orderPrefill.serviceDescription || '')
       setOrderPrefill(null)
     } else {
-      const targetClient = clients[0]
-      if (targetClient) {
-        setSelectedClientId(targetClient.id)
-        setClientName(targetClient.name)
-        setClientPhone(targetClient.phone)
-        setClientCpfCnpj(targetClient.cpfCnpj || '')
-
-        const linkedVehicles = vehicles.filter(v => v.clientId === targetClient.id)
-        const targetVehicle = linkedVehicles[0]
-        if (targetVehicle) {
-          setSelectedVehicleId(targetVehicle.id)
-          setVehicleModel(`${targetVehicle.brand} ${targetVehicle.model}`)
-          setVehiclePlate(targetVehicle.plate)
-          setMileage(targetVehicle.currentMileage || 0)
-        } else {
-          setSelectedVehicleId('')
-          setVehicleModel('')
-          setVehiclePlate('')
-          setMileage(0)
-        }
-      } else {
-        setSelectedClientId('')
-        setClientName('')
-        setClientPhone('')
-        setClientCpfCnpj('')
-        setSelectedVehicleId('')
-        setVehicleModel('')
-        setVehiclePlate('')
-        setMileage(0)
-      }
-      setMainServiceDesc('')
+      setSelectedClientId('')
+      setClientName('')
+      setClientPhone('')
+      setClientCpfCnpj('')
+      setVehicleModel('')
+      setVehiclePlate('')
+      setMileage(0)
+      setFuelLevel('medio')
+      setServiceDescription('')
     }
 
-    setFuelLevel('medio')
+    setFormStatus('aguardando')
+    setMechanicAssigned(mechanics?.[0] || 'Roberto Silva')
     setObservations('')
-    setPaymentMethod('pix')
-    setPaymentDueDate(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
-    setServiceItems([])
-    setNewItemDesc('')
-    setNewItemParts(0)
-    setNewItemLabor(0)
+    setItems([])
+    setItemDesc('')
+    setItemPartsCost('')
+    setItemLaborCost('')
+    setShowPresetsDropdown(false)
   }, [isNewOrderModalOpen])
 
-  const linkedVehiclesForSelectedClient = useMemo(
-    () => vehicles.filter(v => v.clientId === selectedClientId),
-    [vehicles, selectedClientId]
-  )
+  // Trata abertura do modal de EDIÇÃO com a OS selecionada
+  useEffect(() => {
+    if (!editingOrder) return
 
-  const handleSelectClient = (cid: string) => {
-    setSelectedClientId(cid)
-    if (!cid) {
-      setSelectedVehicleId('')
-      return
-    }
-    const client = clients.find(c => c.id === cid)
-    if (client) {
-      setClientName(client.name)
-      setClientPhone(client.phone)
-      setClientCpfCnpj(client.cpfCnpj || '')
-      const firstVeh = vehicles.find(v => v.clientId === cid)
-      if (firstVeh) {
-        setSelectedVehicleId(firstVeh.id)
-        setVehicleModel(`${firstVeh.brand} ${firstVeh.model}`)
-        setVehiclePlate(firstVeh.plate)
-        setMileage(firstVeh.currentMileage || 0)
-      } else {
-        setSelectedVehicleId('')
-        setVehicleModel('')
-        setVehiclePlate('')
-        setMileage(0)
-      }
-    }
-  }
+    setFormStatus(editingOrder.status)
+    setSelectedClientId(editingOrder.clientId || '')
+    setClientName(editingOrder.clientName || '')
+    setClientPhone(editingOrder.clientPhone || '')
+    setClientCpfCnpj(editingOrder.clientCpfCnpj || '')
 
-  const handleSelectVehicle = (vid: string) => {
-    setSelectedVehicleId(vid)
-    const v = vehicles.find(veh => veh.id === vid)
-    if (v) {
-      setVehicleModel(`${v.brand} ${v.model}`)
-      setVehiclePlate(v.plate)
-      setMileage(v.currentMileage || 0)
-    }
-  }
+    setVehicleModel(editingOrder.vehicleModel || '')
+    setVehiclePlate(editingOrder.vehiclePlate || '')
+    setMileage(editingOrder.mileage || 0)
+    setFuelLevel(editingOrder.fuelLevel || 'medio')
 
-  const partsSum = serviceItems.reduce((acc, it) => acc + (Number(it.partsCost) || 0), 0)
-  const laborSum = serviceItems.reduce((acc, it) => acc + (Number(it.laborCost) || 0), 0)
-  const totalSum = partsSum + laborSum
+    setServiceDescription(editingOrder.serviceDescription || '')
+    setMechanicAssigned(editingOrder.mechanicAssigned || mechanics?.[0] || 'Roberto Silva')
+    setObservations(editingOrder.observations || '')
+    setItems(editingOrder.items || [])
+    setItemDesc('')
+    setItemPartsCost('')
+    setItemLaborCost('')
+    setShowPresetsDropdown(false)
+  }, [editingOrder])
 
-  const filteredSuggestions = (servicePresets || []).filter(s =>
-    s.name.toLowerCase().includes(newItemDesc.toLowerCase().trim())
-  )
-
-  const handleSelectSuggestion = (service: ServicePreset) => {
-    setNewItemDesc(service.name)
-    setNewItemParts(service.partsCost)
-    setNewItemLabor(service.laborCost)
-    setShowSuggestions(false)
-  }
-
-  const handleAddItem = () => {
-    if (!newItemDesc.trim()) return
-    const pCost = Number(newItemParts) || 0
-    const lCost = Number(newItemLabor) || 0
-    const item: OrderItem = {
-      id: `it-${Date.now()}`,
-      serviceDescription: newItemDesc.trim(),
-      partsCost: pCost,
-      laborCost: lCost,
-      total: pCost + lCost,
-      serviceCode: '14.01',
-      cnae: '4520-0/01',
-    }
-    setServiceItems(prev => [...prev, item])
-    if (!mainServiceDesc.trim()) setMainServiceDesc(item.serviceDescription)
-    setNewItemDesc('')
-    setNewItemParts(0)
-    setNewItemLabor(0)
-    setShowSuggestions(false)
-  }
-
-  const handleRemoveItem = (id: string) => {
-    setServiceItems(prev => prev.filter(i => i.id !== id))
-  }
-
-  // WhatsApp Canvas Generation
+  // WhatsApp Canvas Generator
   useEffect(() => {
     if (!whatsAppModalOrder) return
     let objectUrl = ''
@@ -477,6 +226,304 @@ export const OrdersView: React.FC = () => {
     }
   }, [whatsAppModalOrder])
 
+  // Predefinições filtradas para a busca
+  const filteredPresets = useMemo(() => {
+    const q = itemDesc.trim().toLowerCase()
+    return (servicePresets || []).filter(s => s.name.toLowerCase().includes(q))
+  }, [servicePresets, itemDesc])
+
+  // Adicionar item à tabela
+  const handleAddItem = () => {
+    if (!itemDesc.trim()) {
+      showToast('Digite a descrição do serviço ou peça.', 'warning')
+      return
+    }
+    const pCost = parseFloat(itemPartsCost) || 0
+    const lCost = parseFloat(itemLaborCost) || 0
+    const newItem: OrderItem = {
+      id: `it-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      serviceDescription: itemDesc.trim(),
+      partsCost: pCost,
+      laborCost: lCost,
+      total: pCost + lCost,
+      serviceCode: '14.01',
+      cnae: '4520-0/01',
+    }
+    setItems(prev => [...prev, newItem])
+    setItemDesc('')
+    setItemPartsCost('')
+    setItemLaborCost('')
+    setShowPresetsDropdown(false)
+  }
+
+  // Preencher dados ao selecionar uma predefinição
+  const handleSelectPreset = (preset: ServicePreset) => {
+    setItemDesc(preset.name)
+    setItemPartsCost(preset.partsCost > 0 ? String(preset.partsCost) : '')
+    setItemLaborCost(preset.laborCost > 0 ? String(preset.laborCost) : '')
+    setShowPresetsDropdown(false)
+  }
+
+  // Remover item da tabela
+  const handleRemoveItem = (id: string) => {
+    setItems(prev => prev.filter(i => i.id !== id))
+  }
+
+  // Cálculos de totais dos itens adicionados
+  const calculatedPartsTotal = items.reduce((acc, i) => acc + (Number(i.partsCost) || 0), 0)
+  const calculatedLaborTotal = items.reduce((acc, i) => acc + (Number(i.laborCost) || 0), 0)
+  const calculatedGrandTotal = calculatedPartsTotal + calculatedLaborTotal
+
+  // Salvar Ordem de Serviço (Nova ou Edição)
+  const handleSaveOrder = () => {
+    if (!clientName.trim()) {
+      showToast('Preencha o nome do cliente.', 'warning')
+      return
+    }
+    if (!vehiclePlate.trim() && !vehicleModel.trim()) {
+      showToast('Preencha o veículo ou placa.', 'warning')
+      return
+    }
+
+    // Se estiver em modo de edição
+    if (editingOrder) {
+      const finalItems: OrderItem[] =
+        items.length > 0
+          ? items
+          : [
+              {
+                id: `it-${Date.now()}`,
+                serviceDescription: serviceDescription.trim() || 'Serviço a Avaliar / Orçamento',
+                partsCost: 0,
+                laborCost: 0,
+                total: 0,
+                serviceCode: '14.01',
+                cnae: '4520-0/01',
+              },
+            ]
+
+      const partsTotal = finalItems.reduce((acc, i) => acc + (Number(i.partsCost) || 0), 0)
+      const laborTotal = finalItems.reduce((acc, i) => acc + (Number(i.laborCost) || 0), 0)
+      const discount = editingOrder.discount || 0
+      const totalAmount = Math.max(0, partsTotal + laborTotal - discount)
+
+      const updatedData: Partial<ServiceOrder> = {
+        status: formStatus,
+        clientName: clientName.trim(),
+        clientPhone: clientPhone.trim(),
+        clientCpfCnpj: clientCpfCnpj.trim() || undefined,
+        vehicleModel: vehicleModel.trim() || 'Veículo',
+        vehiclePlate: vehiclePlate.toUpperCase().trim() || 'SEM PLACA',
+        mileage: Number(mileage) || 0,
+        fuelLevel,
+        serviceDescription: serviceDescription.trim() || finalItems[0].serviceDescription,
+        mechanicAssigned,
+        observations: observations.trim(),
+        items: finalItems,
+        partsTotal,
+        laborTotal,
+        totalAmount,
+      }
+
+      updateOrder(editingOrder.id, updatedData)
+      setEditingOrder(null)
+      showToast(`OS #${editingOrder.number} atualizada com sucesso!`, 'success')
+      return
+    }
+
+    // Modo Criação de Nova OS
+    let effectiveClientId = selectedClientId
+    let effectiveVehicleId = ''
+
+    if (!effectiveClientId) {
+      const newCli = addClient({
+        name: clientName.trim(),
+        phone: clientPhone.trim() || '(63) 99999-9999',
+        cpfCnpj: clientCpfCnpj.trim() || undefined,
+      })
+      effectiveClientId = newCli.id
+    }
+
+    if (vehiclePlate.trim() || vehicleModel.trim()) {
+      const parts = vehicleModel.trim().split(' ')
+      const brand = parts[0] || 'Geral'
+      const model = parts.slice(1).join(' ') || vehicleModel.trim() || 'Veículo'
+      const newVeh = addVehicle({
+        clientId: effectiveClientId,
+        brand,
+        model,
+        plate: vehiclePlate.toUpperCase().trim() || 'SEM PLACA',
+        year: new Date().getFullYear(),
+        currentMileage: Number(mileage) || 0,
+      })
+      effectiveVehicleId = newVeh.id
+    }
+
+    const finalItems: OrderItem[] =
+      items.length > 0
+        ? items
+        : [
+            {
+              id: `it-${Date.now()}`,
+              serviceDescription: serviceDescription.trim() || 'Serviço a Avaliar / Orçamento',
+              partsCost: 0,
+              laborCost: 0,
+              total: 0,
+              serviceCode: '14.01',
+              cnae: '4520-0/01',
+            },
+          ]
+
+    const partsTotal = finalItems.reduce((acc, i) => acc + (Number(i.partsCost) || 0), 0)
+    const laborTotal = finalItems.reduce((acc, i) => acc + (Number(i.laborCost) || 0), 0)
+
+    addOrder({
+      clientId: effectiveClientId,
+      clientName: clientName.trim(),
+      clientPhone: clientPhone.trim() || '(63) 99999-9999',
+      clientCpfCnpj: clientCpfCnpj.trim() || undefined,
+      vehicleId: effectiveVehicleId || undefined,
+      vehicleModel: vehicleModel.trim() || 'Veículo',
+      vehiclePlate: vehiclePlate.toUpperCase().trim() || 'SEM PLACA',
+      mileage: Number(mileage) || 0,
+      fuelLevel,
+      mechanicAssigned,
+      serviceDescription: serviceDescription.trim() || finalItems[0].serviceDescription,
+      items: finalItems,
+      observations: observations.trim(),
+      date: new Date().toLocaleDateString('pt-BR'),
+      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      status: formStatus,
+      paymentMethod: 'pendente',
+      warranty: {
+        days: 90,
+        expirationDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
+        coverage: '90 dias de garantia legal para mão de obra conforme Art. 26 do CDC.',
+        status: 'vigente',
+      },
+      partsTotal,
+      laborTotal,
+      totalAmount: partsTotal + laborTotal,
+    })
+
+    setIsNewOrderModalOpen(false)
+    showToast('Ordem de Serviço criada com sucesso!', 'success')
+  }
+
+  // Confirmar Pagamento no Painel de Vendas
+  const handleConfirmCheckout = () => {
+    if (!finalizingOrder) return
+    const baseSubtotal = (finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0)
+    const discount = Math.min(Math.max(0, checkoutDiscount), baseSubtotal)
+
+    finishOrder(finalizingOrder.id, {
+      paymentMethod: checkoutPaymentMethod,
+      installments: checkoutPaymentMethod === 'cartao_credito' ? checkoutInstallments : 1,
+      discount,
+      emitNfse: false,
+      dueDate: checkoutDueDate,
+    })
+
+    const updated = {
+      ...finalizingOrder,
+      status: 'pago' as OrderStatus,
+      paymentMethod: checkoutPaymentMethod,
+      discount,
+      totalAmount: Math.max(0, baseSubtotal - discount),
+    }
+
+    setCompletedPaymentOrder(updated)
+    setFinalizingOrder(null)
+    showToast(`Pagamento da ${finalizingOrder.number} registrado com sucesso!`, 'success')
+  }
+
+  // Filtragem das Ordens de Serviço
+  const filteredOrders = useMemo(() => {
+    return orders.filter(o => {
+      const q = searchTerm.toLowerCase().trim()
+      const matchesSearch =
+        !q ||
+        (o.number?.toLowerCase() || '').includes(q) ||
+        (o.clientName?.toLowerCase() || '').includes(q) ||
+        (o.clientPhone?.toLowerCase() || '').includes(q) ||
+        (o.vehiclePlate?.toLowerCase() || '').includes(q) ||
+        (o.vehicleModel?.toLowerCase() || '').includes(q) ||
+        (o.serviceDescription?.toLowerCase() || '').includes(q) ||
+        (o.mechanicAssigned?.toLowerCase() || '').includes(q)
+
+      let matchesFilter = true
+      if (activeTab === 'ativas') {
+        matchesFilter = o.status !== 'pago' && o.status !== 'cancelado'
+      } else if (activeTab === 'todas') {
+        matchesFilter = true
+      } else {
+        matchesFilter = o.status === activeTab
+      }
+
+      return matchesSearch && matchesFilter
+    })
+  }, [orders, searchTerm, activeTab])
+
+  // Contadores para as abas
+  const tabCounts = useMemo(() => {
+    return {
+      ativas: orders.filter(o => o.status !== 'pago' && o.status !== 'cancelado').length,
+      aguardando: orders.filter(o => o.status === 'aguardando').length,
+      andamento: orders.filter(o => o.status === 'andamento').length,
+      pronto: orders.filter(o => o.status === 'pronto').length,
+      pago: orders.filter(o => o.status === 'pago').length,
+      cancelado: orders.filter(o => o.status === 'cancelado').length,
+      todas: orders.length,
+    }
+  }, [orders])
+
+  const getStatusBadge = (status: OrderStatus) => {
+    switch (status) {
+      case 'aguardando':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30">
+            <Clock className="h-3.5 w-3.5" />
+            Aguardando
+          </span>
+        )
+      case 'andamento':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-500/15 text-orange-400 border border-orange-500/30">
+            <span className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+            Em Andamento
+          </span>
+        )
+      case 'pronto':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Pronto p/ Retirada
+          </span>
+        )
+      case 'pago':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            <DollarSign className="h-3.5 w-3.5" />
+            Pago
+          </span>
+        )
+      case 'cancelado':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+            <XCircle className="h-3.5 w-3.5" />
+            Cancelada
+          </span>
+        )
+      default:
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-white/5 text-neutral-400 border border-white/10">
+            {status}
+          </span>
+        )
+    }
+  }
+
+  // Compartilhamento direto WhatsApp
   const handleDirectShare = async () => {
     if (!imageBlob || !whatsAppModalOrder) return
     const file = new File(
@@ -489,7 +536,7 @@ export const OrdersView: React.FC = () => {
         await navigator.share({
           files: [file],
           title: `${whatsAppModalOrder.number} - WR Mecânica & Cia`,
-          text: `Olá ${whatsAppModalOrder.clientName}, segue o comprovante da sua Ordem de Serviço na WR Mecânica & Cia.`,
+          text: `Olá ${whatsAppModalOrder.clientName}, segue a Ordem de Serviço da WR Mecânica & Cia.`,
         })
         return
       } catch (err: unknown) {
@@ -507,386 +554,292 @@ export const OrdersView: React.FC = () => {
         setCopyFeedback(true)
       }
     } catch {
-      // Fallback silencioso
+      // Fallback
     }
     const cleanNumber = whatsAppModalOrder.clientPhone.replace(/\D/g, '')
     const fullNumber = cleanNumber.startsWith('55') ? cleanNumber : `55${cleanNumber}`
     window.open(`https://wa.me/${fullNumber}`, '_blank')
   }
 
-  const handleDownloadImage = () => {
-    if (!generatedImageUrl || !whatsAppModalOrder) return
-    const link = document.createElement('a')
-    link.href = generatedImageUrl
-    link.download = `OS_${whatsAppModalOrder.number.replace(/\D/g, '')}_WR_Mecanica.png`
-    link.click()
-  }
-
-  const handleCreateOrder = (e?: React.FormEvent | React.MouseEvent) => {
-    if (e && 'preventDefault' in e) e.preventDefault()
-    if (!clientName.trim() || !clientPhone.trim() || !vehicleModel.trim()) {
-      showToast('Preencha nome do cliente, telefone e veículo.', 'warning')
-      return
-    }
-
-    // Garante que o cliente e o veículo estejam salvos no sistema
-    let effectiveClientId = selectedClientId
-    let effectiveVehicleId = selectedVehicleId
-
-    if (!effectiveClientId || !clients.some(c => c.id === effectiveClientId)) {
-      const saved = handleRegisterClientAndVehicle()
-      if (saved?.client) {
-        effectiveClientId = saved.client.id
-      }
-      if (saved?.vehicle) {
-        effectiveVehicleId = saved.vehicle.id
-      }
-    } else if (
-      (!effectiveVehicleId || !vehicles.some(v => v.id === effectiveVehicleId)) &&
-      (vehicleModel.trim() || vehiclePlate.trim())
-    ) {
-      const parts = vehicleModel.trim().split(' ')
-      const brand = parts[0] || 'Geral'
-      const model = parts.slice(1).join(' ') || vehicleModel.trim() || 'Veículo'
-      const newVeh = addVehicle({
-        clientId: effectiveClientId,
-        brand,
-        model,
-        plate: vehiclePlate.toUpperCase().trim() || 'SEM PLACA',
-        year: new Date().getFullYear(),
-        currentMileage: Number(mileage) || 0,
-      })
-      effectiveVehicleId = newVeh.id
-    }
-
-    const finalItems: OrderItem[] =
-      serviceItems.length > 0
-        ? serviceItems
-        : [
-            {
-              id: `item-${Date.now()}`,
-              serviceDescription:
-                mainServiceDesc.trim() || newItemDesc.trim() || 'Serviço a Avaliar / Orçamento',
-              partsCost: Number(newItemParts) || 0,
-              laborCost: Number(newItemLabor) || 0,
-              total: (Number(newItemParts) || 0) + (Number(newItemLabor) || 0),
-              serviceCode: '14.01',
-              cnae: '4520-0/01',
-            },
-          ]
-
-    const finalParts = finalItems.reduce((acc, i) => acc + i.partsCost, 0)
-    const finalLabor = finalItems.reduce((acc, i) => acc + i.laborCost, 0)
-
-    addOrder({
-      clientId: effectiveClientId || `cli-${Date.now()}`,
-      clientName: clientName.trim(),
-      clientPhone: clientPhone.trim(),
-      clientCpfCnpj: clientCpfCnpj.trim() || undefined,
-      vehicleId: effectiveVehicleId || undefined,
-      vehicleModel: vehicleModel.trim(),
-      vehiclePlate: vehiclePlate.toUpperCase().trim() || 'SEM PLACA',
-      mileage: Number(mileage) || 0,
-      fuelLevel,
-      mechanicAssigned,
-      serviceDescription: mainServiceDesc.trim() || finalItems[0].serviceDescription,
-      items: finalItems,
-      observations: observations.trim(),
-      date: new Date().toLocaleDateString('pt-BR'),
-      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      status: 'aguardando',
-      paymentMethod: 'pendente',
-      warranty: {
-        days: 90,
-        expirationDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
-        coverage: '90 dias de garantia legal para mão de obra conforme Art. 26 do CDC.',
-        status: 'vigente',
-      },
-      partsTotal: finalParts,
-      laborTotal: finalLabor,
-      totalAmount: finalParts + finalLabor,
-    })
-
-    setIsNewOrderModalOpen(false)
-  }
-
-  const filteredOrders = orders.filter(o => {
-    const q = searchTerm.toLowerCase()
-    const matchesSearch =
-      !q ||
-      (o.number?.toLowerCase() || '').includes(q) ||
-      (o.clientName?.toLowerCase() || '').includes(q) ||
-      (o.vehiclePlate?.toLowerCase() || '').includes(q) ||
-      (o.vehicleModel?.toLowerCase() || '').includes(q) ||
-      (o.serviceDescription?.toLowerCase() || '').includes(q) ||
-      (o.mechanicAssigned?.toLowerCase() || '').includes(q) ||
-      (o.fiscalInvoice?.invoiceNumber || '').includes(searchTerm)
-
-    let matchesFilter = true
-    if (filterStatus === 'ativas') {
-      // Exibe todas as ordens ativas na oficina (Aguardando, Em andamento e Pronto).
-      // A OS SÓ SOME QUANDO FOR MARCADA COMO PAGA OU CANCELADA!
-      matchesFilter = o.status !== 'pago' && o.status !== 'cancelado'
-    } else if (filterStatus === 'todos') {
-      matchesFilter = true
-    } else {
-      matchesFilter = o.status === filterStatus
-    }
-    return matchesSearch && matchesFilter
-  })
-
-  const getStatusBadge = (status: OrderStatus) => {
-    switch (status) {
-      case 'aguardando':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400">
-            <Clock className="h-3 w-3" />
-            Aguardando
-          </span>
-        )
-      case 'andamento':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-wr-orange/15 text-wr-orange">
-            <span className="h-2 w-2 rounded-full bg-wr-orange animate-pulse" />
-            Em andamento
-          </span>
-        )
-      case 'pronto':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400">
-            <Wrench className="h-3 w-3" />
-            Pronto p/ Retirada
-          </span>
-        )
-      case 'pago':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="h-3 w-3" />
-            Pago
-          </span>
-        )
-      case 'cancelado':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">
-            <XCircle className="h-3 w-3" />
-            Cancelada
-          </span>
-        )
-      default:
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-wr-elevated text-wr-muted">
-            {status}
-          </span>
-        )
-    }
-  }
-
   return (
-    <div className="space-y-6 select-none">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-bold text-wr-text flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-wr-orange" />
-            Ordens de Serviço &amp; NFS-e
-          </h2>
-          <p className="text-xs text-wr-muted mt-0.5">
-            Gestão de serviços da oficina, emissão da NFS-e de Porto Nacional e envio via WhatsApp
+    <div className="space-y-6 select-none pb-12">
+      {/* ===================== TOPO EXECUTIVO ===================== */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-neutral-900/90 via-neutral-900/60 to-neutral-900/90 border border-white/10 p-5 rounded-3xl shadow-lg backdrop-blur-md">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/25 text-[11px] font-black uppercase tracking-wider text-orange-400">
+            <Sparkles className="h-3.5 w-3.5" />
+            Painel Oficial de Ordens de Serviço
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+            <ClipboardList className="h-6 w-6 text-orange-500" />
+            WR Mecânica &bull; Atendimentos
+          </h1>
+          <p className="text-xs text-neutral-400">
+            Gestão simplificada de serviços, acompanhamento em tempo real e checkout integrado
           </p>
         </div>
 
-        <button onClick={() => setIsNewOrderModalOpen(true)} className="wr-btn-primary">
-          <Plus className="h-4 w-4 stroke-[2.5]" />
-          Nova Ordem de Serviço
+        <button
+          type="button"
+          onClick={() => setIsNewOrderModalOpen(true)}
+          className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-neutral-950 font-black text-xs uppercase tracking-wider px-5 py-3.5 rounded-2xl shadow-[0_10px_25px_-5px_rgba(249,115,22,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(249,115,22,0.6)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 self-start sm:self-center shrink-0"
+        >
+          <Plus className="h-4 w-4 stroke-[3]" />
+          <span>Nova Ordem de Serviço</span>
         </button>
       </div>
 
-      {/* Search & Status Filters */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-xl">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-wr-muted" />
+      {/* ===================== BARRA DE BUSCA & FILTROS POR ABA ===================== */}
+      <div className="space-y-3">
+        {/* Campo de Busca Universal */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 pointer-events-none" />
           <input
             type="text"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Buscar por cliente, placa, veículo, mecânico, OS ou NFS-e..."
-            className="wr-input pl-10"
+            placeholder="Buscar por cliente, placa, carro, telefone, OS ou mecânico..."
+            className="w-full bg-neutral-900/80 text-white placeholder-neutral-500 text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-white/10 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all shadow-inner"
           />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-neutral-500 hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-wr-border bg-wr-surface p-1">
+        {/* Abas de Navegação */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
           {[
-            { id: 'ativas', label: 'Na Oficina (Ativas)' },
-            { id: 'pronto', label: 'Prontos' },
-            { id: 'pago', label: 'Pagas' },
-            { id: 'cancelado', label: 'Canceladas' },
-            { id: 'todos', label: 'Todas as OS' },
+            { id: 'ativas', label: 'Na Oficina (Ativas)', count: tabCounts.ativas },
+            { id: 'aguardando', label: 'Aguardando', count: tabCounts.aguardando },
+            { id: 'andamento', label: 'Em Andamento', count: tabCounts.andamento },
+            { id: 'pronto', label: 'Prontos p/ Retirada', count: tabCounts.pronto },
+            { id: 'pago', label: 'Pagas', count: tabCounts.pago },
+            { id: 'cancelado', label: 'Canceladas', count: tabCounts.cancelado },
+            { id: 'todas', label: 'Todas as OS', count: tabCounts.todas },
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setFilterStatus(tab.id)}
-              className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
-                filterStatus === tab.id
-                  ? 'bg-wr-orange text-white dark:text-[#0B0C10]'
-                  : 'text-wr-muted hover:text-wr-text'
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl font-bold transition-all ${
+                activeTab === tab.id
+                  ? 'bg-orange-500 text-neutral-950 shadow-md font-black'
+                  : 'bg-neutral-900/70 border border-white/5 text-neutral-400 hover:text-white hover:bg-neutral-800/80'
               }`}
             >
-              {tab.label}
+              <span>{tab.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                  activeTab === tab.id ? 'bg-neutral-950/20 text-neutral-950 font-black' : 'bg-white/10 text-neutral-400'
+                }`}
+              >
+                {tab.count}
+              </span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Orders Grid - Minimalista com os 5 botões solicitados */}
+      {/* ===================== LISTAGEM DE CARDS DE OS ===================== */}
       {filteredOrders.length === 0 ? (
-        <div className="wr-card p-10 text-center text-xs text-wr-muted">
-          Nenhuma ordem de serviço encontrada.
+        <div className="rounded-3xl border border-dashed border-white/10 bg-neutral-900/40 p-12 text-center text-neutral-400 space-y-3">
+          <ClipboardList className="h-10 w-10 mx-auto text-neutral-600" />
+          <p className="text-sm font-bold text-neutral-300">Nenhuma ordem de serviço encontrada</p>
+          <p className="text-xs max-w-sm mx-auto text-neutral-500">
+            Alterne o filtro das abas ou crie uma nova OS no botão superior.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredOrders.map(order => {
             const hasFiscal = order.fiscalInvoice && order.fiscalInvoice.status === 'autorizada'
+            const isPaid = order.status === 'pago'
 
             return (
               <div
                 key={order.id}
-                className="wr-card p-4 flex flex-col justify-between gap-3 shadow-sm hover:border-wr-orange/60 transition-all"
+                className="rounded-3xl border border-white/10 bg-[#12141c]/95 p-5 shadow-xl hover:border-orange-500/50 transition-all flex flex-col justify-between gap-4 group"
               >
-                {/* Linha Superior: Número da OS, Data, NFS-e e Seletor de Status */}
-                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-wr-border">
+                {/* Cabeçalho do Card */}
+                <div className="flex items-center justify-between gap-2 pb-3 border-b border-white/5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-bold text-wr-orange bg-wr-elevated px-2.5 py-1 rounded-lg border border-wr-border">
+                    <span className="font-mono text-xs font-black text-orange-400 bg-orange-500/10 border border-orange-500/30 px-3 py-1 rounded-xl">
                       {order.number}
                     </span>
-                    <span className="text-[11px] text-wr-muted font-medium">{order.date}</span>
+                    <span className="text-xs text-neutral-400 font-medium">{order.date}</span>
                     {hasFiscal && (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                        <ShieldCheck className="h-3 w-3" /> NFS-e
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-black text-emerald-400 font-mono">
+                        <ShieldCheck className="h-3 w-3" /> NFS-e Emitida
                       </span>
                     )}
                   </div>
 
-                  {/* Seletor rápido de Status */}
-                  <select
-                    value={order.status}
-                    onChange={e => {
-                      const newSt = e.target.value as OrderStatus
-                      if (newSt === 'pago') {
-                        setFinalizingOrder(order)
-                      } else {
-                        updateOrderStatus(order.id, newSt)
-                      }
-                    }}
-                    className={`text-[11px] font-bold py-1 px-2.5 rounded-full border outline-none cursor-pointer transition-all ${
-                      order.status === 'pago'
-                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                        : order.status === 'pronto'
-                        ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30'
-                        : order.status === 'andamento'
-                        ? 'bg-wr-orange/15 text-wr-orange border-wr-orange/30'
-                        : order.status === 'cancelado'
-                        ? 'bg-rose-500/15 text-rose-500 border-rose-500/30'
-                        : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
-                    }`}
-                    title="Alterar status do atendimento"
-                  >
-                    <option value="aguardando">Aguardando</option>
-                    <option value="andamento">Em Andamento</option>
-                    <option value="pronto">Pronto</option>
-                    <option value="pago">Marcar como Paga</option>
-                    <option value="cancelado">Cancelada</option>
-                  </select>
+                  <div>{getStatusBadge(order.status)}</div>
                 </div>
 
-                {/* Conteúdo Minimizado: Cliente, Carro, Serviço e Total */}
-                <div className="space-y-1.5 text-xs">
+                {/* Conteúdo Principal do Card */}
+                <div className="space-y-3">
+                  {/* Linha 1: Cliente & Telefone */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-wr-text text-sm truncate">
-                      {order.clientName}
-                    </span>
-                    <span className="font-mono text-xs font-bold bg-wr-elevated border border-wr-border px-2 py-0.5 rounded text-wr-text shrink-0">
-                      {order.vehiclePlate}
-                    </span>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-9 w-9 rounded-xl bg-orange-500/10 border border-orange-500/25 flex items-center justify-center text-orange-400 shrink-0">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-neutral-500 block">
+                          Cliente
+                        </span>
+                        <h3 className="text-sm font-bold text-white truncate">{order.clientName}</h3>
+                      </div>
+                    </div>
+                    {order.clientPhone && (
+                      <a
+                        href={`tel:${order.clientPhone.replace(/\D/g, '')}`}
+                        className="text-xs font-mono text-neutral-400 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5 hover:text-white flex items-center gap-1 shrink-0"
+                      >
+                        <Phone className="h-3 w-3 text-orange-400" />
+                        {order.clientPhone}
+                      </a>
+                    )}
                   </div>
 
-                  <div className="text-[11px] text-wr-muted flex items-center justify-between gap-2">
-                    <span className="truncate">{order.vehicleModel}</span>
-                    <span className="font-mono font-bold text-wr-orange text-sm shrink-0">
+                  {/* Linha 2: Veículo, Placa, KM e Nível */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex items-center gap-2 col-span-2">
+                      <Car className="h-4 w-4 text-amber-400 shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-[9px] uppercase font-bold text-neutral-500 block">Veículo</span>
+                        <span className="font-bold text-white block truncate">{order.vehicleModel}</span>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-center">
+                      <span className="text-[9px] uppercase font-bold text-neutral-500 block">Placa</span>
+                      <span className="font-mono font-black text-orange-400">{order.vehiclePlate}</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-center">
+                      <span className="text-[9px] uppercase font-bold text-neutral-500 block">KM</span>
+                      <span className="font-mono font-bold text-neutral-300">
+                        {order.mileage ? `${order.mileage.toLocaleString('pt-BR')} km` : '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Linha 3: Serviço Solicitado & Mecânico */}
+                  <div className="p-3 rounded-2xl bg-neutral-900/60 border border-white/5 space-y-1 text-xs">
+                    <div className="flex items-center justify-between text-[10px] text-neutral-400 font-bold uppercase tracking-wider">
+                      <span>Serviço Solicitado</span>
+                      <span className="text-orange-400 flex items-center gap-1">
+                        <Wrench className="h-3 w-3" /> {order.mechanicAssigned || 'Roberto Silva'}
+                      </span>
+                    </div>
+                    <p className="text-neutral-200 font-semibold line-clamp-2">
+                      {order.serviceDescription || 'Serviço Geral'}
+                    </p>
+                  </div>
+
+                  {/* Linha 4: Valor Total da OS */}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs font-black uppercase tracking-wider text-neutral-400">
+                      Total da OS
+                    </span>
+                    <span className="font-mono text-xl font-black text-orange-400">
                       {formatCurrency(order.totalAmount || 0)}
                     </span>
                   </div>
-
-                  {order.serviceDescription && (
-                    <p className="text-[11px] text-wr-muted line-clamp-1 italic">
-                      {order.serviceDescription}
-                    </p>
-                  )}
                 </div>
 
-                {/* Os 5 Botões Exclusivos Solicitados */}
-                <div className="pt-2.5 border-t border-wr-border grid grid-cols-5 gap-1.5">
-                  {/* 1. WhatsApp */}
-                  <button
-                    type="button"
-                    onClick={() => setWhatsAppModalOrder(order)}
-                    className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 transition-all text-[11px] font-bold"
-                    title="Enviar pelo WhatsApp"
-                  >
-                    <MessageCircle className="h-3.5 w-3.5" />
-                    <span className="truncate">WhatsApp</span>
-                  </button>
+                {/* ===================== BOTÕES DO CARD ===================== */}
+                <div className="space-y-2 pt-2 border-t border-white/5">
+                  {/* Botão Principal em Destaque: Marcar como Pronto e ir para o Painel de Venda */}
+                  {!isPaid && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFinalizingOrder(order)
+                        setCheckoutPaymentMethod('pix')
+                        setCheckoutDiscount(order.discount || 0)
+                        setCheckoutInstallments(1)
+                      }}
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider py-3 rounded-2xl shadow-md flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.99] transition-all"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>
+                        {order.status === 'pronto'
+                          ? 'Receber Pagamento (Painel de Venda)'
+                          : 'Marcar como Pronto & Receber'}
+                      </span>
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  )}
 
-                  {/* 2. Nota Fiscal */}
-                  <button
-                    type="button"
-                    onClick={() => setDanfseModalOrder(order)}
-                    className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/25 transition-all text-[11px] font-bold"
-                    title="Emitir ou Visualizar Nota Fiscal"
-                  >
-                    <FileText className="h-3.5 w-3.5" />
-                    <span className="truncate">Nota Fiscal</span>
-                  </button>
+                  {/* Barra com os 5 botões utilitários */}
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {/* 1. WhatsApp */}
+                    <button
+                      type="button"
+                      onClick={() => setWhatsAppModalOrder(order)}
+                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 transition-all text-[11px] font-bold"
+                      title="Enviar Ordem no WhatsApp do cliente"
+                    >
+                      <MessageCircle className="h-4 w-4 shrink-0" />
+                      <span className="truncate">WhatsApp</span>
+                    </button>
 
-                  {/* 3. O.S */}
-                  <button
-                    type="button"
-                    onClick={() => setPdfModalOrder(order)}
-                    className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-wr-orange/10 hover:bg-wr-orange/20 text-wr-orange border border-wr-orange/25 transition-all text-[11px] font-bold"
-                    title="Visualizar e Imprimir O.S"
-                  >
-                    <ClipboardList className="h-3.5 w-3.5" />
-                    <span className="truncate">O.S</span>
-                  </button>
+                    {/* 2. Nota Fiscal */}
+                    <button
+                      type="button"
+                      onClick={() => setDanfseModalOrder(order)}
+                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/25 transition-all text-[11px] font-bold"
+                      title="Emitir ou Visualizar Nota Fiscal (NFS-e)"
+                    >
+                      <FileText className="h-4 w-4 shrink-0" />
+                      <span className="truncate">NFS-e</span>
+                    </button>
 
-                  {/* 4. Lápis para alterar */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedOrderForModal(order)
-                      setIsEditingItems(true)
-                    }}
-                    className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25 transition-all text-[11px] font-bold"
-                    title="Alterar Valores, Serviços e Peças"
-                  >
-                    <Edit2 className="h-3.5 w-3.5" />
-                    <span className="truncate">Alterar</span>
-                  </button>
+                    {/* 3. O.S */}
+                    <button
+                      type="button"
+                      onClick={() => setPdfModalOrder(order)}
+                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/25 transition-all text-[11px] font-bold"
+                      title="Visualizar e Imprimir Ordem de Serviço"
+                    >
+                      <Printer className="h-4 w-4 shrink-0" />
+                      <span className="truncate">O.S</span>
+                    </button>
 
-                  {/* 5. Cancelar */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm(`Deseja realmente cancelar a OS #${order.number}?`)) {
-                        updateOrderStatus(order.id, 'cancelado')
-                        showToast(`OS #${order.number} cancelada.`, 'info')
-                      }
-                    }}
-                    className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/25 transition-all text-[11px] font-bold"
-                    title="Cancelar esta Ordem de Serviço"
-                  >
-                    <XCircle className="h-3.5 w-3.5" />
-                    <span className="truncate">Cancelar</span>
-                  </button>
+                    {/* 4. Alterar (Lápis) */}
+                    <button
+                      type="button"
+                      onClick={() => setEditingOrder(order)}
+                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/25 transition-all text-[11px] font-bold"
+                      title="Alterar dados, serviços e peças da OS"
+                    >
+                      <Edit2 className="h-4 w-4 shrink-0" />
+                      <span className="truncate">Alterar</span>
+                    </button>
+
+                    {/* 5. Cancelar */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`Deseja realmente cancelar a OS #${order.number}?`)) {
+                          updateOrderStatus(order.id, 'cancelado')
+                          showToast(`OS #${order.number} cancelada.`, 'info')
+                        }
+                      }}
+                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 transition-all text-[11px] font-bold"
+                      title="Cancelar esta OS"
+                    >
+                      <XCircle className="h-4 w-4 shrink-0" />
+                      <span className="truncate">Cancelar</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             )
@@ -894,469 +847,721 @@ export const OrdersView: React.FC = () => {
         </div>
       )}
 
-      {/* ===================== MODAL: DETALHES DA OS ===================== */}
-      {selectedOrderForModal && (
-        <div className="wr-modal-backdrop">
-          <div className="wr-modal-panel max-w-2xl space-y-5 animate-fadeIn">
-            <div className="flex items-center justify-between pb-4 border-b border-wr-border">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold text-wr-orange bg-wr-elevated px-2.5 py-1 rounded-lg border border-wr-border">
-                    {selectedOrderForModal.number}
-                  </span>
-                  {selectedOrderForModal.paymentMethod && (
-                    <span className="text-[11px] font-semibold text-wr-muted">
-                      Pagamento: {PAYMENT_LABELS[selectedOrderForModal.paymentMethod]}
-                    </span>
-                  )}
+      {/* ===================== MODAL: NOVA / EDITAR ORDEM DE SERVIÇO ===================== */}
+      {(isNewOrderModalOpen || editingOrder) && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-3xl rounded-[32px] border border-white/10 bg-[#12141c] p-5 sm:p-7 shadow-2xl space-y-5 my-auto max-h-[92vh] overflow-y-auto">
+            {/* Cabeçalho do Modal */}
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
+                  <ClipboardList className="h-5 w-5" />
                 </div>
-                <h3 className="text-base font-bold text-wr-text mt-1">
-                  {selectedOrderForModal.clientName} • {selectedOrderForModal.vehicleModel} (
-                  {selectedOrderForModal.vehiclePlate})
-                </h3>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white">
+                    {editingOrder ? `Editar ${editingOrder.number}` : 'Nova Ordem de Serviço'}
+                  </h3>
+                  <p className="text-xs text-neutral-400">
+                    Preencha as informações do atendimento e o serviço solicitado
+                  </p>
+                </div>
               </div>
               <button
-                onClick={() => setSelectedOrderForModal(null)}
-                className="rounded-lg p-1.5 text-wr-muted hover:text-wr-text hover:bg-wr-elevated"
+                type="button"
+                onClick={() => {
+                  setIsNewOrderModalOpen(false)
+                  setEditingOrder(null)
+                }}
+                className="rounded-xl p-2 text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Status Switcher */}
-            <div className="wr-surface-muted p-3.5 space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-wr-muted block">
-                Status do Serviço
-              </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { id: 'aguardando', label: 'Aguardando', active: 'bg-amber-500 text-white dark:text-black border-amber-500' },
-                  { id: 'andamento', label: 'Em Andamento', active: 'bg-wr-orange text-white dark:text-[#0B0C10] border-wr-orange' },
-                  { id: 'pronto', label: 'Pronto (Oficina)', active: 'bg-blue-600 text-white border-blue-600' },
-                  { id: 'pago', label: 'Paga (Concluir)', active: 'bg-emerald-600 text-white border-emerald-600' },
-                ].map(st => (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => {
-                      if (st.id === 'pago') {
-                        setFinalizingOrder(selectedOrderForModal)
-                        setSelectedOrderForModal(null)
-                      } else {
-                        updateOrderStatus(selectedOrderForModal.id, st.id as OrderStatus)
-                      }
-                    }}
-                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                      selectedOrderForModal.status === st.id
-                        ? st.active
-                        : 'bg-wr-surface text-wr-muted border-wr-border hover:text-wr-text'
-                    }`}
-                  >
-                    {st.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Mecânico */}
-            <div className="wr-surface-muted p-3.5 flex items-center justify-between gap-3">
-              <span className="text-xs font-semibold text-wr-muted">Mecânico Responsável</span>
-              <select
-                value={selectedOrderForModal.mechanicAssigned}
-                onChange={e =>
-                  updateOrder(selectedOrderForModal.id, { mechanicAssigned: e.target.value })
+            {/* Formulário com bloqueio de Enter acidental */}
+            <form
+              onSubmit={e => e.preventDefault()}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && (e.target as HTMLElement)?.tagName !== 'TEXTAREA') {
+                  e.preventDefault()
                 }
-                className="wr-input max-w-[200px] bg-wr-surface"
-              >
-                {mechanics.map(m => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Seção de Itens & Valores da OS (Permite alterar valores e adicionar serviços/peças depois) */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
-                  <Wrench className="h-4 w-4" /> Serviços &amp; Peças da OS
-                </span>
-                {selectedOrderForModal.status !== 'pronto' && selectedOrderForModal.status !== 'cancelado' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!isEditingItems) {
-                        setEditableItems(selectedOrderForModal.items || [])
-                      }
-                      setIsEditingItems(prev => !prev)
-                    }}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      isEditingItems
-                        ? 'bg-wr-orange/20 text-wr-orange border border-wr-orange/40'
-                        : 'bg-wr-elevated border border-wr-border text-wr-text hover:border-wr-orange/50'
-                    }`}
-                  >
-                    <Edit2 className="h-3.5 w-3.5" />
-                    {isEditingItems ? 'Cancelar Edição' : 'Alterar Valores / Adicionar Itens'}
-                  </button>
-                )}
+              }}
+              className="space-y-5"
+            >
+              {/* 1. STATUS DO SERVIÇO */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-black uppercase tracking-wider text-neutral-400">
+                  Status do Serviço
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'aguardando', label: 'Aguardando', color: 'border-amber-500 bg-amber-500/15 text-amber-400' },
+                    { id: 'andamento', label: 'Em Andamento', color: 'border-orange-500 bg-orange-500/15 text-orange-400' },
+                    { id: 'pronto', label: 'Pronto', color: 'border-blue-500 bg-blue-500/15 text-blue-400' },
+                  ].map(st => (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => setFormStatus(st.id as OrderStatus)}
+                      className={`py-2.5 px-3 rounded-2xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                        formStatus === st.id
+                          ? `${st.color} shadow-md ring-2 ring-orange-500/30`
+                          : 'border-white/5 bg-white/5 text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      {formStatus === st.id && <CheckCircle2 className="h-3.5 w-3.5" />}
+                      <span>{st.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {isEditingItems ? (
-                /* Modo de Edição Ativa de Valores e Itens */
-                <div className="rounded-2xl border border-wr-orange/40 bg-wr-elevated/40 p-4 space-y-4 animate-fadeIn">
-                  <div className="flex items-center justify-between border-b border-wr-border pb-2.5">
-                    <span className="text-xs font-bold text-wr-text">
-                      Ajuste os valores ou adicione novos serviços/peças
-                    </span>
-                    <span className="text-[10px] text-wr-muted font-mono">
-                      {editableItems.length} item(ns)
-                    </span>
+              {/* 2. DADOS DO CLIENTE & CONTATO */}
+              <div className="p-4 rounded-2xl bg-neutral-900/60 border border-white/5 space-y-3">
+                <span className="text-xs font-black uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+                  <User className="h-4 w-4" /> Dados do Cliente
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-1">
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      Nome do Cliente *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={clientName}
+                      onChange={e => setClientName(e.target.value)}
+                      placeholder="Ex: João da Silva"
+                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 outline-none"
+                    />
                   </div>
 
-                  {/* Lista de Itens Editáveis */}
-                  <div className="space-y-3">
-                    {editableItems.map((it, idx) => (
-                      <div
-                        key={it.id || idx}
-                        className="rounded-xl border border-wr-border bg-wr-surface p-3 space-y-2.5"
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      Telefone / WhatsApp *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={clientPhone}
+                      onChange={e => setClientPhone(e.target.value)}
+                      placeholder="(63) 99999-9999"
+                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 font-mono outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      CPF / CNPJ <span className="text-neutral-500 font-normal">(Opcional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={clientCpfCnpj}
+                      onChange={e => setClientCpfCnpj(e.target.value)}
+                      placeholder="000.000.000-00"
+                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 font-mono outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. DADOS DO CARRO, PLACA, KM & COMBUSTÍVEL */}
+              <div className="p-4 rounded-2xl bg-neutral-900/60 border border-white/5 space-y-3">
+                <span className="text-xs font-black uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+                  <Car className="h-4 w-4" /> Veículo &bull; Dados de Entrada
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      Carro / Modelo *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={vehicleModel}
+                      onChange={e => setVehicleModel(e.target.value)}
+                      placeholder="Ex: Honda Civic 2.0 LXR"
+                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      Placa do Veículo *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={vehiclePlate}
+                      onChange={e => setVehiclePlate(e.target.value.toUpperCase())}
+                      placeholder="ABC-1234"
+                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 font-mono font-bold uppercase outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      Quilometragem (KM)
+                    </label>
+                    <input
+                      type="number"
+                      value={mileage || ''}
+                      onChange={e => setMileage(Number(e.target.value))}
+                      placeholder="Ex: 85000"
+                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 font-mono outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Combustível */}
+                <div className="pt-1">
+                  <label className="block text-[11px] font-bold text-neutral-400 mb-1.5 flex items-center gap-1">
+                    <Fuel className="h-3.5 w-3.5 text-orange-400" /> Nível de Combustível:
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'reserva', label: 'Reserva', color: 'border-rose-500 bg-rose-500/15 text-rose-400' },
+                      { id: 'medio', label: 'Médio (~1/2)', color: 'border-amber-500 bg-amber-500/15 text-amber-400' },
+                      { id: 'cheio', label: 'Cheio', color: 'border-emerald-500 bg-emerald-500/15 text-emerald-400' },
+                    ].map(f => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setFuelLevel(f.id as FuelStatus)}
+                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center ${
+                          fuelLevel === f.id
+                            ? `${f.color} shadow-sm font-black`
+                            : 'border-white/5 bg-white/5 text-neutral-400 hover:text-white'
+                        }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <input
-                            type="text"
-                            value={it.serviceDescription}
-                            onChange={e => handleUpdateItemValue(it.id, 'serviceDescription', e.target.value)}
-                            placeholder="Descrição do serviço ou peça..."
-                            className="wr-input text-xs font-bold flex-1"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveEditableItem(it.id)}
-                            className="p-2 rounded-lg text-wr-muted hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                            title="Remover este item"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          <div>
-                            <label className="block text-[10px] font-bold text-wr-muted uppercase mb-1">
-                              Peças (R$)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={it.partsCost}
-                              onChange={e => handleUpdateItemValue(it.id, 'partsCost', e.target.value)}
-                              className="wr-input font-mono text-xs text-right"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-bold text-wr-muted uppercase mb-1">
-                              Mão de Obra (R$)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={it.laborCost}
-                              onChange={e => handleUpdateItemValue(it.id, 'laborCost', e.target.value)}
-                              className="wr-input font-mono text-xs text-right"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-bold text-wr-muted uppercase mb-1">
-                              Subtotal
-                            </label>
-                            <div className="wr-input bg-wr-elevated font-mono text-xs font-bold text-right text-emerald-500 flex items-center justify-end">
-                              {formatCurrency(Number(it.partsCost || 0) + Number(it.laborCost || 0))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                        {f.label}
+                      </button>
                     ))}
+                  </div>
+                </div>
+              </div>
 
-                    {editableItems.length === 0 && (
-                      <p className="text-xs text-wr-muted text-center py-4 bg-wr-surface rounded-xl border border-wr-border">
-                        Nenhum item lançado. Adicione um novo serviço ou peça abaixo.
-                      </p>
-                    )}
+              {/* 4. SERVIÇO QUE O CLIENTE QUER FAZER & MECÂNICO */}
+              <div className="p-4 rounded-2xl bg-neutral-900/60 border border-white/5 space-y-3">
+                <span className="text-xs font-black uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+                  <Wrench className="h-4 w-4" /> Serviço Solicitado &amp; Mecânico
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      Serviço que o cliente quer fazer *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={serviceDescription}
+                      onChange={e => setServiceDescription(e.target.value)}
+                      placeholder="Ex: Barulho na suspensão dianteira e troca de óleo..."
+                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 outline-none"
+                    />
                   </div>
 
-                  {/* Adicionar Novo Item / Serviço à OS */}
-                  <div className="rounded-xl border border-dashed border-wr-orange/40 bg-wr-orange/5 p-3.5 space-y-3">
-                    <span className="text-xs font-bold text-wr-orange flex items-center gap-1.5">
-                      <Plus className="h-4 w-4" /> Incluir Mais um Serviço ou Peça
-                    </span>
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      Qual mecânico vai fazer?
+                    </label>
+                    <select
+                      value={mechanicAssigned}
+                      onChange={e => setMechanicAssigned(e.target.value)}
+                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 outline-none cursor-pointer"
+                    >
+                      {mechanics.map(m => (
+                        <option key={m} value={m} className="bg-neutral-900">
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
 
+              {/* 5. TABELA DE SERVIÇOS & PEÇAS (QUANDO EM ANDAMENTO OU PRONTO) */}
+              {(formStatus === 'andamento' || formStatus === 'pronto' || items.length > 0) && (
+                <div className="p-4 rounded-2xl bg-neutral-900/80 border border-orange-500/30 space-y-3 animate-fadeIn">
+                  <div className="flex items-center justify-between">
                     <div>
+                      <span className="text-xs font-black uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+                        <DollarSign className="h-4 w-4" /> Discriminação de Serviços Feitos &amp; Peças
+                      </span>
+                      <p className="text-[11px] text-neutral-400">
+                        Adicione os serviços executados, valor de peças e mão de obra
+                      </p>
+                    </div>
+                    <span className="text-xs font-mono font-black text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/25">
+                      Subtotal: {formatCurrency(calculatedGrandTotal)}
+                    </span>
+                  </div>
+
+                  {/* Campos para Adicionar Novo Item */}
+                  <div className="p-3.5 rounded-2xl bg-[#181a24] border border-white/10 space-y-3">
+                    {/* Descrição com Sugestões Predefinidas */}
+                    <div className="relative">
+                      <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                        Descrição do Serviço ou Peça
+                      </label>
                       <input
                         type="text"
-                        value={newEditServiceDesc}
-                        onChange={e => setNewEditServiceDesc(e.target.value)}
-                        placeholder="Nome do serviço ou peça adicional (ex: Troca de Correia)..."
-                        className="wr-input text-xs"
+                        value={itemDesc}
+                        onFocus={() => setShowPresetsDropdown(true)}
+                        onChange={e => {
+                          setItemDesc(e.target.value)
+                          setShowPresetsDropdown(true)
+                        }}
+                        placeholder="Digite o serviço ou escolha uma predefinição..."
+                        className="w-full bg-neutral-900 text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 outline-none"
                       />
+
+                      {showPresetsDropdown && filteredPresets.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto rounded-2xl border border-white/10 bg-neutral-950 p-1.5 shadow-2xl z-50 space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-neutral-500 px-2 py-1 block">
+                            Serviços Predefinidos Rápidos
+                          </span>
+                          {filteredPresets.map(preset => (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              onClick={() => handleSelectPreset(preset)}
+                              className="w-full text-left p-2.5 rounded-xl hover:bg-orange-500/15 hover:text-orange-400 text-neutral-300 text-xs font-semibold flex items-center justify-between transition-colors"
+                            >
+                              <span className="truncate">{preset.name}</span>
+                              <span className="font-mono text-[11px] text-orange-400 shrink-0 font-bold ml-2">
+                                Peças: {formatCurrency(preset.partsCost)} | M.O: {formatCurrency(preset.laborCost)}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                       <div>
-                        <label className="block text-[10px] font-bold text-wr-muted uppercase mb-1">
-                          Peças (R$)
+                        <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                          Valor Peça (R$)
                         </label>
                         <input
                           type="number"
                           step="0.01"
-                          min="0"
+                          value={itemPartsCost}
+                          onChange={e => setItemPartsCost(e.target.value)}
                           placeholder="0,00"
-                          value={newEditPartsCost}
-                          onChange={e => setNewEditPartsCost(e.target.value)}
-                          className="wr-input font-mono text-xs text-right"
+                          className="w-full bg-neutral-900 text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 font-mono font-bold outline-none"
                         />
                       </div>
+
                       <div>
-                        <label className="block text-[10px] font-bold text-wr-muted uppercase mb-1">
+                        <label className="block text-[11px] font-bold text-neutral-300 mb-1">
                           Mão de Obra (R$)
                         </label>
                         <input
                           type="number"
                           step="0.01"
-                          min="0"
+                          value={itemLaborCost}
+                          onChange={e => setItemLaborCost(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              handleAddItem()
+                            }
+                          }}
                           placeholder="0,00"
-                          value={newEditLaborCost}
-                          onChange={e => setNewEditLaborCost(e.target.value)}
-                          className="wr-input font-mono text-xs text-right"
+                          className="w-full bg-neutral-900 text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 font-mono font-bold outline-none"
                         />
                       </div>
-                      <div className="flex items-end">
+
+                      <div>
                         <button
                           type="button"
-                          onClick={handleAddEditableItem}
-                          className="w-full wr-btn-primary py-2 text-xs font-bold flex items-center justify-center gap-1.5"
+                          onClick={handleAddItem}
+                          className="w-full bg-orange-500 hover:bg-orange-400 text-neutral-950 font-black text-xs uppercase tracking-wider py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md"
                         >
-                          <Plus className="h-4 w-4" /> Incluir
+                          <Plus className="h-4 w-4 stroke-[3]" />
+                          <span>Adicionar Item</span>
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  {/* Totais Recalculados & Botões de Salvar */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-wr-border">
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] text-wr-muted uppercase font-bold block">Novo Total da OS:</span>
-                      <span className="text-lg font-black font-mono text-wr-orange">
-                        {formatCurrency(
-                          editableItems.reduce(
-                            (acc, i) => acc + (Number(i.partsCost) || 0) + (Number(i.laborCost) || 0),
-                            0
-                          ) - (selectedOrderForModal.discount || 0)
-                        )}
-                      </span>
+                  {/* Tabela dos Itens Adicionados */}
+                  {items.length > 0 && (
+                    <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#181a24]">
+                      <table className="w-full text-left text-xs min-w-[420px]">
+                        <thead className="bg-white/5 text-neutral-400 border-b border-white/10 text-[11px] uppercase font-bold">
+                          <tr>
+                            <th className="py-2.5 px-3">Serviço / Peça</th>
+                            <th className="py-2.5 px-3 text-right">Peças</th>
+                            <th className="py-2.5 px-3 text-right">Mão de Obra</th>
+                            <th className="py-2.5 px-3 text-right">Total</th>
+                            <th className="py-2.5 px-2 w-10"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 text-white">
+                          {items.map(it => (
+                            <tr key={it.id}>
+                              <td className="py-2.5 px-3 font-semibold">{it.serviceDescription}</td>
+                              <td className="py-2.5 px-3 font-mono text-right text-neutral-400">
+                                {formatCurrency(it.partsCost)}
+                              </td>
+                              <td className="py-2.5 px-3 font-mono text-right text-neutral-400">
+                                {formatCurrency(it.laborCost)}
+                              </td>
+                              <td className="py-2.5 px-3 font-mono text-right font-black text-emerald-400">
+                                {formatCurrency(it.total)}
+                              </td>
+                              <td className="py-2.5 px-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveItem(it.id)}
+                                  className="text-rose-400 hover:text-rose-300 p-1"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditableItems(selectedOrderForModal.items || [])
-                          setIsEditingItems(false)
-                        }}
-                        className="wr-btn-secondary px-4 py-2 text-xs font-bold"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSaveEditableItems}
-                        className="wr-btn-primary px-5 py-2 text-xs font-bold flex items-center gap-1.5 shadow-md"
-                      >
-                        <Save className="h-4 w-4" /> Salvar Novos Valores
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* Modo Visualização Normal da Tabela */
-                <div className="overflow-x-auto rounded-xl border border-wr-border">
-                  <table className="w-full text-left text-xs min-w-[460px]">
-                    <thead className="bg-wr-elevated text-wr-muted border-b border-wr-border">
-                      <tr>
-                        <th className="py-2.5 px-3.5 font-semibold">Serviço / Peça</th>
-                        <th className="py-2.5 px-3.5 font-semibold text-right">Peças</th>
-                        <th className="py-2.5 px-3.5 font-semibold text-right">Mão de Obra</th>
-                        <th className="py-2.5 px-3.5 font-semibold text-right">Subtotal</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-wr-border text-wr-text">
-                      {selectedOrderForModal.items?.map(it => (
-                        <tr key={it.id}>
-                          <td className="py-2.5 px-3.5 font-medium">{it.serviceDescription}</td>
-                          <td className="py-2.5 px-3.5 font-mono text-right text-wr-muted">
-                            {formatCurrency(it.partsCost)}
-                          </td>
-                          <td className="py-2.5 px-3.5 font-mono text-right text-wr-muted">
-                            {formatCurrency(it.laborCost)}
-                          </td>
-                          <td className="py-2.5 px-3.5 font-mono text-right font-bold text-emerald-600 dark:text-emerald-400">
-                            {formatCurrency(it.total)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot className="bg-wr-elevated border-t border-wr-border font-bold text-xs">
-                      <tr>
-                        <td className="py-2.5 px-3.5 text-wr-muted">Total da OS</td>
-                        <td className="py-2.5 px-3.5 font-mono text-right text-wr-text">
-                          {formatCurrency(selectedOrderForModal.partsTotal || 0)}
-                        </td>
-                        <td className="py-2.5 px-3.5 font-mono text-right text-wr-text">
-                          {formatCurrency(selectedOrderForModal.laborTotal || 0)}
-                        </td>
-                        <td className="py-2.5 px-3.5 font-mono text-right text-wr-orange text-sm font-black">
-                          {formatCurrency(selectedOrderForModal.totalAmount)}
-                        </td>
-                      </tr>
-                      {(selectedOrderForModal.discount || 0) > 0 && (
-                        <tr className="text-rose-500 font-bold">
-                          <td colSpan={3} className="py-2 px-3.5 text-right">
-                            Desconto Aplicado:
-                          </td>
-                          <td className="py-2 px-3.5 font-mono text-right">
-                            - {formatCurrency(selectedOrderForModal.discount || 0)}
-                          </td>
-                        </tr>
-                      )}
-                    </tfoot>
-                  </table>
+                  )}
                 </div>
               )}
+
+              {/* 6. CAMPO DE OBSERVAÇÃO */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-black uppercase tracking-wider text-neutral-400">
+                  Observações Gerais <span className="text-neutral-500 font-normal">(Opcional)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={observations}
+                  onChange={e => setObservations(e.target.value)}
+                  placeholder="Alguma observação adicional sobre o veículo ou instruções do cliente..."
+                  className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 outline-none"
+                />
+              </div>
+
+              {/* 7. BOTÕES SALVAR E CANCELAR */}
+              <div className="flex items-center gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={handleSaveOrder}
+                  className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-neutral-950 font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-lg hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>{editingOrder ? 'Salvar Alterações da OS' : 'Salvar Ordem de Serviço'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNewOrderModalOpen(false)
+                    setEditingOrder(null)
+                  }}
+                  className="px-6 py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== MODAL: PAINEL DE VENDA (CHECKOUT AO MARCAR COMO PRONTO) ===================== */}
+      {finalizingOrder && (
+        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-[32px] border border-white/10 bg-[#12141c] p-6 sm:p-8 shadow-2xl space-y-6 my-auto">
+            {/* Cabeçalho do Checkout */}
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                  <DollarSign className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white">
+                    Painel de Venda &bull; {finalizingOrder.number}
+                  </h3>
+                  <p className="text-xs text-neutral-400">
+                    {finalizingOrder.clientName} &bull; {finalizingOrder.vehicleModel} ({finalizingOrder.vehiclePlate})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFinalizingOrder(null)}
+                className="rounded-xl p-2 text-neutral-400 hover:text-white hover:bg-white/5"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
 
-            {/* Footer Actions */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              {selectedOrderForModal.status !== 'pago' && selectedOrderForModal.status !== 'cancelado' && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFinalizingOrder(selectedOrderForModal)
-                    setSelectedOrderForModal(null)
-                  }}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 py-2.5 text-xs font-bold text-white transition-colors shadow-sm"
+            {/* Resumo Financeiro da OS */}
+            <div className="p-4 rounded-2xl bg-neutral-900/80 border border-white/5 space-y-3 text-xs">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
+                  <span className="text-[10px] uppercase font-bold text-neutral-400 block">Peças</span>
+                  <span className="font-mono font-bold text-neutral-200">
+                    {formatCurrency(finalizingOrder.partsTotal || 0)}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
+                  <span className="text-[10px] uppercase font-bold text-neutral-400 block">Mão de Obra</span>
+                  <span className="font-mono font-bold text-neutral-200">
+                    {formatCurrency(finalizingOrder.laborTotal || 0)}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
+                  <span className="text-[10px] uppercase font-bold text-neutral-400 block">Subtotal</span>
+                  <span className="font-mono font-bold text-neutral-200">
+                    {formatCurrency((finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0))}
+                  </span>
+                </div>
+              </div>
+
+              {/* Campo de Desconto */}
+              <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                <span className="font-bold text-neutral-300">Desconto Concedido:</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-neutral-500 font-mono font-bold">R$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={checkoutDiscount || ''}
+                    onChange={e => setCheckoutDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+                    placeholder="0,00"
+                    className="w-28 bg-[#181a24] text-white text-xs sm:text-sm font-mono font-bold text-right p-2 rounded-xl border border-white/10 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Total Final a Pagar */}
+              <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                  Total Final a Pagar:
+                </span>
+                <span className="font-mono text-2xl font-black text-emerald-400">
+                  {formatCurrency(
+                    Math.max(
+                      0,
+                      (finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0) - checkoutDiscount
+                    )
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {/* Seleção do Método de Pagamento */}
+            <div className="space-y-2">
+              <label className="block text-xs font-black uppercase tracking-wider text-neutral-400">
+                Escolha o Método de Pagamento:
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { id: 'pix', label: 'PIX', icon: '⚡' },
+                  { id: 'dinheiro', label: 'Dinheiro', icon: '💵' },
+                  { id: 'cartao_debito', label: 'Cartão Débito', icon: '💳' },
+                  { id: 'cartao_credito', label: 'Cartão Crédito', icon: '💳' },
+                  { id: 'pagar_depois', label: 'A Prazo (Fiado)', icon: '📝' },
+                  { id: 'boleto', label: 'Boleto', icon: '📄' },
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setCheckoutPaymentMethod(opt.id as PaymentMethod)}
+                    className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center gap-1 ${
+                      checkoutPaymentMethod === opt.id
+                        ? 'border-orange-500 bg-orange-500/15 text-orange-400 font-black shadow-md ring-2 ring-orange-500/30'
+                        : 'border-white/5 bg-white/5 text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    <span className="text-lg">{opt.icon}</span>
+                    <span className="text-xs">{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Opções extras para Cartão de Crédito ou Fiado */}
+            {checkoutPaymentMethod === 'cartao_credito' && (
+              <div className="p-3.5 rounded-2xl bg-neutral-900 border border-orange-500/30 space-y-1.5 animate-fadeIn">
+                <label className="block text-xs font-bold text-orange-400">
+                  Parcelamento no Cartão de Crédito:
+                </label>
+                <select
+                  value={checkoutInstallments}
+                  onChange={e => setCheckoutInstallments(Number(e.target.value))}
+                  className="w-full bg-[#181a24] text-white text-xs p-2.5 rounded-xl border border-white/10 outline-none"
                 >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Receber Pagamento (Marcar como Paga)
-                </button>
-              )}
-              {selectedOrderForModal.status !== 'cancelado' && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm(`Deseja realmente cancelar a Ordem de Serviço #${selectedOrderForModal.number}?`)) {
-                      updateOrderStatus(selectedOrderForModal.id, 'cancelado')
-                      setSelectedOrderForModal(null)
-                      showToast(`OS #${selectedOrderForModal.number} cancelada.`, 'info')
-                    }
-                  }}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-600 hover:text-white py-2.5 px-4 text-xs font-bold text-rose-500 transition-colors"
-                >
-                  <XCircle className="h-4 w-4" />
-                  Cancelar OS
-                </button>
-              )}
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(num => (
+                    <option key={num} value={num}>
+                      {num}x de{' '}
+                      {formatCurrency(
+                        Math.max(
+                          0,
+                          (finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0) - checkoutDiscount
+                        ) / num
+                      )}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {checkoutPaymentMethod === 'pagar_depois' && (
+              <div className="p-3.5 rounded-2xl bg-neutral-900 border border-amber-500/30 space-y-1.5 animate-fadeIn">
+                <label className="block text-xs font-bold text-amber-400">
+                  Data combinada para pagamento (Vencimento):
+                </label>
+                <input
+                  type="date"
+                  value={checkoutDueDate}
+                  onChange={e => setCheckoutDueDate(e.target.value)}
+                  className="w-full bg-[#181a24] text-white text-xs p-2.5 rounded-xl border border-white/10 font-mono outline-none"
+                />
+              </div>
+            )}
+
+            {/* Ações do Checkout */}
+            <div className="flex items-center gap-3 pt-2">
               <button
-                onClick={() => {
-                  setWhatsAppModalOrder(selectedOrderForModal)
-                  setSelectedOrderForModal(null)
-                }}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-wr-border bg-wr-elevated py-2.5 text-xs font-semibold text-wr-text hover:border-emerald-500 transition-colors"
+                type="button"
+                onClick={handleConfirmCheckout}
+                className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider py-4 rounded-2xl shadow-lg hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
               >
-                <MessageCircle className="h-4 w-4 text-emerald-500" />
-                WhatsApp
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Confirmar Pagamento e Finalizar Venda</span>
               </button>
               <button
-                onClick={() => {
-                  setDanfseModalOrder(selectedOrderForModal)
-                  setSelectedOrderForModal(null)
-                }}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-500/10 py-2.5 px-4 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors"
+                type="button"
+                onClick={() => setFinalizingOrder(null)}
+                className="px-5 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 font-bold text-xs uppercase tracking-wider"
               >
-                <FileText className="h-4 w-4" />
-                Nota Fiscal
-              </button>
-              <button
-                onClick={() => {
-                  setPdfModalOrder(selectedOrderForModal)
-                  setSelectedOrderForModal(null)
-                }}
-                className="wr-btn-primary flex-1 py-2.5"
-              >
-                <Printer className="h-4 w-4" />
-                Imprimir O.S
-              </button>
-              <button
-                onClick={() => setSelectedOrderForModal(null)}
-                className="wr-btn-secondary py-2.5"
-              >
-                Fechar
+                Cancelar
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ===================== MODAL: WHATSAPP IMAGEM ===================== */}
-      {whatsAppModalOrder && (
-        <div className="wr-modal-backdrop">
-          <div className="wr-modal-panel max-w-2xl space-y-4 text-xs animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-wr-border">
-              <div className="flex items-center gap-2">
-                <MessageCircle className="h-5 w-5 text-emerald-500" />
-                <div>
-                  <h3 className="text-sm font-bold text-wr-text">
-                    Enviar Imagem da OS via WhatsApp
-                  </h3>
-                  <p className="text-[11px] text-wr-muted">
-                    Pronta para envio direto ao cliente com resumo completo e carimbo fiscal
-                  </p>
-                </div>
+      {/* ===================== MODAL: SUCESSO DO PAGAMENTO (COMPARTILHAR NOTA FISCAL) ===================== */}
+      {completedPaymentOrder && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="relative w-full max-w-md rounded-[32px] border border-white/10 bg-[#12141c] p-6 sm:p-8 shadow-2xl space-y-6 text-center">
+            <div className="h-16 w-16 mx-auto rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 animate-bounce">
+              <CheckCircle2 className="h-9 w-9 stroke-[2.5]" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-xl font-black text-white">Venda Concluída com Sucesso!</h3>
+              <p className="text-xs text-neutral-400">
+                A {completedPaymentOrder.number} foi marcada como paga e o veículo foi liberado.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-neutral-900 border border-white/5 text-xs space-y-1">
+              <div className="flex justify-between text-neutral-400">
+                <span>Cliente:</span>
+                <strong className="text-white">{completedPaymentOrder.clientName}</strong>
               </div>
+              <div className="flex justify-between text-neutral-400">
+                <span>Veículo:</span>
+                <strong className="text-white">{completedPaymentOrder.vehicleModel} ({completedPaymentOrder.vehiclePlate})</strong>
+              </div>
+              <div className="flex justify-between text-neutral-400">
+                <span>Método:</span>
+                <strong className="text-emerald-400">
+                  {PAYMENT_LABELS[completedPaymentOrder.paymentMethod || 'pix']}
+                </strong>
+              </div>
+              <div className="flex justify-between text-neutral-400 pt-1 border-t border-white/5">
+                <span>Valor Pago:</span>
+                <strong className="font-mono text-base font-black text-emerald-400">
+                  {formatCurrency(completedPaymentOrder.totalAmount || 0)}
+                </strong>
+              </div>
+            </div>
+
+            {/* BOTÕES DE COMPARTILHAMENTO PÓS-PAGAMENTO */}
+            <div className="space-y-2 pt-1">
+              {/* Compartilhar Nota Fiscal */}
+              <button
+                type="button"
+                onClick={() => {
+                  setDanfseModalOrder(completedPaymentOrder)
+                  setCompletedPaymentOrder(null)
+                }}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01] transition-all"
+              >
+                <FileText className="h-4 w-4" />
+                <span>Compartilhar Nota Fiscal (NFS-e)</span>
+              </button>
+
+              {/* Enviar Comprovante no WhatsApp */}
+              <button
+                type="button"
+                onClick={() => {
+                  setWhatsAppModalOrder(completedPaymentOrder)
+                  setCompletedPaymentOrder(null)
+                }}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01] transition-all"
+              >
+                <MessageCircle className="h-4 w-4" />
+                <span>Enviar Comprovante no WhatsApp</span>
+              </button>
+
+              {/* Concluir */}
+              <button
+                type="button"
+                onClick={() => setCompletedPaymentOrder(null)}
+                className="w-full bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white font-bold text-xs uppercase tracking-wider py-3 rounded-2xl transition-all"
+              >
+                Fechar Painel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== MODAL: WHATSAPP ===================== */}
+      {whatsAppModalOrder && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="relative w-full max-w-lg rounded-[32px] border border-white/10 bg-[#12141c] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <span className="font-black text-emerald-400 text-sm flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" /> Enviar OS via WhatsApp
+              </span>
               <button
                 onClick={() => setWhatsAppModalOrder(null)}
-                className="rounded-lg p-1 text-wr-muted hover:text-wr-text"
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-white"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {copyFeedback && (
-              <div className="rounded-xl bg-emerald-600 text-white p-3 font-bold">
-                ✓ Imagem copiada! No WhatsApp, pressione Ctrl+V para colar.
-              </div>
-            )}
-
-            <div className="rounded-2xl border border-wr-border bg-[#0A0B0E] p-3 flex items-center justify-center max-h-[440px] overflow-y-auto">
+            <div className="rounded-2xl border border-white/10 bg-neutral-900/80 p-2 flex items-center justify-center min-h-[220px]">
               {generatedImageUrl ? (
                 <img
                   src={generatedImageUrl}
-                  alt="OS WR Mecânica"
-                  className="rounded-xl max-w-full h-auto"
+                  alt="Comprovante OS"
+                  className="rounded-xl max-h-[300px] w-auto object-contain shadow-md"
                 />
               ) : (
-                <div className="py-12 text-wr-muted flex flex-col items-center gap-2">
-                  <div className="h-6 w-6 border-2 border-wr-orange border-t-transparent rounded-full animate-spin" />
+                <div className="flex items-center gap-2 text-neutral-400 text-xs animate-pulse">
+                  <Clock className="h-4 w-4 text-orange-400" />
                   <span>Gerando imagem da OS...</span>
                 </div>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={handleDirectShare}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 py-2.5 text-xs font-bold text-white transition-colors"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 py-3 text-xs font-black text-white transition-colors"
               >
                 <ExternalLink className="h-4 w-4" />
                 Compartilhar no WhatsApp
@@ -1364,103 +1569,89 @@ export const OrdersView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleCopyAndOpenWhatsApp}
-                className="wr-btn-secondary py-2.5"
+                className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 font-bold text-xs"
               >
                 <Copy className="h-4 w-4" />
-                Copiar
-              </button>
-              <button
-                type="button"
-                onClick={handleDownloadImage}
-                className="wr-btn-secondary py-2.5"
-              >
-                <Download className="h-4 w-4 text-wr-orange" />
-                Baixar PNG
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ===================== MODAL: COMPROVANTE / PDF ===================== */}
+      {/* ===================== MODAL: IMPRESSÃO OFICIAL DA OS (PDF) ===================== */}
       {pdfModalOrder && (
-        <div className="wr-modal-backdrop">
-          <div className="wr-modal-panel max-w-2xl space-y-5 text-xs animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-wr-border no-print">
-              <span className="font-bold text-wr-orange uppercase tracking-wider flex items-center gap-2">
-                <FileText className="h-4 w-4" /> Comprovante da Ordem de Serviço
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-2xl rounded-[32px] border border-white/10 bg-[#12141c] p-6 shadow-2xl space-y-4 my-auto max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 no-print">
+              <span className="font-black text-orange-400 text-sm flex items-center gap-2">
+                <Printer className="h-4 w-4" /> Visualização da Ordem de Serviço
               </span>
               <div className="flex items-center gap-2">
-                <button onClick={() => window.print()} className="wr-btn-secondary px-3 py-1.5">
-                  <Printer className="h-3.5 w-3.5 text-wr-orange" /> Imprimir / PDF
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-neutral-950 font-black text-xs flex items-center gap-1.5"
+                >
+                  <Printer className="h-3.5 w-3.5" /> Imprimir / PDF
                 </button>
                 <button
+                  type="button"
                   onClick={() => setPdfModalOrder(null)}
-                  className="rounded-lg p-1 text-wr-muted hover:text-wr-text"
+                  className="p-1.5 rounded-lg text-neutral-400 hover:text-white"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
 
+            {/* Documento Branco Estilo Impressão */}
             <div className="rounded-2xl border border-slate-300 bg-white p-6 space-y-4 text-slate-900 shadow-md">
               <div className="flex items-start justify-between border-b border-slate-200 pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-14 w-auto flex items-center justify-center p-1 rounded-xl border border-slate-200 bg-slate-50">
+                  <div className="h-12 w-auto flex items-center justify-center p-1 rounded-xl border border-slate-200 bg-slate-50">
                     <WrLogo size="lg" variant="light" showSubtitle={true} />
                   </div>
                   <div>
-                    <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">{fiscalSettings.tradeName}</h2>
-                    <p className="text-[11px] font-semibold text-slate-600">{fiscalSettings.companyName}</p>
+                    <h2 className="text-base font-black text-slate-900 uppercase">
+                      {fiscalSettings.tradeName}
+                    </h2>
                     <p className="text-[10px] text-slate-500">
-                      CNPJ: {fiscalSettings.cnpj} &bull; IM: {fiscalSettings.cityRegistration} &bull; Luzimangues / Porto Nacional - TO
-                    </p>
-                    <p className="text-[10px] text-slate-500">
-                      WhatsApp: {fiscalSettings.phone || '(63) 99234-5678'}
+                      CNPJ: {fiscalSettings.cnpj} &bull; Luzimangues / Porto Nacional - TO
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="font-mono text-lg font-black text-amber-600 block">
+                  <span className="font-mono text-base font-black text-amber-600 block">
                     {pdfModalOrder.number}
                   </span>
-                  <span className="text-[11px] text-slate-500 block font-medium">Data: {pdfModalOrder.date}</span>
-                  {pdfModalOrder.paymentMethod && (
-                    <span className="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded inline-block mt-1">
-                      {PAYMENT_LABELS[pdfModalOrder.paymentMethod] || pdfModalOrder.paymentMethod}
-                    </span>
-                  )}
+                  <span className="text-[11px] text-slate-500">Data: {pdfModalOrder.date}</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3.5 border border-slate-200">
+              <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3.5 border border-slate-200 text-xs">
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-amber-700 block">Cliente</span>
-                  <p className="font-bold text-slate-900 text-sm">{pdfModalOrder.clientName}</p>
-                  <p className="text-slate-600 font-mono text-xs">{pdfModalOrder.clientPhone}</p>
-                  {pdfModalOrder.clientCpfCnpj && (
-                    <p className="text-slate-500 font-mono text-[10px]">CPF/CNPJ: {pdfModalOrder.clientCpfCnpj}</p>
-                  )}
+                  <span className="text-[9px] font-black uppercase text-amber-700 block">Cliente</span>
+                  <p className="font-bold text-slate-900">{pdfModalOrder.clientName}</p>
+                  <p className="text-slate-600 font-mono text-[11px]">{pdfModalOrder.clientPhone}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-amber-700 block">Veículo</span>
-                  <p className="font-bold text-slate-900 text-sm">{pdfModalOrder.vehicleModel}</p>
-                  <p className="text-slate-600 font-mono text-xs font-semibold">
+                  <span className="text-[9px] font-black uppercase text-amber-700 block">Veículo</span>
+                  <p className="font-bold text-slate-900">{pdfModalOrder.vehicleModel}</p>
+                  <p className="text-slate-600 font-mono text-[11px]">
                     Placa: {pdfModalOrder.vehiclePlate} &bull;{' '}
-                    {Number(pdfModalOrder.mileage).toLocaleString('pt-BR')} km
+                    {pdfModalOrder.mileage ? `${pdfModalOrder.mileage.toLocaleString('pt-BR')} km` : '—'}
                   </p>
-                  <p className="text-slate-500 text-[10px]">Mecânico: {pdfModalOrder.mechanicAssigned}</p>
                 </div>
               </div>
 
-
+              {/* Tabela de Itens da OS */}
               <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                <table className="w-full text-left text-xs min-w-[440px]">
-                  <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 text-[11px] uppercase font-bold">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 text-[10px] uppercase font-bold">
                     <tr>
-                      <th className="p-2.5">Descrição do Serviço / Peça</th>
-                      <th className="p-2.5 text-right">Valor Peças</th>
-                      <th className="p-2.5 text-right">Mão de Obra</th>
+                      <th className="p-2.5">Descrição</th>
+                      <th className="p-2.5 text-right">Peças</th>
+                      <th className="p-2.5 text-right">M. Obra</th>
                       <th className="p-2.5 text-right">Subtotal</th>
                     </tr>
                   </thead>
@@ -1480,16 +1671,12 @@ export const OrdersView: React.FC = () => {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-slate-100 font-bold border-t border-slate-200">
+                  <tfoot className="bg-slate-100 border-t border-slate-200 font-bold text-xs">
                     <tr>
-                      <td className="p-2.5 text-slate-800">TOTAL DA ORDEM DE SERVIÇO</td>
-                      <td className="p-2.5 font-mono text-right text-slate-700">
-                        {formatCurrency(pdfModalOrder.partsTotal || 0)}
+                      <td colSpan={3} className="p-2.5 text-slate-700 text-right">
+                        VALOR TOTAL:
                       </td>
-                      <td className="p-2.5 font-mono text-right text-slate-700">
-                        {formatCurrency(pdfModalOrder.laborTotal || 0)}
-                      </td>
-                      <td className="p-2.5 font-mono text-right text-sm text-amber-700 font-black">
+                      <td className="p-2.5 font-mono text-right text-amber-700 text-sm font-black">
                         {formatCurrency(pdfModalOrder.totalAmount)}
                       </td>
                     </tr>
@@ -1497,646 +1684,23 @@ export const OrdersView: React.FC = () => {
                 </table>
               </div>
 
-              <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-200 text-[10px] text-slate-600 space-y-0.5">
-                <p>
-                  <strong>Garantia Legal (Art. 26 do CDC):</strong> {fiscalSettings.warrantyTerms || '90 dias de garantia para serviços e garantia do fabricante para peças.'}
+              {pdfModalOrder.observations && (
+                <p className="text-[11px] text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <strong className="text-slate-800">Observações:</strong> {pdfModalOrder.observations}
                 </p>
-                {pdfModalOrder.observations && (
-                  <p>
-                    <strong>Observações:</strong> {pdfModalOrder.observations}
-                  </p>
-                )}
-              </div>
-
-              {/* Aviso para autorização do cliente antes do início dos trabalhos */}
-              <div className="rounded-xl border border-amber-500/30 bg-amber-50/70 p-3 text-center text-xs font-semibold text-amber-900">
-                Ordem de Serviço enviada para conferência e autorização prévia do cliente.
-              </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* ===================== MODAL: FINALIZAR OS & PAGAMENTO ===================== */}
-      {finalizingOrder && (
-        <div className="wr-modal-backdrop">
-          <div className="wr-modal-panel max-w-lg space-y-4 text-xs animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-wr-border">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                <div>
-                  <h3 className="text-sm font-bold text-wr-text">Finalizar Ordem de Serviço</h3>
-                  <p className="text-[11px] text-wr-muted font-mono">
-                    {finalizingOrder.number} &bull; {finalizingOrder.clientName}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setFinalizingOrder(null)}
-                className="text-wr-muted hover:text-wr-text"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Resumo Financeiro da OS & Descontos */}
-            {(() => {
-              const baseParts = finalizingOrder.partsTotal || 0
-              const baseLabor = finalizingOrder.laborTotal || 0
-              const baseSubtotal = baseParts + baseLabor
-              const currentDiscount = Math.min(Math.max(0, Number(finalizingDiscount) || 0), baseSubtotal)
-              const finalCalculatedTotal = Math.max(0, baseSubtotal - currentDiscount)
-
-              return (
-                <div className="space-y-3">
-                  <div className="p-4 rounded-2xl bg-wr-surface border border-wr-border space-y-3">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                      <div className="p-2 rounded-xl bg-wr-elevated border border-wr-border">
-                        <span className="text-[10px] text-wr-muted block">Peças</span>
-                        <span className="font-mono font-bold text-wr-text">
-                          {formatCurrency(baseParts)}
-                        </span>
-                      </div>
-                      <div className="p-2 rounded-xl bg-wr-elevated border border-wr-border">
-                        <span className="text-[10px] text-wr-muted block">Mão de Obra</span>
-                        <span className="font-mono font-bold text-wr-text">
-                          {formatCurrency(baseLabor)}
-                        </span>
-                      </div>
-                      <div className="p-2 rounded-xl bg-wr-elevated border border-wr-border">
-                        <span className="text-[10px] text-wr-muted block">Subtotal</span>
-                        <span className="font-mono font-bold text-wr-text">
-                          {formatCurrency(baseSubtotal)}
-                        </span>
-                      </div>
-                      <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-                        <span className="text-[10px] text-emerald-500 font-bold block">TOTAL FINAL</span>
-                        <span className="font-mono text-base font-black text-emerald-500">
-                          {formatCurrency(finalCalculatedTotal)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Campo de Desconto Simples e Prático */}
-                    <div className="pt-2 border-t border-wr-border flex items-center justify-between gap-3">
-                      <label className="text-xs font-bold text-wr-text">
-                        Desconto
-                      </label>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-wr-muted font-mono">R$</span>
-                        <input
-                          type="number"
-                          min="0"
-                          max={baseSubtotal}
-                          step="1"
-                          value={finalizingDiscount || ''}
-                          onChange={e => setFinalizingDiscount(Math.max(0, Number(e.target.value)))}
-                          placeholder="0,00"
-                          className="wr-input w-28 bg-wr-elevated font-mono font-bold text-right py-1.5"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Seleção da Forma de Pagamento */}
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-wr-orange">
-                      Escolha a Forma de Pagamento:
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {[
-                        { id: 'dinheiro', label: 'Dinheiro', icon: '💵' },
-                        { id: 'pix', label: 'PIX', icon: '⚡' },
-                        { id: 'cartao_debito', label: 'Cartão Débito', icon: '💳' },
-                        { id: 'cartao_credito', label: 'Cartão Crédito', icon: '💳' },
-                        { id: 'pagar_depois', label: 'A Prazo (Fiado)', icon: '📝' },
-                        { id: 'boleto', label: 'Boleto', icon: '📄' },
-                      ].map(opt => (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => setFinalizingPaymentMethod(opt.id as PaymentMethod)}
-                          className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${
-                            finalizingPaymentMethod === opt.id
-                              ? 'border-wr-orange bg-wr-orange/15 text-wr-orange font-bold shadow-sm'
-                              : 'border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text'
-                          }`}
-                        >
-                          <span className="text-base">{opt.icon}</span>
-                          <span className="text-[11px]">{opt.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Parcelamento no Cartão de Crédito */}
-                  {finalizingPaymentMethod === 'cartao_credito' && (
-                    <div className="p-3.5 rounded-2xl bg-wr-surface border border-wr-orange/30 space-y-1.5 animate-fadeIn">
-                      <label className="block text-xs font-bold text-wr-orange">
-                        Dividir em quantas vezes no Crédito?
-                      </label>
-                      <select
-                        value={finalizingInstallments}
-                        onChange={e => setFinalizingInstallments(Number(e.target.value))}
-                        className="wr-input bg-wr-elevated font-semibold text-xs"
-                      >
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => {
-                          const parcelVal = finalCalculatedTotal / n
-                          return (
-                            <option key={n} value={n}>
-                              {n === 1
-                                ? `1x de ${formatCurrency(finalCalculatedTotal)} (À vista no crédito)`
-                                : `${n}x de ${formatCurrency(parcelVal)} sem juros`}
-                            </option>
-                          )
-                        })}
-                      </select>
-                      <span className="text-[10px] text-wr-muted block">
-                        Essa condição de parcelamento constará na Nota Fiscal e no comprovante.
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Vencimento caso seja Pagar Depois */}
-                  {finalizingPaymentMethod === 'pagar_depois' && (
-                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1.5 animate-fadeIn">
-                      <label className="block text-xs font-bold text-amber-600 dark:text-amber-400">
-                        Data de Vencimento Combinada (A Prazo):
-                      </label>
-                      <input
-                        type="date"
-                        value={finalizingDueDate}
-                        onChange={e => setFinalizingDueDate(e.target.value)}
-                        className="wr-input bg-wr-surface font-mono"
-                      />
-                    </div>
-                  )}
-
-                  {/* Checkbox de Emissão Fiscal */}
-                  <div className="p-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 flex items-center justify-between gap-3">
-                    <div className="space-y-0.5">
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs block">
-                        Emitir Nota Fiscal (NFS-e Porto Nacional / Luzimangues)
-                      </span>
-                      <p className="text-[10px] text-wr-muted">
-                        Gera a NFS-e oficial com a forma de pagamento e parcelamento especificados.
-                      </p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={finalizingEmitNfse}
-                      onChange={e => setFinalizingEmitNfse(e.target.checked)}
-                      className="w-5 h-5 accent-emerald-500 rounded cursor-pointer"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-wr-border">
-                    <button
-                      type="button"
-                      onClick={() => setFinalizingOrder(null)}
-                      className="wr-btn-secondary"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        finishOrder(finalizingOrder.id, {
-                          paymentMethod: finalizingPaymentMethod,
-                          installments:
-                            finalizingPaymentMethod === 'cartao_credito' ? finalizingInstallments : 1,
-                          discount: currentDiscount,
-                          emitNfse: finalizingEmitNfse,
-                          dueDate: finalizingDueDate,
-                        })
-                        setFinalizingOrder(null)
-                      }}
-                      className="rounded-xl bg-emerald-600 text-white font-bold px-4 py-2 hover:bg-emerald-500 transition-colors shadow-sm flex items-center gap-2"
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                      Concluir OS e Entregar Veículo
-                    </button>
-                  </div>
-                </div>
-              )
-            })()}
-          </div>
-        </div>
-      )}
-
-      {/* ===================== MODAL: DANFSE OFICIAL ===================== */}
+      {/* ===================== MODAL: DANFSE OFICIAL (NFS-E) ===================== */}
       {danfseModalOrder && (
         <DanfseModal
           order={danfseModalOrder}
           settings={fiscalSettings}
           onClose={() => setDanfseModalOrder(null)}
         />
-      )}
-
-      {/* ===================== MODAL: NOVA ORDEM DE SERVIÇO ===================== */}
-      {isNewOrderModalOpen && (
-        <div className="wr-modal-backdrop">
-          <div className="wr-modal-panel max-w-3xl space-y-5 text-xs animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-wr-border">
-              <div className="flex items-center gap-2">
-                <Plus className="h-5 w-5 text-wr-orange" />
-                <h3 className="text-base font-bold text-wr-text">Nova Ordem de Serviço</h3>
-              </div>
-              <button
-                onClick={() => setIsNewOrderModalOpen(false)}
-                className="rounded-lg p-1 text-wr-muted hover:text-wr-text"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form
-              onSubmit={e => {
-                e.preventDefault()
-              }}
-              onKeyDown={e => {
-                // Impede que a tecla Enter conclua ou submeta a OS acidentalmente
-                if (e.key === 'Enter' && (e.target as HTMLElement)?.tagName !== 'TEXTAREA') {
-                  e.preventDefault()
-                }
-              }}
-              className="space-y-5"
-            >
-              {/* 1. SELEÇÃO RÁPIDA DE CLIENTE & VEÍCULO VINCULADO */}
-              <div className="wr-surface-muted p-4 space-y-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
-                  <User className="h-4 w-4" /> Cliente &amp; Veículo Vinculado
-                </span>
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-wr-muted font-semibold mb-1">
-                      Cliente (digite para autocompletar) *
-                    </label>
-                    <ClientAutocomplete
-                      value={clientName}
-                      onChange={name => setClientName(name)}
-                      onConfirmNewClientName={name => {
-                        setClientName(name)
-                        handleRegisterClientAndVehicle()
-                      }}
-                      onSelectClient={c => {
-                        setSelectedClientId(c.id)
-                        setClientName(c.name)
-                        setClientPhone(c.phone)
-                        setClientCpfCnpj(c.cpfCnpj || '')
-                        const linked = vehicles.filter(v => v.clientId === c.id)
-                        if (linked.length > 0) {
-                          setSelectedVehicleId(linked[0].id)
-                          setVehicleModel(`${linked[0].brand} ${linked[0].model}`)
-                          setVehiclePlate(linked[0].plate)
-                          setMileage(linked[0].currentMileage || 0)
-                        }
-                      }}
-                      placeholder="Digite o nome do cliente..."
-                      required
-                      autoFocus
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-wr-muted font-semibold mb-1">
-                        Telefone / WhatsApp *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={clientPhone}
-                        onChange={e => setClientPhone(e.target.value)}
-                        placeholder="(63) 99234-5678"
-                        className="wr-input bg-wr-surface font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-wr-muted font-semibold mb-1">
-                        CPF / CNPJ (para NFS-e)
-                      </label>
-                      <input
-                        type="text"
-                        value={clientCpfCnpj}
-                        onChange={e => setClientCpfCnpj(e.target.value)}
-                        placeholder="000.000.000-00"
-                        className="wr-input bg-wr-surface font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Veículo com Autocomplete vinculado ao dono */}
-                  <VehicleAutocomplete
-                    clientId={selectedClientId}
-                    modelValue={vehicleModel}
-                    plateValue={vehiclePlate}
-                    onModelChange={m => setVehicleModel(m)}
-                    onPlateChange={p => setVehiclePlate(p)}
-                    onSelectVehicle={v => {
-                      setSelectedVehicleId(v.id)
-                      setVehicleModel(`${v.brand} ${v.model}`)
-                      setVehiclePlate(v.plate)
-                      setMileage(v.currentMileage || 0)
-                    }}
-                  />
-
-                  {/* Botão de Cadastro Rápido de Cliente e Veículo */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-wr-border">
-                    <div className="flex items-center gap-2 text-[11px] text-wr-muted">
-                      {selectedClientId ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
-                          <UserCheck className="h-4 w-4" /> Cliente vinculado ao cadastro permanente
-                        </span>
-                      ) : (
-                        <span>Cliente novo. Clique ao lado para salvar em Clientes e Veículos.</span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRegisterClientAndVehicle()}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-wr-orange/15 border border-wr-orange/40 hover:bg-wr-orange hover:text-white text-wr-orange text-xs font-bold transition-all shadow-sm"
-                      title="Salva este cliente, telefone e veículo no banco de dados do sistema"
-                    >
-                      <UserCheck className="h-4 w-4" />
-                      OK, usar e cadastrar este usuário
-                    </button>
-                  </div>
-
-                  <div>
-                    <label className="block text-wr-muted font-semibold mb-1">
-                      Quilometragem (KM)
-                    </label>
-                    <input
-                      type="number"
-                      value={mileage || ''}
-                      onChange={e => setMileage(Number(e.target.value))}
-                      placeholder="Ex: 85000"
-                      className="wr-input bg-wr-surface font-mono max-w-xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Combustível compacto */}
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <span className="text-[11px] font-semibold text-wr-muted flex items-center gap-1 mr-1">
-                    <Fuel className="h-3.5 w-3.5 text-wr-orange" /> Combustível:
-                  </span>
-                  {(
-                    [
-                      { id: 'reserva', label: 'Reserva', active: 'bg-rose-500 text-white border-rose-500' },
-                      { id: 'medio', label: 'Médio', active: 'bg-amber-500 text-white dark:text-black border-amber-500' },
-                      { id: 'cheio', label: 'Cheio', active: 'bg-emerald-600 text-white border-emerald-600' },
-                    ] as const
-                  ).map(opt => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setFuelLevel(opt.id)}
-                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                        fuelLevel === opt.id
-                          ? opt.active
-                          : 'bg-wr-surface text-wr-muted border-wr-border hover:text-wr-text'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-
-
-              {/* 2. SERVIÇO & MECÂNICO RESPONSÁVEL */}
-              <div className="wr-surface-muted p-4 space-y-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-wr-orange block">
-                  Serviço &amp; Mecânico Responsável
-                </span>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-wr-muted font-semibold mb-1">
-                      Serviço Principal *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={mainServiceDesc}
-                      onChange={e => setMainServiceDesc(e.target.value)}
-                      placeholder="Ex: Revisão e troca de freios"
-                      className="wr-input bg-wr-surface"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-wr-muted font-semibold mb-1">Mecânico</label>
-                    <select
-                      value={mechanicAssigned}
-                      onChange={e => setMechanicAssigned(e.target.value)}
-                      className="wr-input bg-wr-surface"
-                    >
-                      {mechanics.map(m => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <input
-                  type="text"
-                  value={observations}
-                  onChange={e => setObservations(e.target.value)}
-                  placeholder="Observações gerais do cliente (opcional)..."
-                  className="wr-input bg-wr-surface"
-                />
-              </div>
-
-              {/* 4. ITENS & VALORES ESPECIFICADOS (PEÇAS E MÃO DE OBRA) */}
-              <div className="wr-surface-muted p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-wr-orange block">
-                      Itens do Serviço (Discriminação Detalhada de Peças e Mão de Obra)
-                    </span>
-                    <span className="text-[10px] text-wr-muted">
-                      Especifique o valor das peças e o valor da mão de obra de cada item separadamente
-                    </span>
-                  </div>
-                  <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                    Total: {formatCurrency(totalSum)}
-                  </span>
-                </div>
-
-                <div className="rounded-2xl bg-wr-surface p-4 border border-wr-orange/40 space-y-3 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-wr-orange flex items-center gap-1.5">
-                      <Sparkles className="h-4 w-4" /> Adicionar Novo Item de Serviço / Peça
-                    </span>
-                    <span className="text-[11px] text-wr-muted hidden sm:inline">
-                      Sem cortes: digite a descrição e valores nos campos espaçosos abaixo
-                    </span>
-                  </div>
-
-                  {/* Linha 1: Descrição completa com largura total e sugestões sem corte */}
-                  <div className="relative">
-                    <label className="block text-xs font-bold text-wr-text mb-1">
-                      Descrição do Serviço ou Peça *
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Digite a descrição (Ex: Troca de pastilhas de freio dianteiras, Óleo 5W30...)"
-                      value={newItemDesc}
-                      onFocus={() => {
-                        if (newItemDesc.trim().length > 0) setShowSuggestions(true)
-                      }}
-                      onChange={e => {
-                        setNewItemDesc(e.target.value)
-                        setShowSuggestions(true)
-                      }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          setShowSuggestions(false)
-                        } else if (e.key === 'Escape') {
-                          setShowSuggestions(false)
-                        }
-                      }}
-                      className="wr-input text-xs sm:text-sm py-2.5 px-3.5 font-medium leading-relaxed"
-                    />
-                    {showSuggestions &&
-                      newItemDesc.trim().length > 0 &&
-                      filteredSuggestions.length > 0 && (
-                        <div className="absolute left-0 right-0 top-full mt-1.5 max-h-56 overflow-y-auto rounded-2xl border border-wr-border bg-wr-surface shadow-2xl p-1.5 space-y-1 z-50 animate-fadeIn">
-                          {filteredSuggestions.map((sug, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => handleSelectSuggestion(sug)}
-                              className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-wr-orange/15 hover:text-wr-orange text-wr-text text-xs font-bold transition-all truncate"
-                            >
-                              {sug.name}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                  </div>
-
-                  {/* Linha 2: Valores e Botão de Adição com espaço amplo */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                    <div>
-                      <label className="block text-xs font-bold text-wr-text mb-1">
-                        Valor Peças (R$)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="0,00"
-                        value={newItemParts || ''}
-                        onChange={e => setNewItemParts(Number(e.target.value))}
-                        className="wr-input font-mono text-xs sm:text-sm py-2.5 px-3.5 font-semibold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-wr-text mb-1">
-                        Mão de Obra (R$)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="0,00"
-                        value={newItemLabor || ''}
-                        onChange={e => setNewItemLabor(Number(e.target.value))}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            handleAddItem()
-                          }
-                        }}
-                        className="wr-input font-mono text-xs sm:text-sm py-2.5 px-3.5 font-semibold"
-                      />
-                    </div>
-
-                    <div>
-                      <button
-                        type="button"
-                        onClick={handleAddItem}
-                        className="wr-btn-primary w-full py-2.5 px-4 text-xs font-bold flex items-center justify-center gap-2 shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all"
-                        title="Adicionar item à Ordem de Serviço"
-                      >
-                        <Plus className="h-4 w-4 stroke-[3]" />
-                        <span>Adicionar Item à OS</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {serviceItems.length > 0 && (
-                  <div className="overflow-x-auto rounded-xl border border-wr-border bg-wr-surface">
-                    <table className="w-full text-left text-xs min-w-[420px]">
-                      <thead className="bg-wr-elevated text-wr-muted border-b border-wr-border">
-                        <tr>
-                          <th className="py-2 px-3">Serviço</th>
-                          <th className="py-2 px-3 text-right">Peças</th>
-                          <th className="py-2 px-3 text-right">M. Obra</th>
-                          <th className="py-2 px-3 text-right">Total</th>
-                          <th className="py-2 px-2 w-8"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-wr-border text-wr-text">
-                        {serviceItems.map(it => (
-                          <tr key={it.id}>
-                            <td className="py-2 px-3 font-medium">{it.serviceDescription}</td>
-                            <td className="py-2 px-3 font-mono text-right text-wr-muted">
-                              {formatCurrency(it.partsCost)}
-                            </td>
-                            <td className="py-2 px-3 font-mono text-right text-wr-muted">
-                              {formatCurrency(it.laborCost)}
-                            </td>
-                            <td className="py-2 px-3 font-mono text-right font-bold text-emerald-600 dark:text-emerald-400">
-                              {formatCurrency(it.total)}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveItem(it.id)}
-                                className="text-rose-500 hover:opacity-75"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={handleCreateOrder}
-                  className="wr-btn-primary flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 shadow-lg hover:brightness-110 active:scale-[0.99] transition-all"
-                  title="Salvar e emitir Ordem de Serviço"
-                >
-                  <Save className="h-4 w-4" />
-                  Salvar Ordem de Serviço
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsNewOrderModalOpen(false)}
-                  className="wr-btn-secondary py-3 px-5 text-sm font-semibold"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
     </div>
   )
