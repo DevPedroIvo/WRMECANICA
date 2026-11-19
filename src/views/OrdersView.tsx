@@ -1725,17 +1725,6 @@ export const OrdersView: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                      <button
-                        type="button"
-                        onClick={handleAddItem}
-                        className="wr-btn-primary w-full h-full px-0"
-                        title="Adicionar item"
-                      >
-                        <Plus className="h-4 w-4 stroke-[2.5]" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
 
                 {serviceItems.length > 0 && (
                   <div className="rounded-xl border border-wr-border overflow-hidden bg-wr-surface">

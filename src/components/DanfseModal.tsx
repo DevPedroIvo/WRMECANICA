@@ -164,14 +164,14 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
               <ExternalLink className="h-3 w-3" /> Portal Prefeitura de Porto Nacional
             </a>
             <button
-              onClick={() => copyToClipboard(invoice.accessKey, 'key')}
+              onClick={() => copyToClipboard(invoice.accessKey || '', 'key')}
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-wr-border bg-wr-surface text-wr-text hover:border-wr-orange font-bold text-[10px] transition-colors"
             >
               {copiedKey ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
               {copiedKey ? 'Chave Copiada!' : 'Copiar Chave (50 dígitos)'}
             </button>
             <button
-              onClick={() => copyToClipboard(invoice.verificationCode, 'code')}
+              onClick={() => copyToClipboard(invoice.verificationCode || '', 'code')}
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-wr-border bg-wr-surface text-wr-text hover:border-wr-orange font-bold text-[10px] transition-colors"
             >
               {copiedCode ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
@@ -365,10 +365,6 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
             }
           }
         `}</style>
-      </div>
-    </div>
-  )
-}
       </div>
     </div>
   )

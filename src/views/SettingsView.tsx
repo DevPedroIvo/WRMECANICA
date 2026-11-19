@@ -460,6 +460,3 @@ export const SettingsView: React.FC = () => {
     </div>
   )
 }
-    </div>
-  )
-}
