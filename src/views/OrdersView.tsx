@@ -12,6 +12,8 @@ import {
 } from '../types'
 import { generateOsCanvas, DEFAULT_WORKSHOP_INFO } from '../utils/osImageGenerator'
 import { DanfseModal } from '../components/DanfseModal'
+import { ClientAutocomplete } from '../components/ClientAutocomplete'
+import { VehicleAutocomplete } from '../components/VehicleAutocomplete'
 import {
   ClipboardList,
   Search,
@@ -101,6 +103,7 @@ export const OrdersView: React.FC = () => {
     addOrder,
     updateOrder,
     updateOrderStatus,
+    finishOrder,
     issueFiscalInvoice,
     fiscalSettings,
     formatCurrency,
@@ -119,6 +122,9 @@ export const OrdersView: React.FC = () => {
   const [pdfModalOrder, setPdfModalOrder] = useState<ServiceOrder | null>(null)
   const [whatsAppModalOrder, setWhatsAppModalOrder] = useState<ServiceOrder | null>(null)
   const [danfseModalOrder, setDanfseModalOrder] = useState<ServiceOrder | null>(null)
+  const [finalizingOrder, setFinalizingOrder] = useState<ServiceOrder | null>(null)
+  const [finalizingPaymentMethod, setFinalizingPaymentMethod] = useState<PaymentMethod>('pix')
+  const [finalizingEmitNfse, setFinalizingEmitNfse] = useState(true)
 
   // WhatsApp Image Generator State
   const [generatedImageUrl, setGeneratedImageUrl] = useState('')
@@ -648,10 +654,19 @@ export const OrdersView: React.FC = () => {
 
                 {/* Action Footer */}
                 <div
-                  className="pt-3 border-t border-wr-border flex items-center gap-2"
+                  className="pt-3 border-t border-wr-border flex flex-wrap items-center gap-2"
                   onClick={e => e.stopPropagation()}
                 >
-                  {hasFiscal ? (
+                  {order.status !== 'pronto' ? (
+                    <button
+                      type="button"
+                      onClick={() => setFinalizingOrder(order)}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 py-2 text-xs font-bold text-white transition-colors shadow-sm"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Finalizar OS
+                    </button>
+                  ) : hasFiscal ? (
                     <button
                       onClick={() => setDanfseModalOrder(order)}
                       className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white transition-colors"
@@ -671,18 +686,18 @@ export const OrdersView: React.FC = () => {
 
                   <button
                     onClick={() => setWhatsAppModalOrder(order)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white transition-colors"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-wr-border bg-wr-elevated py-2 text-xs font-semibold text-wr-text hover:border-emerald-500 transition-colors"
                   >
-                    <MessageCircle className="h-3.5 w-3.5" />
+                    <MessageCircle className="h-3.5 w-3.5 text-emerald-500" />
                     WhatsApp
                   </button>
 
                   <button
                     onClick={() => setPdfModalOrder(order)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-wr-orange/35 bg-wr-orange/10 py-2 text-xs font-bold text-wr-orange hover:bg-wr-orange hover:text-white dark:hover:text-[#0B0C10] transition-colors"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-wr-border bg-wr-elevated py-2 text-xs font-semibold text-wr-text hover:border-wr-orange transition-colors"
                   >
-                    <FileText className="h-3.5 w-3.5" />
-                    Recibo
+                    <Printer className="h-3.5 w-3.5 text-wr-orange" />
+                    Imprimir OS
                   </button>
                 </div>
               </div>
@@ -878,15 +893,28 @@ export const OrdersView: React.FC = () => {
 
             {/* Footer Actions */}
             <div className="flex flex-wrap items-center gap-2.5">
+              {selectedOrderForModal.status !== 'pronto' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFinalizingOrder(selectedOrderForModal)
+                    setSelectedOrderForModal(null)
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 py-2.5 text-xs font-bold text-white transition-colors shadow-sm"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Finalizar OS &amp; Pagamento
+                </button>
+              )}
               <button
                 onClick={() => {
                   setWhatsAppModalOrder(selectedOrderForModal)
                   setSelectedOrderForModal(null)
                 }}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 py-2.5 text-xs font-bold text-white transition-colors"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-wr-border bg-wr-elevated py-2.5 text-xs font-semibold text-wr-text hover:border-emerald-500 transition-colors"
               >
-                <MessageCircle className="h-4 w-4" />
-                Enviar no WhatsApp
+                <MessageCircle className="h-4 w-4 text-emerald-500" />
+                Enviar WhatsApp
               </button>
               <button
                 onClick={() => {
@@ -895,8 +923,8 @@ export const OrdersView: React.FC = () => {
                 }}
                 className="wr-btn-primary flex-1 py-2.5"
               >
-                <FileText className="h-4 w-4" />
-                Comprovante / PDF
+                <Printer className="h-4 w-4" />
+                Imprimir OS
               </button>
               <button
                 onClick={() => setSelectedOrderForModal(null)}
@@ -1005,49 +1033,73 @@ export const OrdersView: React.FC = () => {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-wr-border bg-wr-elevated p-6 space-y-4 text-wr-text">
-              <div className="flex items-start justify-between border-b border-wr-border pb-4">
-                <div>
-                  <h2 className="text-lg font-black text-wr-gold">{fiscalSettings.tradeName}</h2>
-                  <p className="text-[11px] text-wr-muted">{fiscalSettings.companyName}</p>
-                  <p className="text-[10px] text-wr-muted">CNPJ: {fiscalSettings.cnpj}</p>
+            <div className="rounded-2xl border border-slate-300 bg-white p-6 space-y-4 text-slate-900 shadow-md">
+              <div className="flex items-start justify-between border-b border-slate-200 pb-4">
+                <div className="flex items-center gap-3">
+                  <img
+                    src="/assets/real-logo.jpg"
+                    alt="Logo WR Mecânica"
+                    className="h-14 w-auto object-contain rounded-lg border border-slate-200 bg-black/5 p-1"
+                    onError={e => {
+                      (e.target as HTMLElement).style.display = 'none'
+                    }}
+                  />
+                  <div>
+                    <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">{fiscalSettings.tradeName}</h2>
+                    <p className="text-[11px] font-semibold text-slate-600">{fiscalSettings.companyName}</p>
+                    <p className="text-[10px] text-slate-500">
+                      CNPJ: {fiscalSettings.cnpj} &bull; IM: {fiscalSettings.cityRegistration} &bull; Luzimangues / Porto Nacional - TO
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      WhatsApp: {fiscalSettings.phone || '(63) 99234-5678'}
+                    </p>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <span className="font-mono text-base font-black text-wr-orange block">
+                  <span className="font-mono text-lg font-black text-amber-600 block">
                     {pdfModalOrder.number}
                   </span>
-                  <span className="text-[11px] text-wr-muted block">{pdfModalOrder.date}</span>
+                  <span className="text-[11px] text-slate-500 block font-medium">Data: {pdfModalOrder.date}</span>
+                  {pdfModalOrder.paymentMethod && (
+                    <span className="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded inline-block mt-1">
+                      {PAYMENT_LABELS[pdfModalOrder.paymentMethod] || pdfModalOrder.paymentMethod}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 rounded-xl bg-wr-surface p-3.5 border border-wr-border">
+              <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3.5 border border-slate-200">
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-wr-orange block">Cliente</span>
-                  <p className="font-bold text-wr-text">{pdfModalOrder.clientName}</p>
-                  <p className="text-wr-muted font-mono">{pdfModalOrder.clientPhone}</p>
+                  <span className="text-[10px] font-bold uppercase text-amber-700 block">Cliente</span>
+                  <p className="font-bold text-slate-900 text-sm">{pdfModalOrder.clientName}</p>
+                  <p className="text-slate-600 font-mono text-xs">{pdfModalOrder.clientPhone}</p>
+                  {pdfModalOrder.clientCpfCnpj && (
+                    <p className="text-slate-500 font-mono text-[10px]">CPF/CNPJ: {pdfModalOrder.clientCpfCnpj}</p>
+                  )}
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-wr-orange block">Veículo</span>
-                  <p className="font-bold text-wr-text">{pdfModalOrder.vehicleModel}</p>
-                  <p className="text-wr-muted font-mono">
-                    Placa: {pdfModalOrder.vehiclePlate} •{' '}
+                  <span className="text-[10px] font-bold uppercase text-amber-700 block">Veículo</span>
+                  <p className="font-bold text-slate-900 text-sm">{pdfModalOrder.vehicleModel}</p>
+                  <p className="text-slate-600 font-mono text-xs font-semibold">
+                    Placa: {pdfModalOrder.vehiclePlate} &bull;{' '}
                     {Number(pdfModalOrder.mileage).toLocaleString('pt-BR')} km
                   </p>
+                  <p className="text-slate-500 text-[10px]">Mecânico: {pdfModalOrder.mechanicAssigned}</p>
                 </div>
               </div>
 
               {pdfModalOrder.inspection && (
-                <div className="rounded-xl bg-wr-surface p-3 border border-wr-border text-[11px] space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-wr-muted block">
-                    Vistoria Visual (Faróis, Pintura, Pneus e Lataria)
+                <div className="rounded-xl bg-slate-50 p-3 border border-slate-200 text-[11px] space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-600 block">
+                    Vistoria Visual de Entrada (Faróis, Pintura, Pneus e Lataria)
                   </span>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 text-slate-800">
                     {VISUAL_CHECKLIST_ITEMS.map(item => {
                       const val = pdfModalOrder.inspection?.[item.key] || 'ok'
                       return (
-                        <span key={item.key} className="text-wr-text">
+                        <span key={item.key} className="text-slate-700 text-[10px]">
                           {item.label}:{' '}
-                          <strong className={val === 'ok' ? 'text-emerald-500' : 'text-rose-500'}>
+                          <strong className={val === 'ok' ? 'text-emerald-700' : 'text-rose-600'}>
                             {val === 'ok' ? 'OK' : 'Avaria'}
                           </strong>
                         </span>
@@ -1055,63 +1107,186 @@ export const OrdersView: React.FC = () => {
                     })}
                   </div>
                   {pdfModalOrder.inspection.bodyworkDamages && (
-                    <p className="text-wr-muted">Obs: {pdfModalOrder.inspection.bodyworkDamages}</p>
+                    <p className="text-slate-600 text-[10px]">Obs: {pdfModalOrder.inspection.bodyworkDamages}</p>
                   )}
                 </div>
               )}
 
-              <table className="w-full text-left text-xs border border-wr-border rounded-xl overflow-hidden bg-wr-surface">
-                <thead className="bg-wr-elevated text-wr-muted border-b border-wr-border">
+              <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden bg-white">
+                <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 text-[11px] uppercase font-bold">
                   <tr>
-                    <th className="p-2.5">Descrição</th>
-                    <th className="p-2.5 text-right">Peças</th>
-                    <th className="p-2.5 text-right">M. Obra</th>
-                    <th className="p-2.5 text-right">Total</th>
+                    <th className="p-2.5">Descrição do Serviço / Peça</th>
+                    <th className="p-2.5 text-right">Valor Peças</th>
+                    <th className="p-2.5 text-right">Mão de Obra</th>
+                    <th className="p-2.5 text-right">Subtotal</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-wr-border">
+                <tbody className="divide-y divide-slate-200 text-slate-800">
                   {pdfModalOrder.items?.map(it => (
                     <tr key={it.id}>
                       <td className="p-2.5 font-medium">{it.serviceDescription}</td>
-                      <td className="p-2.5 font-mono text-right text-wr-muted">
+                      <td className="p-2.5 font-mono text-right text-slate-600">
                         {formatCurrency(it.partsCost)}
                       </td>
-                      <td className="p-2.5 font-mono text-right text-wr-muted">
+                      <td className="p-2.5 font-mono text-right text-slate-600">
                         {formatCurrency(it.laborCost)}
                       </td>
-                      <td className="p-2.5 font-mono text-right font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className="p-2.5 font-mono text-right font-bold text-slate-900">
                         {formatCurrency(it.total)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-wr-elevated font-bold border-t border-wr-border">
+                <tfoot className="bg-slate-100 font-bold border-t border-slate-200">
                   <tr>
-                    <td className="p-2.5 text-wr-orange">TOTAL GERAL</td>
-                    <td className="p-2.5 font-mono text-right">
+                    <td className="p-2.5 text-slate-800">TOTAL DA ORDEM DE SERVIÇO</td>
+                    <td className="p-2.5 font-mono text-right text-slate-700">
                       {formatCurrency(pdfModalOrder.partsTotal || 0)}
                     </td>
-                    <td className="p-2.5 font-mono text-right">
+                    <td className="p-2.5 font-mono text-right text-slate-700">
                       {formatCurrency(pdfModalOrder.laborTotal || 0)}
                     </td>
-                    <td className="p-2.5 font-mono text-right text-sm text-wr-orange font-black">
+                    <td className="p-2.5 font-mono text-right text-sm text-amber-700 font-black">
                       {formatCurrency(pdfModalOrder.totalAmount)}
                     </td>
                   </tr>
                 </tfoot>
               </table>
 
-              <p className="text-[10px] text-wr-muted">
-                <strong>Garantia Legal:</strong> 90 dias conforme Art. 26 do CDC.{' '}
-                {pdfModalOrder.observations && `Obs.: ${pdfModalOrder.observations}`}
-              </p>
+              <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-200 text-[10px] text-slate-600 space-y-0.5">
+                <p>
+                  <strong>Garantia Legal (Art. 26 do CDC):</strong> {fiscalSettings.warrantyTerms || '90 dias de garantia para serviços e garantia do fabricante para peças.'}
+                </p>
+                {pdfModalOrder.observations && (
+                  <p>
+                    <strong>Observações:</strong> {pdfModalOrder.observations}
+                  </p>
+                )}
+              </div>
 
-              <div className="grid grid-cols-2 gap-8 pt-6 text-center text-[10px] text-wr-muted">
-                <div className="border-t border-wr-borderHover pt-1.5">Assinatura do Cliente</div>
-                <div className="border-t border-wr-borderHover pt-1.5">
-                  {fiscalSettings.tradeName}
+              {/* Status de Aprovação Verbal (sem campos manuais de assinatura) */}
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-50 p-3 text-center text-xs font-bold text-emerald-800">
+                ✓ APROVAÇÃO VERBAL DO CLIENTE: O cliente autorizou expressamente a execução dos serviços e substituição das peças acima discriminadas para o início imediato dos trabalhos.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== MODAL: FINALIZAR OS & PAGAMENTO ===================== */}
+      {finalizingOrder && (
+        <div className="wr-modal-backdrop">
+          <div className="wr-modal-panel max-w-lg space-y-4 text-xs animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-wr-border">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                <div>
+                  <h3 className="text-sm font-bold text-wr-text">Finalizar Ordem de Serviço</h3>
+                  <p className="text-[11px] text-wr-muted font-mono">
+                    {finalizingOrder.number} &bull; {finalizingOrder.clientName}
+                  </p>
                 </div>
               </div>
+              <button
+                onClick={() => setFinalizingOrder(null)}
+                className="text-wr-muted hover:text-wr-text"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Resumo Financeiro da OS */}
+            <div className="p-4 rounded-2xl bg-wr-surface border border-wr-border space-y-3">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 rounded-xl bg-wr-elevated border border-wr-border">
+                  <span className="text-[10px] text-wr-muted block">Peças</span>
+                  <span className="font-mono font-bold text-wr-text">
+                    {formatCurrency(finalizingOrder.partsTotal || 0)}
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-wr-elevated border border-wr-border">
+                  <span className="text-[10px] text-wr-muted block">Mão de Obra</span>
+                  <span className="font-mono font-bold text-wr-text">
+                    {formatCurrency(finalizingOrder.laborTotal || 0)}
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                  <span className="text-[10px] text-emerald-500 font-bold block">TOTAL A COBRAR</span>
+                  <span className="font-mono text-base font-black text-emerald-500">
+                    {formatCurrency(finalizingOrder.totalAmount)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Seleção da Forma de Pagamento */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-wr-orange">
+                Escolha a Forma de Pagamento do Cliente:
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { id: 'dinheiro', label: 'Dinheiro', icon: '💵' },
+                  { id: 'pix', label: 'PIX', icon: '⚡' },
+                  { id: 'cartao_debito', label: 'Cartão Débito', icon: '💳' },
+                  { id: 'cartao_credito', label: 'Cartão Crédito', icon: '💳' },
+                  { id: 'pagar_depois', label: 'A Prazo (Fiado)', icon: '📝' },
+                  { id: 'boleto', label: 'Boleto', icon: '📄' },
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setFinalizingPaymentMethod(opt.id as PaymentMethod)}
+                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${
+                      finalizingPaymentMethod === opt.id
+                        ? 'border-wr-orange bg-wr-orange/15 text-wr-orange font-bold shadow-sm'
+                        : 'border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text'
+                    }`}
+                  >
+                    <span className="text-base">{opt.icon}</span>
+                    <span className="text-[11px]">{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Checkbox de Emissão Fiscal */}
+            <div className="p-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 flex items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs block">
+                  Emitir Nota Fiscal (NFS-e Porto Nacional / Luzimangues)
+                </span>
+                <p className="text-[10px] text-wr-muted">
+                  Gera a NFS-e oficial com a forma de pagamento selecionada descrita no corpo da nota.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={finalizingEmitNfse}
+                onChange={e => setFinalizingEmitNfse(e.target.checked)}
+                className="w-5 h-5 accent-emerald-500 rounded cursor-pointer"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-wr-border">
+              <button
+                type="button"
+                onClick={() => setFinalizingOrder(null)}
+                className="wr-btn-secondary"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  finishOrder(finalizingOrder.id, finalizingPaymentMethod, finalizingEmitNfse)
+                  setFinalizingOrder(null)
+                }}
+                className="rounded-xl bg-emerald-600 text-white font-bold px-4 py-2 hover:bg-emerald-500 transition-colors shadow-sm flex items-center gap-2"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Concluir OS e Entregar Veículo
+              </button>
             </div>
           </div>
         </div>
@@ -1150,97 +1325,88 @@ export const OrdersView: React.FC = () => {
                   <User className="h-4 w-4" /> Cliente &amp; Veículo Vinculado
                 </span>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-3">
                   <div>
                     <label className="block text-wr-muted font-semibold mb-1">
-                      Selecionar Cliente Cadastrado
+                      Cliente (digite para autocompletar) *
                     </label>
-                    <select
-                      value={selectedClientId}
-                      onChange={e => handleSelectClient(e.target.value)}
-                      className="wr-input bg-wr-surface"
-                    >
-                      <option value="">Digitar cliente manualmente...</option>
-                      {clients.map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} ({c.phone})
-                        </option>
-                      ))}
-                    </select>
+                    <ClientAutocomplete
+                      value={clientName}
+                      onChange={name => setClientName(name)}
+                      onSelectClient={c => {
+                        setSelectedClientId(c.id)
+                        setClientName(c.name)
+                        setClientPhone(c.phone)
+                        setClientCpfCnpj(c.cpfCnpj || '')
+                        const linked = vehicles.filter(v => v.clientId === c.id)
+                        if (linked.length > 0) {
+                          setSelectedVehicleId(linked[0].id)
+                          setVehicleModel(`${linked[0].brand} ${linked[0].model}`)
+                          setVehiclePlate(linked[0].plate)
+                          setMileage(linked[0].currentMileage || 0)
+                        }
+                      }}
+                      placeholder="Digite o nome do cliente..."
+                      required
+                      autoFocus
+                    />
                   </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-wr-muted font-semibold mb-1">
+                        Telefone / WhatsApp *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={clientPhone}
+                        onChange={e => setClientPhone(e.target.value)}
+                        placeholder="(63) 99234-5678"
+                        className="wr-input bg-wr-surface font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-wr-muted font-semibold mb-1">
+                        CPF / CNPJ (para NFS-e)
+                      </label>
+                      <input
+                        type="text"
+                        value={clientCpfCnpj}
+                        onChange={e => setClientCpfCnpj(e.target.value)}
+                        placeholder="000.000.000-00"
+                        className="wr-input bg-wr-surface font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Veículo com Autocomplete vinculado ao dono */}
+                  <VehicleAutocomplete
+                    clientId={selectedClientId}
+                    modelValue={vehicleModel}
+                    plateValue={vehiclePlate}
+                    onModelChange={m => setVehicleModel(m)}
+                    onPlateChange={p => setVehiclePlate(p)}
+                    onSelectVehicle={v => {
+                      setSelectedVehicleId(v.id)
+                      setVehicleModel(`${v.brand} ${v.model}`)
+                      setVehiclePlate(v.plate)
+                      setMileage(v.currentMileage || 0)
+                    }}
+                  />
 
                   <div>
                     <label className="block text-wr-muted font-semibold mb-1">
-                      Veículo do Cliente
+                      Quilometragem (KM)
                     </label>
-                    <select
-                      value={selectedVehicleId}
-                      onChange={e => handleSelectVehicle(e.target.value)}
-                      disabled={linkedVehiclesForSelectedClient.length === 0}
-                      className="wr-input bg-wr-surface disabled:opacity-60"
-                    >
-                      {linkedVehiclesForSelectedClient.length === 0 ? (
-                        <option value="">Digitar veículo abaixo...</option>
-                      ) : (
-                        linkedVehiclesForSelectedClient.map(v => (
-                          <option key={v.id} value={v.id}>
-                            {v.brand} {v.model} • {v.plate}
-                          </option>
-                        ))
-                      )}
-                    </select>
+                    <input
+                      type="number"
+                      value={mileage || ''}
+                      onChange={e => setMileage(Number(e.target.value))}
+                      placeholder="Ex: 85000"
+                      className="wr-input bg-wr-surface font-mono max-w-xs"
+                    />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                  <input
-                    type="text"
-                    required
-                    value={clientName}
-                    onChange={e => setClientName(e.target.value)}
-                    placeholder="Nome do cliente *"
-                    className="wr-input bg-wr-surface"
-                  />
-                  <input
-                    type="text"
-                    required
-                    value={clientPhone}
-                    onChange={e => setClientPhone(e.target.value)}
-                    placeholder="Telefone / WhatsApp *"
-                    className="wr-input bg-wr-surface font-mono"
-                  />
-                  <input
-                    type="text"
-                    value={clientCpfCnpj}
-                    onChange={e => setClientCpfCnpj(e.target.value)}
-                    placeholder="CPF/CNPJ (para NFS-e)"
-                    className="wr-input bg-wr-surface font-mono"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <input
-                    type="text"
-                    required
-                    value={vehicleModel}
-                    onChange={e => setVehicleModel(e.target.value)}
-                    placeholder="Modelo do veículo *"
-                    className="wr-input bg-wr-surface"
-                  />
-                  <input
-                    type="text"
-                    value={vehiclePlate}
-                    onChange={e => setVehiclePlate(e.target.value)}
-                    placeholder="Placa (ex: ABC1D23)"
-                    className="wr-input bg-wr-surface font-mono uppercase"
-                  />
-                  <input
-                    type="number"
-                    value={mileage || ''}
-                    onChange={e => setMileage(Number(e.target.value))}
-                    placeholder="Quilometragem (KM)"
-                    className="wr-input bg-wr-surface font-mono"
-                  />
                 </div>
 
                 {/* Combustível compacto */}
@@ -1415,18 +1581,20 @@ export const OrdersView: React.FC = () => {
 
                   <div>
                     <label className="block text-wr-muted font-semibold mb-1">
-                      Forma de Pagamento
+                      Previsão de Pagamento (definida na conclusão)
                     </label>
                     <select
                       value={paymentMethod}
                       onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
                       className="wr-input bg-wr-surface"
                     >
-                      <option value="pix">Pix</option>
-                      <option value="cartao_credito">Cartão de Crédito</option>
-                      <option value="cartao_debito">Cartão de Débito</option>
+                      <option value="pendente">A Definir na Conclusão da OS</option>
+                      <option value="pix">PIX</option>
                       <option value="dinheiro">Dinheiro</option>
-                      <option value="pagar_depois">Pagar Depois (A Prazo)</option>
+                      <option value="cartao_debito">Cartão de Débito</option>
+                      <option value="cartao_credito">Cartão de Crédito</option>
+                      <option value="pagar_depois">A Prazo / Fiado</option>
+                      <option value="boleto">Boleto Bancário</option>
                     </select>
                   </div>
                 </div>
@@ -1436,7 +1604,7 @@ export const OrdersView: React.FC = () => {
                     <div className="flex items-center gap-2 text-xs">
                       <Wallet className="h-4 w-4 text-amber-500 shrink-0" />
                       <span className="font-semibold text-wr-text">
-                        Esta OS será lançada automaticamente na aba <strong>Pagar Depois</strong>.
+                        Esta OS será lançada automaticamente na aba <strong>Pagar Depois</strong> ao ser concluída.
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1462,12 +1630,17 @@ export const OrdersView: React.FC = () => {
                 />
               </div>
 
-              {/* 4. ITENS & VALORES */}
+              {/* 4. ITENS & VALORES ESPECIFICADOS (PEÇAS E MÃO DE OBRA) */}
               <div className="wr-surface-muted p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-wr-orange">
-                    Itens de Serviço &amp; Peças
-                  </span>
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-wr-orange block">
+                      Itens do Serviço (Discriminação Detalhada de Peças e Mão de Obra)
+                    </span>
+                    <span className="text-[10px] text-wr-muted">
+                      Especifique o valor das peças e o valor da mão de obra de cada item separadamente
+                    </span>
+                  </div>
                   <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
                     Total: {formatCurrency(totalSum)}
                   </span>
@@ -1475,13 +1648,16 @@ export const OrdersView: React.FC = () => {
 
                 <div className="rounded-xl bg-wr-surface p-3 border border-wr-orange/35 space-y-2 relative">
                   <span className="text-[11px] font-semibold text-wr-orange flex items-center gap-1">
-                    <Sparkles className="h-3.5 w-3.5" /> Digite para autocompletar ou lance um valor:
+                    <Sparkles className="h-3.5 w-3.5" /> Adicionar Item de Serviço / Peça:
                   </span>
                   <div className="grid grid-cols-12 gap-2">
                     <div className="col-span-12 sm:col-span-5 relative">
+                      <label className="block text-[10px] font-bold text-wr-muted mb-0.5">
+                        Descrição do Serviço ou Peça
+                      </label>
                       <input
                         type="text"
-                        placeholder="Descrição do serviço..."
+                        placeholder="Ex: Troca de pastilhas dianteiras..."
                         value={newItemDesc}
                         onFocus={() => setShowSuggestions(true)}
                         onChange={e => {
@@ -1505,7 +1681,7 @@ export const OrdersView: React.FC = () => {
                                   {sug.name}
                                 </span>
                                 <span className="font-mono text-[10px] text-wr-orange shrink-0">
-                                  {formatCurrency(sug.partsCost + sug.laborCost)}
+                                  Peças: {formatCurrency(sug.partsCost)} | M.O: {formatCurrency(sug.laborCost)}
                                 </span>
                               </button>
                             ))}
@@ -1514,24 +1690,41 @@ export const OrdersView: React.FC = () => {
                     </div>
 
                     <div className="col-span-5 sm:col-span-3">
+                      <label className="block text-[10px] font-bold text-wr-muted mb-0.5">
+                        Valor Peças (R$)
+                      </label>
                       <input
                         type="number"
-                        placeholder="R$ Peças"
+                        placeholder="0,00"
                         value={newItemParts || ''}
                         onChange={e => setNewItemParts(Number(e.target.value))}
                         className="wr-input font-mono"
                       />
                     </div>
                     <div className="col-span-5 sm:col-span-3">
+                      <label className="block text-[10px] font-bold text-wr-muted mb-0.5">
+                        Mão de Obra (R$)
+                      </label>
                       <input
                         type="number"
-                        placeholder="R$ Mão de Obra"
+                        placeholder="0,00"
                         value={newItemLabor || ''}
                         onChange={e => setNewItemLabor(Number(e.target.value))}
                         className="wr-input font-mono"
                       />
                     </div>
-                    <div className="col-span-2 sm:col-span-1">
+                    <div className="col-span-2 sm:col-span-1 flex items-end">
+                      <button
+                        type="button"
+                        onClick={handleAddItem}
+                        className="wr-btn-primary w-full h-[38px] px-0 flex items-center justify-center"
+                        title="Adicionar item"
+                      >
+                        <Plus className="h-4 w-4 stroke-[2.5]" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
                       <button
                         type="button"
                         onClick={handleAddItem}

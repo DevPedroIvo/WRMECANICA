@@ -12,15 +12,19 @@ import { StockView } from './views/StockView'
 import { FinancialView } from './views/FinancialView'
 import { ReportsView } from './views/ReportsView'
 import { SettingsView } from './views/SettingsView'
+import { CaixaView } from './views/CaixaView'
+import { LoginModal } from './components/LoginModal'
 import { CheckCircle2, Info, AlertTriangle, X } from 'lucide-react'
 
 const MainAppContent: React.FC = () => {
-  const { activeTab, toasts, dismissToast } = useApp()
+  const { activeTab, toasts, dismissToast, currentUserRole } = useApp()
 
   const renderActiveView = () => {
     switch (activeTab) {
       case 'inicio':
         return <DashboardView />
+      case 'caixa':
+        return <CaixaView />
       case 'atendimentos':
         return <AppointmentsView />
       case 'os':
@@ -89,6 +93,9 @@ const MainAppContent: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* Modal de Login (Dono PIN: 2026 / Caixa PIN: 1234) */}
+      {currentUserRole === null && <LoginModal />}
     </div>
   )
 }

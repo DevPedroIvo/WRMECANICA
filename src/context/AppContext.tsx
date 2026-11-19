@@ -12,6 +12,10 @@ import {
   DeferredPayment,
   DeferredPaymentEntry,
   ThemeMode,
+  UserRole,
+  DailyCashShift,
+  CashMovement,
+  PaymentMethod,
 } from '../types'
 import {
   INITIAL_CLIENTS,
@@ -44,6 +48,7 @@ import {
 export type TabType =
   | 'inicio'
   | 'os'
+  | 'caixa'
   | 'atendimentos'
   | 'clientes'
   | 'fiado'
@@ -131,6 +136,18 @@ interface AppContextType {
   showToast: (message: string, type?: ToastMessage['type']) => void
   dismissToast: (id: string) => void
 
+  currentUserRole: UserRole | null
+  login: (pin: string) => { success: boolean; role?: UserRole; message?: string }
+  logout: () => void
+
+  activeShift: DailyCashShift | null
+  shiftHistory: DailyCashShift[]
+  openCashShift: (initialAmount: number, notes?: string) => void
+  closeCashShift: (finalPhysicalCash: number, notes?: string) => void
+  addCashMovement: (movement: Omit<CashMovement, 'id' | 'timestamp' | 'timeFormatted' | 'operator'>) => void
+
+  finishOrder: (orderId: string, paymentMethod: PaymentMethod, emitNfse: boolean) => void
+
   storageMetrics: StorageMetrics
   resetDataToDefault: () => void
   clearAllData: () => void
@@ -147,6 +164,9 @@ const STORAGE_KEYS = {
   deferred: 'wr_deferred_v6',
   fiscal: 'wr_fiscal_v6',
   theme: 'wr_theme',
+  authRole: 'wr_auth_role_v1',
+  activeCashShift: 'wr_active_cash_shift_v6',
+  cashShiftsHistory: 'wr_cash_shifts_v6',
 } as const
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -189,6 +209,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [fiscalSettings, setFiscalSettings] = useState<FiscalSettings>(() =>
     loadLocalSafe(STORAGE_KEYS.fiscal, DEFAULT_FISCAL_SETTINGS)
   )
+
+  // Autenticação de Operadores (Dono: 2026 / Caixa: 1234)
+  const [currentUserRole, setCurrentUserRole] = useState<UserRole | null>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.authRole)
+    return saved === 'dono' || saved === 'caixa' ? saved : null
+  })
+
+  // Caixa Diário (Turno atual aberto e histórico)
+  const [activeShift, setActiveShift] = useState<DailyCashShift | null>(() =>
+    loadLocalSafe(STORAGE_KEYS.activeCashShift, null)
+  )
+  const [shiftHistory, setShiftHistory] = useState<DailyCashShift[]>(() =>
+    loadLocalSafe(STORAGE_KEYS.cashShiftsHistory, [])
+  )
+
+  useEffect(() => {
+    if (currentUserRole) {
+      localStorage.setItem(STORAGE_KEYS.authRole, currentUserRole)
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.authRole)
+    }
+  }, [currentUserRole])
+
+  useEffect(() => {
+    saveLocalDebounced(STORAGE_KEYS.activeCashShift, activeShift)
+  }, [activeShift])
+
+  useEffect(() => {
+    saveLocalDebounced(STORAGE_KEYS.cashShiftsHistory, shiftHistory)
+  }, [shiftHistory])
 
   // Aplicar tema claro/escuro no <html>
   useEffect(() => {
@@ -259,6 +309,121 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currency: 'BRL',
     }).format(val || 0)
   }, [])
+
+  const login = useCallback(
+    (pin: string) => {
+      const cleanPin = pin.trim()
+      if (cleanPin === '2026') {
+        setCurrentUserRole('dono')
+        showToast('Bem-vindo, Dono! Acesso administrativo liberado.', 'success')
+        return { success: true, role: 'dono' as UserRole }
+      }
+      if (cleanPin === '1234') {
+        setCurrentUserRole('caixa')
+        showToast('Bem-vindo, Operador de Caixa! Sistema aberto para lançamentos.', 'success')
+        return { success: true, role: 'caixa' as UserRole }
+      }
+      showToast('Senha de 4 dígitos incorreta! Tente novamente.', 'warning')
+      return { success: false, message: 'Senha incorreta' }
+    },
+    [showToast]
+  )
+
+  const logout = useCallback(() => {
+    setCurrentUserRole(null)
+    showToast('Sessão encerrada com segurança.', 'info')
+  }, [showToast])
+
+  const openCashShift = useCallback(
+    (initialAmount: number, notes?: string) => {
+      if (activeShift) {
+        showToast('Já existe um turno de caixa aberto!', 'warning')
+        return
+      }
+      const newShift: DailyCashShift = {
+        id: `shift-${Date.now()}`,
+        date: new Date().toLocaleDateString('pt-BR'),
+        openedAt: new Date().toISOString(),
+        status: 'aberto',
+        openedBy: currentUserRole || 'dono',
+        initialAmount: Number(initialAmount) || 0,
+        movements: [],
+        notes,
+      }
+      setActiveShift(newShift)
+      showToast(`Caixa diário aberto com sucesso! Fundo inicial: ${formatCurrency(newShift.initialAmount)}`, 'success')
+    },
+    [activeShift, currentUserRole, formatCurrency, showToast]
+  )
+
+  const addCashMovement = useCallback(
+    (movement: Omit<CashMovement, 'id' | 'timestamp' | 'timeFormatted' | 'operator'>) => {
+      if (!activeShift) {
+        showToast('O caixa diário está fechado! Abra o caixa para registrar movimentações.', 'warning')
+        return
+      }
+      const now = new Date()
+      const newMovement: CashMovement = {
+        ...movement,
+        id: `mov-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: now.toISOString(),
+        timeFormatted: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        operator: currentUserRole || 'caixa',
+      }
+      setActiveShift(prev => {
+        if (!prev) return null
+        return {
+          ...prev,
+          movements: [newMovement, ...prev.movements],
+        }
+      })
+      showToast(`Movimentação de ${formatCurrency(movement.amount)} registrada no caixa!`)
+    },
+    [activeShift, currentUserRole, formatCurrency, showToast]
+  )
+
+  const closeCashShift = useCallback(
+    (finalPhysicalCash: number, notes?: string) => {
+      if (!activeShift) {
+        showToast('Não há caixa aberto para ser fechado.', 'warning')
+        return
+      }
+
+      // Cálculo do dinheiro esperado em caixa: Fundo inicial + Entradas em dinheiro + Suprimentos - Sangrias - Despesas em dinheiro
+      const cashInEntries = activeShift.movements
+        .filter(m => (m.type === 'entrada_os' || m.type === 'suprimento') && m.paymentMethod === 'dinheiro')
+        .reduce((sum, m) => sum + m.amount, 0)
+
+      const cashOutExits = activeShift.movements
+        .filter(m => (m.type === 'sangria' || m.type === 'despesa') && m.paymentMethod === 'dinheiro')
+        .reduce((sum, m) => sum + m.amount, 0)
+
+      const expectedCash = activeShift.initialAmount + cashInEntries - cashOutExits
+      const difference = Number((finalPhysicalCash - expectedCash).toFixed(2))
+
+      const closedShift: DailyCashShift = {
+        ...activeShift,
+        closedAt: new Date().toISOString(),
+        status: 'fechado',
+        closedBy: currentUserRole || 'dono',
+        finalPhysicalCash,
+        difference,
+        notes: notes ? `${activeShift.notes ? activeShift.notes + ' | ' : ''}${notes}` : activeShift.notes,
+      }
+
+      setShiftHistory(prev => [closedShift, ...prev])
+      setActiveShift(null)
+
+      if (difference === 0) {
+        showToast('Caixa fechado com sucesso! Conferência exata (100% batido).', 'success')
+      } else if (difference > 0) {
+        showToast(`Caixa fechado! Sobra de ${formatCurrency(difference)}.`, 'info')
+      } else {
+        showToast(`Caixa fechado com quebra/falta de ${formatCurrency(Math.abs(difference))}.`, 'warning')
+      }
+    },
+    [activeShift, currentUserRole, formatCurrency, showToast]
+  )
 
   const sendWhatsApp = useCallback((phone: string, text: string) => {
     const cleanNumber = phone.replace(/\D/g, '')
@@ -399,6 +564,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   </Nfse>
 </CompNfse>`
 
+      const paymentDescMap: Record<PaymentMethod, string> = {
+        pix: 'PAGO VIA PIX',
+        dinheiro: 'PAGO EM DINHEIRO',
+        cartao_debito: 'PAGO NO CARTÃO DE DÉBITO',
+        cartao_credito: 'PAGO NO CARTÃO DE CRÉDITO',
+        pagar_depois: 'FATURADO / A PRAZO',
+        boleto: 'BOLETO BANCÁRIO',
+        pendente: 'A DEFINIR',
+      }
+      const paymentMethodDescription = targetOrder.paymentMethod
+        ? paymentDescMap[targetOrder.paymentMethod] || 'PAGO'
+        : 'PAGAMENTO À VISTA'
+
       const newInvoice: FiscalInvoice = {
         invoiceNumber: formattedInvNumber,
         rpsNumber: String(targetOrder.number.replace(/\D/g, '') || invNum),
@@ -413,11 +591,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         issRate: fiscalSettings.issRate,
         issValue,
         taxRegime: fiscalSettings.taxRegime === 'simples_nacional' ? 'Simples Nacional' : 'Lucro Presumido',
-        danfseUrl: `https://portonacional.to.gov.br/nfse/consulta?codigo=${verificationCode}`,
+        danfseUrl: `https://www.nfse.gov.br/emissornacional/ConsultaPublica`,
         xmlData,
         district: 'Luzimangues',
         city: 'Porto Nacional',
         cityCodeIBGE: ibgeCode,
+        paymentMethodDescription,
       }
 
       updateOrder(orderId, { fiscalInvoice: newInvoice })
@@ -435,6 +614,102 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return newInvoice
     },
     [orders, fiscalSettings, updateOrder, showToast]
+  )
+
+  const finishOrder = useCallback(
+    (orderId: string, paymentMethod: PaymentMethod, emitNfse: boolean) => {
+      const order = orders.find(o => o.id === orderId)
+      if (!order) return
+
+      const paymentDescMap: Record<PaymentMethod, string> = {
+        pix: 'PAGO VIA PIX',
+        dinheiro: 'PAGO EM DINHEIRO',
+        cartao_debito: 'PAGO NO CARTÃO DE DÉBITO',
+        cartao_credito: 'PAGO NO CARTÃO DE CRÉDITO',
+        pagar_depois: 'FATURADO / A PRAZO',
+        boleto: 'BOLETO BANCÁRIO',
+        pendente: 'A DEFINIR',
+      }
+
+      const updatedOrder: Partial<ServiceOrder> = {
+        status: 'pronto',
+        paymentMethod,
+        date: order.date || new Date().toLocaleDateString('pt-BR'),
+      }
+
+      updateOrder(orderId, updatedOrder)
+
+      // Atualiza ou insere registro financeiro como pago
+      if (paymentMethod !== 'pagar_depois') {
+        const finRecord: FinancialRecord = {
+          id: `fin-${Date.now()}`,
+          type: 'receita',
+          category: 'Serviços & Peças',
+          description: `${order.number} (Finalizada) - ${order.vehicleModel}`,
+          amount: order.totalAmount,
+          entityName: order.clientName,
+          dueDate: new Date().toLocaleDateString('pt-BR'),
+          paymentDate: new Date().toLocaleDateString('pt-BR'),
+          status: 'pago',
+          orderId: order.id,
+        }
+        setFinancial(prev => [finRecord, ...prev])
+        void upsertDeltaRow('financial_records', finRecord.id, finRecord, {
+          type: finRecord.type,
+          status: finRecord.status,
+        })
+      }
+
+      // Se houver turno de caixa aberto e não for a prazo, registra no caixa diário
+      if (activeShift && paymentMethod !== 'pagar_depois') {
+        addCashMovement({
+          type: 'entrada_os',
+          description: `Recebimento ${order.number} - ${order.clientName}`,
+          amount: order.totalAmount,
+          paymentMethod,
+          orderId: order.id,
+          orderNumber: order.number,
+        })
+      }
+
+      // Se for a prazo / fiado, cria na aba A Prazo
+      if (paymentMethod === 'pagar_depois') {
+        const defaultDue = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        const deferred: DeferredPayment = {
+          id: `def-${Date.now() + 1}`,
+          clientId: order.clientId,
+          clientName: order.clientName,
+          clientPhone: order.clientPhone,
+          vehicleInfo: `${order.vehicleModel} • ${order.vehiclePlate}`,
+          orderId: order.id,
+          orderNumber: order.number,
+          description: `${order.number} - ${order.serviceDescription}`,
+          totalAmount: order.totalAmount,
+          paidAmount: 0,
+          createdAt: new Date().toLocaleDateString('pt-BR'),
+          dueDate: order.paymentDueDate || defaultDue,
+          payments: [],
+          notes: order.observations || 'Finalizada com pagamento a prazo.',
+        }
+        setDeferredPayments(prev => [deferred, ...prev])
+        void upsertDeltaRow('deferred_payments', deferred.id, deferred, {
+          client_id: deferred.clientId,
+          due_date: deferred.dueDate,
+        })
+      }
+
+      // Emissão da Nota Fiscal se solicitada
+      if (emitNfse) {
+        setTimeout(() => {
+          issueFiscalInvoice(orderId)
+        }, 120)
+      }
+
+      showToast(`${order.number} finalizada! Pagamento: ${paymentDescMap[paymentMethod] || paymentMethod}`, 'success')
+    },
+    [orders, activeShift, updateOrder, addCashMovement, issueFiscalInvoice, showToast]
   )
 
   const cancelFiscalInvoice = useCallback(
@@ -920,6 +1195,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toasts,
         showToast,
         dismissToast,
+        currentUserRole,
+        login,
+        logout,
+        activeShift,
+        shiftHistory,
+        openCashShift,
+        closeCashShift,
+        addCashMovement,
+        finishOrder,
         storageMetrics,
         resetDataToDefault,
         clearAllData,

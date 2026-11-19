@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { useApp } from '../context/AppContext'
 import { DeferredPayment, DeferredPaymentEntry, DeferredStatus } from '../types'
+import { ClientAutocomplete } from '../components/ClientAutocomplete'
 import {
   Wallet,
   Plus,
@@ -56,7 +57,8 @@ export const DeferredPaymentsView: React.FC = () => {
 
   // Modal Nova Conta a Prazo
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
-  const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id || '')
+  const [selectedClientId, setSelectedClientId] = useState('')
+  const [clientNameInput, setClientNameInput] = useState('')
   const [selectedVehicleInfo, setSelectedVehicleInfo] = useState('')
   const [description, setDescription] = useState('')
   const [totalAmount, setTotalAmount] = useState<number>(0)
@@ -136,10 +138,9 @@ export const DeferredPaymentsView: React.FC = () => {
   const clientVehiclesForForm = vehicles.filter(v => v.clientId === selectedClientId)
 
   const handleOpenNewModal = () => {
-    const firstClient = clients[0]
-    setSelectedClientId(firstClient?.id || '')
-    const firstVeh = vehicles.find(v => v.clientId === firstClient?.id)
-    setSelectedVehicleInfo(firstVeh ? `${firstVeh.brand} ${firstVeh.model} • ${firstVeh.plate}` : '')
+    setSelectedClientId('')
+    setClientNameInput('')
+    setSelectedVehicleInfo('')
     setDescription('')
     setTotalAmount(0)
     setPaidInitial(0)
@@ -150,13 +151,17 @@ export const DeferredPaymentsView: React.FC = () => {
 
   const handleCreateDeferred = (e: React.FormEvent) => {
     e.preventDefault()
-    const client = clients.find(c => c.id === selectedClientId)
-    if (!client || !description.trim() || totalAmount <= 0) return
+    if (!clientNameInput.trim() || !description.trim() || totalAmount <= 0) return
+
+    const existingClient = clients.find(c => c.id === selectedClientId || c.name.toLowerCase() === clientNameInput.trim().toLowerCase())
+    const cId = existingClient?.id || `cli-${Date.now()}`
+    const cName = existingClient?.name || clientNameInput.trim()
+    const cPhone = existingClient?.phone || '(63) 99234-5678'
 
     addDeferredPayment({
-      clientId: client.id,
-      clientName: client.name,
-      clientPhone: client.phone,
+      clientId: cId,
+      clientName: cName,
+      clientPhone: cPhone,
       vehicleInfo: selectedVehicleInfo || undefined,
       description: description.trim(),
       totalAmount: Number(totalAmount),
@@ -507,26 +512,24 @@ export const DeferredPaymentsView: React.FC = () => {
             <form onSubmit={handleCreateDeferred} className="mt-4 space-y-3.5 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-wr-muted font-semibold mb-1">Cliente *</label>
-                  <select
-                    value={selectedClientId}
-                    onChange={e => {
-                      const nextCid = e.target.value
-                      setSelectedClientId(nextCid)
-                      const veh = vehicles.find(v => v.clientId === nextCid)
+                  <label className="block text-wr-muted font-semibold mb-1">
+                    Cliente (digite para autocompletar) *
+                  </label>
+                  <ClientAutocomplete
+                    value={clientNameInput}
+                    onChange={name => setClientNameInput(name)}
+                    onSelectClient={c => {
+                      setSelectedClientId(c.id)
+                      setClientNameInput(c.name)
+                      const veh = vehicles.find(v => v.clientId === c.id)
                       setSelectedVehicleInfo(
                         veh ? `${veh.brand} ${veh.model} • ${veh.plate}` : ''
                       )
                     }}
-                    className="wr-input"
+                    placeholder="Digite o nome do cliente..."
                     required
-                  >
-                    {clients.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    autoFocus
+                  />
                 </div>
 
                 <div>

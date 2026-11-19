@@ -15,10 +15,12 @@ import {
   Package,
   Wallet,
   X,
+  LogOut,
 } from 'lucide-react'
 
 const TAB_TITLES: Record<string, { title: string; subtitle: string }> = {
   inicio: { title: 'Visão Geral', subtitle: 'Resumo operacional da oficina em tempo real' },
+  caixa: { title: 'Caixa Diário', subtitle: 'Abertura, fechamento e controle de gaveta' },
   os: { title: 'Ordens de Serviço', subtitle: 'Atendimentos, checklist visual e emissão de NFS-e' },
   atendimentos: { title: 'Agendamentos', subtitle: 'Agenda do dia e controle dos boxes' },
   clientes: { title: 'Clientes & Veículos', subtitle: 'Cadastro de pessoas e todos os veículos vinculados' },
@@ -45,6 +47,8 @@ export const Header: React.FC = () => {
     setSelectedClientId,
     setSelectedOrderForModal,
     formatCurrency,
+    currentUserRole,
+    logout,
   } = useApp()
 
   const [showNotifications, setShowNotifications] = useState(false)
@@ -116,16 +120,8 @@ export const Header: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-30 flex h-18 min-h-[72px] items-center justify-between gap-4 border-b border-wr-border bg-wr-surface/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 select-none">
-      {/* Left: Mobile trigger + Page title */}
+      {/* Left: Page title */}
       <div className="flex items-center gap-3 min-w-0">
-        <button
-          onClick={() => setMobileMenuOpen(true)}
-          className="rounded-xl border border-wr-border bg-wr-elevated p-2 text-wr-text hover:border-wr-borderHover lg:hidden"
-          aria-label="Abrir menu"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-
         <div className="min-w-0">
           <h1 className="text-sm sm:text-base font-bold text-wr-text tracking-tight truncate">
             {pageMeta.title}
@@ -315,6 +311,27 @@ export const Header: React.FC = () => {
             </>
           )}
         </button>
+
+        {/* Operator Badge */}
+        {currentUserRole && (
+          <div className="flex items-center gap-1.5 rounded-xl border border-wr-border bg-wr-elevated px-2.5 py-1.5 text-xs">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                currentUserRole === 'dono' ? 'bg-wr-orange animate-pulse' : 'bg-emerald-500'
+              }`}
+            />
+            <span className="font-bold text-wr-text uppercase tracking-wider text-[11px]">
+              {currentUserRole === 'dono' ? 'Dono' : 'Caixa'}
+            </span>
+            <button
+              onClick={logout}
+              title="Trocar Operador / Bloquear"
+              className="ml-1 text-wr-muted hover:text-rose-500 transition-colors p-0.5"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Notifications */}
         <div ref={notifRef} className="relative">

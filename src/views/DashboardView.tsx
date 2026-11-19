@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useApp } from '../context/AppContext'
+import { WrLogo } from '../components/WrLogo'
 import {
   Car,
   CheckCircle2,
@@ -13,6 +14,9 @@ import {
   AlertTriangle,
   ArrowRight,
   Plus,
+  ShieldCheck,
+  MapPin,
+  CalendarDays,
 } from 'lucide-react'
 
 export const DashboardView: React.FC = () => {
@@ -24,6 +28,7 @@ export const DashboardView: React.FC = () => {
     financial,
     deferredPayments,
     stock,
+    activeShift,
     formatCurrency,
     setActiveTab,
     sendWhatsApp,
@@ -75,7 +80,64 @@ export const DashboardView: React.FC = () => {
   const diffPercent = Math.round(((selectedDay.services - otherDaysAvg) / otherDaysAvg) * 100)
 
   return (
-    <div className="space-y-6 select-none">
+    <div className="space-y-6 select-none animate-fadeIn">
+      {/* Banner Principal com Logo Oficial da WR Mecânica */}
+      <div className="wr-card p-5 sm:p-6 border border-wr-border bg-gradient-to-r from-wr-surface via-wr-elevated to-wr-surface relative overflow-hidden">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-5 relative z-10">
+          <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+            {/* Imagem real da logo + SVG */}
+            <div className="relative shrink-0">
+              <img
+                src="/assets/real-logo.jpg"
+                alt="Logo WR Mecânica & Cia"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-contain border border-wr-border shadow-md bg-black/40 p-1"
+                onError={e => {
+                  // Fallback se a imagem falhar
+                  (e.target as HTMLElement).style.display = 'none'
+                }}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <WrLogo size="md" showSubtitle={false} />
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
+                  Sistema Operacional Ativo
+                </span>
+              </div>
+              <p className="text-xs text-wr-muted font-medium flex items-center justify-center sm:justify-start gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-wr-orange" />
+                Distrito de Luzimangues &bull; Porto Nacional - TO (IBGE: 1718204)
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setActiveTab('caixa')}
+              className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeShift
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500'
+                  : 'border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text'
+              }`}
+            >
+              <Wallet className="h-4 w-4" />
+              <span>{activeShift ? 'Caixa Aberto' : 'Abrir Caixa'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openNewOrderModal()}
+              className="wr-btn-primary px-4 py-2 text-xs font-bold"
+            >
+              <Plus className="h-4 w-4 stroke-[2.5]" />
+              <span>Nova OS</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Top 4 Intuitive KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <button

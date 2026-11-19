@@ -12,6 +12,7 @@ import {
   BarChart3,
   Settings,
   X,
+  Receipt,
 } from 'lucide-react'
 
 export const BottomNav: React.FC = () => {
@@ -20,15 +21,16 @@ export const BottomNav: React.FC = () => {
 
   const mainTabs: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'inicio', label: 'Início', icon: Home },
+    { id: 'caixa', label: 'Caixa', icon: Receipt },
     { id: 'os', label: 'OS', icon: Wrench },
     { id: 'clientes', label: 'Clientes', icon: Users },
-    { id: 'fiado', label: 'A Prazo', icon: Wallet },
   ]
 
   const extraTabs: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
+    { id: 'fiado', label: 'A Prazo', icon: Wallet },
     { id: 'atendimentos', label: 'Agendamentos', icon: CalendarDays },
-    { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
     { id: 'estoque', label: 'Estoque', icon: Package },
+    { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
     { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
     { id: 'configuracoes', label: 'Configurações', icon: Settings },
   ]

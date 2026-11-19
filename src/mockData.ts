@@ -47,6 +47,9 @@ export const DEFAULT_FISCAL_SETTINGS: FiscalSettings = {
   cep: '77500-000',
   phone: '(63) 99234-5678',
   fiscalProvider: 'emissor_nacional',
+  warrantyDaysLabor: 90,
+  warrantyDaysParts: 90,
+  warrantyTerms: 'Garantia legal de 90 dias conforme Art. 26 do Código de Defesa do Consumidor (CDC) para serviços mecânicos executados. Peças novas cobertas pela garantia do fabricante contra defeito de fabricação.',
 }
 
 // ============================================================================

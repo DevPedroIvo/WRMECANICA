@@ -12,6 +12,8 @@ import {
   BarChart3,
   Settings,
   X,
+  Receipt,
+  LogOut,
 } from 'lucide-react'
 
 export const Sidebar: React.FC = () => {
@@ -23,6 +25,9 @@ export const Sidebar: React.FC = () => {
     deferredPayments,
     mobileMenuOpen,
     setMobileMenuOpen,
+    activeShift,
+    currentUserRole,
+    logout,
   } = useApp()
 
   const pendingOrdersCount = orders.filter(
@@ -46,12 +51,19 @@ export const Sidebar: React.FC = () => {
       icon: React.FC<{ className?: string; strokeWidth?: number }>
       badge?: number
       badgeDanger?: boolean
+      customBadge?: string
     }[]
   }[] = [
     {
       label: 'Operação',
       items: [
         { id: 'inicio', label: 'Visão Geral', icon: LayoutDashboard },
+        {
+          id: 'caixa',
+          label: 'Caixa Diário',
+          icon: Receipt,
+          customBadge: activeShift ? 'Aberto' : undefined,
+        },
         { id: 'os', label: 'Ordens de Serviço', icon: ClipboardList, badge: pendingOrdersCount },
         { id: 'atendimentos', label: 'Agendamentos', icon: CalendarDays, badge: todayAppointmentsCount },
         { id: 'clientes', label: 'Clientes', icon: Users },
@@ -156,6 +168,12 @@ export const Sidebar: React.FC = () => {
                           {item.badge}
                         </span>
                       )}
+
+                      {item.customBadge && (
+                        <span className="rounded-full bg-emerald-500/20 text-emerald-500 text-[10px] font-bold px-2 py-0.5 border border-emerald-500/30">
+                          {item.customBadge}
+                        </span>
+                      )}
                     </button>
                   )
                 })}
@@ -163,6 +181,34 @@ export const Sidebar: React.FC = () => {
             </div>
           ))}
         </nav>
+
+        {/* Operador Ativo */}
+        {currentUserRole && (
+          <div className="p-3 mx-3 mb-2 rounded-xl bg-wr-elevated border border-wr-border flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <span
+                className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                  currentUserRole === 'dono' ? 'bg-wr-orange animate-pulse' : 'bg-emerald-500'
+                }`}
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-wr-text uppercase tracking-wider truncate">
+                  {currentUserRole === 'dono' ? 'Dono (2026)' : 'Caixa (1234)'}
+                </p>
+                <p className="text-[10px] text-wr-muted truncate">
+                  {activeShift ? 'Caixa Aberto' : 'Caixa Fechado'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              title="Trocar de operador / Bloquear"
+              className="text-wr-muted hover:text-rose-500 p-1 rounded-lg transition-colors shrink-0"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {/* Rodapé institucional limpo */}
         <div className="p-4 border-t border-wr-border text-center">

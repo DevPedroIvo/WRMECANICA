@@ -98,6 +98,37 @@ export interface FiscalInvoice {
   district?: string
   city?: string
   cityCodeIBGE?: string
+  paymentMethodDescription?: string
+}
+
+export type UserRole = 'dono' | 'caixa'
+
+export interface CashMovement {
+  id: string
+  timestamp: string
+  timeFormatted: string
+  type: 'entrada_os' | 'suprimento' | 'sangria' | 'despesa'
+  description: string
+  amount: number
+  paymentMethod: PaymentMethod
+  orderId?: string
+  orderNumber?: string
+  operator: UserRole
+}
+
+export interface DailyCashShift {
+  id: string
+  date: string
+  openedAt: string
+  closedAt?: string
+  status: 'aberto' | 'fechado'
+  openedBy: UserRole
+  closedBy?: UserRole
+  initialAmount: number
+  movements: CashMovement[]
+  finalPhysicalCash?: number
+  difference?: number
+  notes?: string
 }
 
 export interface ServiceOrder {
@@ -233,4 +264,7 @@ export interface FiscalSettings {
   cep?: string
   fiscalProvider?: 'emissor_nacional' | 'prefeitura_porto_nacional' | 'api_direta'
   apiToken?: string
+  warrantyDaysLabor?: number
+  warrantyDaysParts?: number
+  warrantyTerms?: string
 }

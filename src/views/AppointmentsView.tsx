@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { AppointmentStatus } from '../types'
+import { ClientAutocomplete } from '../components/ClientAutocomplete'
+import { VehicleAutocomplete } from '../components/VehicleAutocomplete'
 import {
   CalendarDays,
   Clock,
@@ -303,86 +305,52 @@ export const AppointmentsView: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateAppointment} className="mt-4 space-y-3.5 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-wr-muted font-semibold mb-1">
-                    Cliente Cadastrado
-                  </label>
-                  <select
-                    value={selectedClientId}
-                    onChange={e => handleClientPick(e.target.value)}
-                    className="wr-input"
-                  >
-                    <option value="">Informar manualmente</option>
-                    {clients.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-wr-muted font-semibold mb-1">Veículo</label>
-                  <select
-                    onChange={e => {
-                      const v = vehicles.find(x => x.id === e.target.value)
-                      if (v) {
-                        setVehicleModel(`${v.brand} ${v.model}`)
-                        setVehiclePlate(v.plate)
-                      }
-                    }}
-                    className="wr-input"
-                    disabled={clientVehicles.length === 0}
-                  >
-                    {clientVehicles.length === 0 ? (
-                      <option value="">Digite abaixo</option>
-                    ) : (
-                      clientVehicles.map(v => (
-                        <option key={v.id} value={v.id}>
-                          {v.brand} {v.model} • {v.plate}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-wr-muted font-semibold mb-1">
+                  Cliente (digite para buscar ou cadastrar) *
+                </label>
+                <ClientAutocomplete
+                  value={clientName}
+                  onChange={name => setClientName(name)}
+                  onSelectClient={c => {
+                    setSelectedClientId(c.id)
+                    setClientName(c.name)
+                    setClientPhone(c.phone)
+                    const v = vehicles.find(veh => veh.clientId === c.id)
+                    if (v) {
+                      setVehicleModel(`${v.brand} ${v.model}`)
+                      setVehiclePlate(v.plate)
+                    }
+                  }}
+                  placeholder="Digite o nome do cliente..."
+                  required
+                  autoFocus
+                />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  required
-                  value={clientName}
-                  onChange={e => setClientName(e.target.value)}
-                  placeholder="Nome do cliente *"
-                  className="wr-input"
-                />
+              <div>
+                <label className="block text-wr-muted font-semibold mb-1">Telefone WhatsApp</label>
                 <input
                   type="text"
                   value={clientPhone}
                   onChange={e => setClientPhone(e.target.value)}
-                  placeholder="Telefone"
+                  placeholder="(63) 99234-5678"
                   className="wr-input font-mono"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  required
-                  value={vehicleModel}
-                  onChange={e => setVehicleModel(e.target.value)}
-                  placeholder="Modelo do veículo *"
-                  className="wr-input"
-                />
-                <input
-                  type="text"
-                  value={vehiclePlate}
-                  onChange={e => setVehiclePlate(e.target.value)}
-                  placeholder="Placa"
-                  className="wr-input font-mono uppercase"
-                />
-              </div>
+              {/* Veículo com Autocomplete vinculado ao dono */}
+              <VehicleAutocomplete
+                clientId={selectedClientId}
+                modelValue={vehicleModel}
+                plateValue={vehiclePlate}
+                onModelChange={m => setVehicleModel(m)}
+                onPlateChange={p => setVehiclePlate(p)}
+                onSelectVehicle={v => {
+                  setVehicleModel(`${v.brand} ${v.model}`)
+                  setVehiclePlate(v.plate)
+                }}
+              />
 
               <div>
                 <label className="block text-wr-muted font-semibold mb-1">

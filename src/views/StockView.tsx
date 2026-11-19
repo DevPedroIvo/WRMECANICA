@@ -1,12 +1,14 @@
 import React, { useState } from 'react'
 import { useApp } from '../context/AppContext'
-import { Package, Search, Plus, AlertTriangle, X, CheckCircle2 } from 'lucide-react'
+import { Package, Search, Plus, AlertTriangle, X, CheckCircle2, Camera, Scan } from 'lucide-react'
+import { BarcodeScannerModal } from '../components/BarcodeScannerModal'
 
 export const StockView: React.FC = () => {
   const { stock, addStockItem, adjustStockQuantity, formatCurrency } = useApp()
   const [searchTerm, setSearchTerm] = useState('')
   const [onlyLow, setOnlyLow] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
 
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
@@ -116,6 +118,17 @@ export const StockView: React.FC = () => {
             className="wr-input pl-10"
           />
         </div>
+
+        {/* Botão de Leitor de Código de Barras pela Câmera */}
+        <button
+          type="button"
+          onClick={() => setIsScannerOpen(true)}
+          className="wr-btn-secondary px-3.5 py-2 text-xs font-semibold flex items-center gap-2 hover:border-wr-orange"
+          title="Ler código de barras com a câmera do celular"
+        >
+          <Camera className="h-4 w-4 text-wr-orange" />
+          <span>Escanear Código</span>
+        </button>
 
         <button
           onClick={() => setOnlyLow(prev => !prev)}
@@ -298,6 +311,14 @@ export const StockView: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Scanner de Código de Barras via Câmera */}
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onDetected={scannedCode => {
+          setSearchTerm(scannedCode)
+        }}
+      />
     </div>
   )
 }

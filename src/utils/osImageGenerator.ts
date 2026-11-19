@@ -295,21 +295,18 @@ export function generateOsCanvas(order: ServiceOrder, info: WorkshopInfo = DEFAU
 
     y += 85
 
-    // Signatures
-    ctx.strokeStyle = '#353945'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(80, y)
-    ctx.lineTo(340, y)
-    ctx.moveTo(width - 340, y)
-    ctx.lineTo(width - 80, y)
-    ctx.stroke()
+    // Aprovação Verbal do Cliente (sem campos de assinatura manual)
+    ctx.fillStyle = '#12141a'
+    ctx.fillRect(30, y - 10, width - 60, 44)
+    ctx.strokeStyle = '#10B981'
+    ctx.lineWidth = 1.5
+    ctx.strokeRect(30, y - 10, width - 60, 44)
 
-    ctx.font = '11px sans-serif'
-    ctx.fillStyle = '#A5A5A5'
+    ctx.font = 'bold 12px sans-serif'
+    ctx.fillStyle = '#10B981'
     ctx.textAlign = 'center'
-    ctx.fillText('Assinatura do Cliente', 210, y + 20)
-    ctx.fillText(info.name, width - 210, y + 20)
+    ctx.fillText('✓ APROVAÇÃO VERBAL DO CLIENTE: Serviços e peças autorizados para início imediato', width / 2, y + 17)
+    ctx.textAlign = 'left'
 
     resolve(canvas)
   })
