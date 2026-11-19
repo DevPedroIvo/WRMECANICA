@@ -921,7 +921,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const paymentDesc = describePayment(paymentMethod, installments)
 
       const updatedOrder: Partial<ServiceOrder> = {
-        status: 'pronto',
+        status: 'pago',
         paymentMethod,
         paymentInstallments: paymentMethod === 'cartao_credito' ? installments || 1 : undefined,
         discount: validDiscount > 0 ? validDiscount : undefined,
@@ -1302,7 +1302,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const statusLabels: Record<ServiceOrder['status'], string> = {
         aguardando: 'Aguardando',
         andamento: 'Em Andamento',
-        pronto: 'Concluído / Pronto',
+        pronto: 'Pronto p/ Retirada',
+        pago: 'Paga / Concluída',
         cancelado: 'Cancelado',
       }
       sendAppNotification('Status da OS Atualizado', {

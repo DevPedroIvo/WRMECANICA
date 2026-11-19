@@ -60,7 +60,7 @@ export interface OrderItem {
   cnae?: string        // CNAE (ex: 4520-0/01)
 }
 
-export type OrderStatus = 'aguardando' | 'andamento' | 'pronto' | 'cancelado'
+export type OrderStatus = 'aguardando' | 'andamento' | 'pronto' | 'pago' | 'cancelado'
 
 export type PaymentMethod =
   | 'pix'

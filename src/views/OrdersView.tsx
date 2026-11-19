@@ -4,12 +4,9 @@ import { WrLogo } from '../components/WrLogo'
 import {
   ServiceOrder,
   FuelStatus,
-  TireCondition,
   OrderItem,
   OrderStatus,
   PaymentMethod,
-  VehicleInspectionChecklist,
-  VisualItemStatus,
   ServicePreset,
 } from '../types'
 import { generateOsCanvas, DEFAULT_WORKSHOP_INFO } from '../utils/osImageGenerator'
@@ -36,7 +33,6 @@ import {
   ExternalLink,
   Sparkles,
   ShieldCheck,
-  CheckSquare,
   FileCheck2,
   Wallet,
   Eye,
@@ -65,31 +61,6 @@ const PRE_REGISTERED_SERVICES = [
   { name: 'Substituição de Embreagem Completa', partsCost: 650, laborCost: 450 },
 ]
 
-const VISUAL_CHECKLIST_ITEMS: {
-  key: keyof Omit<VehicleInspectionChecklist, 'bodyworkDamages'>
-  label: string
-}[] = [
-  { key: 'headlights', label: 'Faróis' },
-  { key: 'taillights', label: 'Lanternas / Setas' },
-  { key: 'paintwork', label: 'Pintura / Lataria' },
-  { key: 'glass', label: 'Vidros / Para-brisa' },
-  { key: 'mirrors', label: 'Retrovisores' },
-  { key: 'bumpers', label: 'Para-choques' },
-  { key: 'wipers', label: 'Limpadores' },
-  { key: 'wheelsSpare', label: 'Rodas / Estepe' },
-]
-
-const DEFAULT_VISUAL_CHECKLIST: VehicleInspectionChecklist = {
-  headlights: 'ok',
-  taillights: 'ok',
-  paintwork: 'ok',
-  glass: 'ok',
-  mirrors: 'ok',
-  bumpers: 'ok',
-  wipers: 'ok',
-  wheelsSpare: 'ok',
-  bodyworkDamages: '',
-}
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   pix: 'Pix',
@@ -242,14 +213,6 @@ export const OrdersView: React.FC = () => {
   const [mileage, setMileage] = useState<number>(0)
   const [fuelLevel, setFuelLevel] = useState<FuelStatus>('medio')
 
-  // Pneus (4 posições)
-  const [tireFrontLeft, setTireFrontLeft] = useState<TireCondition>('bom')
-  const [tireFrontRight, setTireFrontRight] = useState<TireCondition>('bom')
-  const [tireRearLeft, setTireRearLeft] = useState<TireCondition>('bom')
-  const [tireRearRight, setTireRearRight] = useState<TireCondition>('bom')
-
-  // Checklist visual enxuto (faróis, pintura, vidros, retrovisores, etc.)
-  const [checklist, setChecklist] = useState<VehicleInspectionChecklist>(DEFAULT_VISUAL_CHECKLIST)
 
   const [mainServiceDesc, setMainServiceDesc] = useState('')
   const [mechanicAssigned, setMechanicAssigned] = useState(mechanics?.[0] || 'Roberto Silva')
@@ -401,11 +364,6 @@ export const OrdersView: React.FC = () => {
     }
 
     setFuelLevel('medio')
-    setTireFrontLeft('bom')
-    setTireFrontRight('bom')
-    setTireRearLeft('bom')
-    setTireRearRight('bom')
-    setChecklist(DEFAULT_VISUAL_CHECKLIST)
     setObservations('')
     setPaymentMethod('pix')
     setPaymentDueDate(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
@@ -630,16 +588,6 @@ export const OrdersView: React.FC = () => {
       vehiclePlate: vehiclePlate.toUpperCase().trim() || 'SEM PLACA',
       mileage: Number(mileage) || 0,
       fuelLevel,
-      tires: {
-        frontLeft: tireFrontLeft,
-        frontRight: tireFrontRight,
-        rearLeft: tireRearLeft,
-        rearRight: tireRearRight,
-      },
-      inspection: {
-        ...checklist,
-        bodyworkDamages: checklist.bodyworkDamages?.trim() || undefined,
-      },
       mechanicAssigned,
       serviceDescription: mainServiceDesc.trim() || finalItems[0].serviceDescription,
       items: finalItems,
@@ -676,8 +624,9 @@ export const OrdersView: React.FC = () => {
 
     let matchesFilter = true
     if (filterStatus === 'ativas') {
-      // Exibe apenas as ordens ativas na oficina. Ao concluir pagamento ou cancelar, a OS some desta tela!
-      matchesFilter = o.status === 'aguardando' || o.status === 'andamento'
+      // Exibe todas as ordens ativas na oficina (Aguardando, Em andamento e Pronto).
+      // A OS SÓ SOME QUANDO FOR MARCADA COMO PAGA OU CANCELADA!
+      matchesFilter = o.status !== 'pago' && o.status !== 'cancelado'
     } else if (filterStatus === 'todos') {
       matchesFilter = true
     } else {
@@ -704,9 +653,16 @@ export const OrdersView: React.FC = () => {
         )
       case 'pronto':
         return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400">
+            <Wrench className="h-3 w-3" />
+            Pronto p/ Retirada
+          </span>
+        )
+      case 'pago':
+        return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="h-3 w-3" />
-            Pronto
+            Pago
           </span>
         )
       case 'cancelado':
@@ -725,19 +681,6 @@ export const OrdersView: React.FC = () => {
     }
   }
 
-  const getFuelBadge = (level: FuelStatus) => {
-    if (level === 'reserva') return <span className="font-bold text-rose-500">Reserva</span>
-    if (level === 'cheio') return <span className="font-bold text-emerald-500">Cheio</span>
-    return <span className="font-bold text-amber-500">Médio</span>
-  }
-
-  const toggleVisualChecklist = (
-    key: keyof Omit<VehicleInspectionChecklist, 'bodyworkDamages'>,
-    val: VisualItemStatus
-  ) => {
-    setChecklist(prev => ({ ...prev, [key]: val }))
-  }
-
   return (
     <div className="space-y-6 select-none">
       {/* Header */}
@@ -748,7 +691,7 @@ export const OrdersView: React.FC = () => {
             Ordens de Serviço &amp; NFS-e
           </h2>
           <p className="text-xs text-wr-muted mt-0.5">
-            Vistoria visual rápida (faróis, pintura, pneus), garantia de 90 dias e emissão da NFS-e de Porto Nacional
+            Gestão de serviços da oficina, emissão da NFS-e de Porto Nacional e envio via WhatsApp
           </p>
         </div>
 
@@ -773,10 +716,9 @@ export const OrdersView: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-wr-border bg-wr-surface p-1">
           {[
-            { id: 'ativas', label: 'Em Aberto' },
-            { id: 'aguardando', label: 'Aguardando' },
-            { id: 'andamento', label: 'Em andamento' },
-            { id: 'pronto', label: 'Concluídas / Pagas' },
+            { id: 'ativas', label: 'Na Oficina (Ativas)' },
+            { id: 'pronto', label: 'Prontos' },
+            { id: 'pago', label: 'Pagas' },
             { id: 'cancelado', label: 'Canceladas' },
             { id: 'todos', label: 'Todas as OS' },
           ].map(tab => (
@@ -795,26 +737,24 @@ export const OrdersView: React.FC = () => {
         </div>
       </div>
 
-      {/* Orders Grid */}
+      {/* Orders Grid - Minimalista com os 5 botões solicitados */}
       {filteredOrders.length === 0 ? (
         <div className="wr-card p-10 text-center text-xs text-wr-muted">
           Nenhuma ordem de serviço encontrada.
         </div>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredOrders.map(order => {
             const hasFiscal = order.fiscalInvoice && order.fiscalInvoice.status === 'autorizada'
-            const isDeferred = order.paymentMethod === 'pagar_depois'
 
             return (
               <div
                 key={order.id}
-                onClick={() => setSelectedOrderForModal(order)}
-                className="wr-card-interactive p-4 sm:p-5 cursor-pointer flex flex-col justify-between gap-3 group active:scale-[0.99] transition-all hover:border-wr-orange shadow-sm"
+                className="wr-card p-4 flex flex-col justify-between gap-3 shadow-sm hover:border-wr-orange/60 transition-all"
               >
-                {/* Linha Superior: Número da OS, Data e Status */}
+                {/* Linha Superior: Número da OS, Data, NFS-e e Seletor de Status */}
                 <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-wr-border">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-mono text-xs font-bold text-wr-orange bg-wr-elevated px-2.5 py-1 rounded-lg border border-wr-border">
                       {order.number}
                     </span>
@@ -825,58 +765,128 @@ export const OrdersView: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  {getStatusBadge(order.status)}
+
+                  {/* Seletor rápido de Status */}
+                  <select
+                    value={order.status}
+                    onChange={e => {
+                      const newSt = e.target.value as OrderStatus
+                      if (newSt === 'pago') {
+                        setFinalizingOrder(order)
+                      } else {
+                        updateOrderStatus(order.id, newSt)
+                      }
+                    }}
+                    className={`text-[11px] font-bold py-1 px-2.5 rounded-full border outline-none cursor-pointer transition-all ${
+                      order.status === 'pago'
+                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                        : order.status === 'pronto'
+                        ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30'
+                        : order.status === 'andamento'
+                        ? 'bg-wr-orange/15 text-wr-orange border-wr-orange/30'
+                        : order.status === 'cancelado'
+                        ? 'bg-rose-500/15 text-rose-500 border-rose-500/30'
+                        : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                    }`}
+                    title="Alterar status do atendimento"
+                  >
+                    <option value="aguardando">Aguardando</option>
+                    <option value="andamento">Em Andamento</option>
+                    <option value="pronto">Pronto</option>
+                    <option value="pago">Marcar como Paga</option>
+                    <option value="cancelado">Cancelada</option>
+                  </select>
                 </div>
 
-                {/* Informações Principais do Card: Nome, Carro e Serviço */}
-                <div className="space-y-2">
-                  {/* 1. Nome do Cliente */}
+                {/* Conteúdo Minimizado: Cliente, Carro, Serviço e Total */}
+                <div className="space-y-1.5 text-xs">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="h-8 w-8 rounded-xl bg-wr-orange/15 border border-wr-orange/30 flex items-center justify-center text-wr-orange shrink-0">
-                        <User className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-[10px] uppercase font-bold text-wr-muted block">Cliente</span>
-                        <h3 className="text-sm font-bold text-wr-text group-hover:text-wr-orange transition-colors truncate">
-                          {order.clientName}
-                        </h3>
-                      </div>
-                    </div>
-                    <span className="font-mono text-xs font-bold bg-wr-elevated border border-wr-border px-2.5 py-1 rounded-lg text-wr-text shrink-0">
+                    <span className="font-bold text-wr-text text-sm truncate">
+                      {order.clientName}
+                    </span>
+                    <span className="font-mono text-xs font-bold bg-wr-elevated border border-wr-border px-2 py-0.5 rounded text-wr-text shrink-0">
                       {order.vehiclePlate}
                     </span>
                   </div>
 
-                  {/* 2. Carro */}
-                  <div className="flex items-center gap-2 text-xs text-wr-gold font-bold bg-wr-elevated/60 border border-wr-border/70 rounded-xl px-3 py-2">
-                    <Car className="h-4 w-4 shrink-0 text-wr-gold" />
+                  <div className="text-[11px] text-wr-muted flex items-center justify-between gap-2">
                     <span className="truncate">{order.vehicleModel}</span>
-                  </div>
-
-                  {/* 3. Serviço Principal */}
-                  <div className="rounded-xl bg-wr-surface border border-wr-border p-3 text-xs space-y-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-wr-muted block">
-                      Serviço
-                    </span>
-                    <p className="font-semibold text-wr-text line-clamp-2 text-xs">
-                      {order.serviceDescription || 'Serviço Geral'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Rodapé: Valor Total e Ação de Toque */}
-                <div className="pt-2.5 border-t border-wr-border flex items-center justify-between text-xs">
-                  <div>
-                    <span className="text-[10px] text-wr-muted font-bold uppercase block">Total</span>
-                    <span className="font-mono text-base font-extrabold text-wr-orange">
+                    <span className="font-mono font-bold text-wr-orange text-sm shrink-0">
                       {formatCurrency(order.totalAmount || 0)}
                     </span>
                   </div>
 
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-wr-orange/10 border border-wr-orange/20 text-xs font-bold text-wr-orange group-hover:bg-wr-orange group-hover:text-white transition-all shadow-xs">
-                    Abrir Detalhes <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
+                  {order.serviceDescription && (
+                    <p className="text-[11px] text-wr-muted line-clamp-1 italic">
+                      {order.serviceDescription}
+                    </p>
+                  )}
+                </div>
+
+                {/* Os 5 Botões Exclusivos Solicitados */}
+                <div className="pt-2.5 border-t border-wr-border grid grid-cols-5 gap-1.5">
+                  {/* 1. WhatsApp */}
+                  <button
+                    type="button"
+                    onClick={() => setWhatsAppModalOrder(order)}
+                    className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 transition-all text-[11px] font-bold"
+                    title="Enviar pelo WhatsApp"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    <span className="truncate">WhatsApp</span>
+                  </button>
+
+                  {/* 2. Nota Fiscal */}
+                  <button
+                    type="button"
+                    onClick={() => setDanfseModalOrder(order)}
+                    className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/25 transition-all text-[11px] font-bold"
+                    title="Emitir ou Visualizar Nota Fiscal"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    <span className="truncate">Nota Fiscal</span>
+                  </button>
+
+                  {/* 3. O.S */}
+                  <button
+                    type="button"
+                    onClick={() => setPdfModalOrder(order)}
+                    className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-wr-orange/10 hover:bg-wr-orange/20 text-wr-orange border border-wr-orange/25 transition-all text-[11px] font-bold"
+                    title="Visualizar e Imprimir O.S"
+                  >
+                    <ClipboardList className="h-3.5 w-3.5" />
+                    <span className="truncate">O.S</span>
+                  </button>
+
+                  {/* 4. Lápis para alterar */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedOrderForModal(order)
+                      setIsEditingItems(true)
+                    }}
+                    className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25 transition-all text-[11px] font-bold"
+                    title="Alterar Valores, Serviços e Peças"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                    <span className="truncate">Alterar</span>
+                  </button>
+
+                  {/* 5. Cancelar */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(`Deseja realmente cancelar a OS #${order.number}?`)) {
+                        updateOrderStatus(order.id, 'cancelado')
+                        showToast(`OS #${order.number} cancelada.`, 'info')
+                      }
+                    }}
+                    className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/25 transition-all text-[11px] font-bold"
+                    title="Cancelar esta Ordem de Serviço"
+                  >
+                    <XCircle className="h-3.5 w-3.5" />
+                    <span className="truncate">Cancelar</span>
+                  </button>
                 </div>
               </div>
             )
@@ -914,23 +924,28 @@ export const OrdersView: React.FC = () => {
             </div>
 
             {/* Status Switcher */}
-            <div className="wr-surface-muted p-4 space-y-2">
+            <div className="wr-surface-muted p-3.5 space-y-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-wr-muted block">
                 Status do Serviço
               </span>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {(
-                  [
-                    { id: 'aguardando', label: 'Aguardando', active: 'bg-amber-500 text-white dark:text-black border-amber-500' },
-                    { id: 'andamento', label: 'Em Andamento', active: 'bg-wr-orange text-white dark:text-[#0B0C10] border-wr-orange' },
-                    { id: 'pronto', label: 'Pronto', active: 'bg-emerald-600 text-white border-emerald-600' },
-                    { id: 'cancelado', label: 'Cancelado', active: 'bg-rose-600 text-white border-rose-600' },
-                  ] as const
-                ).map(st => (
+                {[
+                  { id: 'aguardando', label: 'Aguardando', active: 'bg-amber-500 text-white dark:text-black border-amber-500' },
+                  { id: 'andamento', label: 'Em Andamento', active: 'bg-wr-orange text-white dark:text-[#0B0C10] border-wr-orange' },
+                  { id: 'pronto', label: 'Pronto (Oficina)', active: 'bg-blue-600 text-white border-blue-600' },
+                  { id: 'pago', label: 'Paga (Concluir)', active: 'bg-emerald-600 text-white border-emerald-600' },
+                ].map(st => (
                   <button
                     key={st.id}
                     type="button"
-                    onClick={() => updateOrderStatus(selectedOrderForModal.id, st.id)}
+                    onClick={() => {
+                      if (st.id === 'pago') {
+                        setFinalizingOrder(selectedOrderForModal)
+                        setSelectedOrderForModal(null)
+                      } else {
+                        updateOrderStatus(selectedOrderForModal.id, st.id as OrderStatus)
+                      }
+                    }}
                     className={`py-2 rounded-xl text-xs font-bold border transition-all ${
                       selectedOrderForModal.status === st.id
                         ? st.active
@@ -942,71 +957,6 @@ export const OrdersView: React.FC = () => {
                 ))}
               </div>
             </div>
-
-            {/* Checklist Visual Simplificado Registrado */}
-            {selectedOrderForModal.inspection && (
-              <div className="wr-surface-muted p-4 space-y-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
-                  <Eye className="h-4 w-4" /> Checklist Visual de Entrada
-                </span>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-                  {VISUAL_CHECKLIST_ITEMS.map(item => {
-                    const val = selectedOrderForModal.inspection?.[item.key] || 'ok'
-                    return (
-                      <div
-                        key={item.key}
-                        className="rounded-xl bg-wr-surface border border-wr-border px-2.5 py-2 flex items-center justify-between gap-1"
-                      >
-                        <span className="text-wr-text font-medium truncate">{item.label}</span>
-                        <span
-                          className={`font-bold text-[10px] uppercase ${
-                            val === 'ok' ? 'text-emerald-500' : 'text-rose-500'
-                          }`}
-                        >
-                          {val === 'ok' ? 'OK' : 'Avaria'}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {selectedOrderForModal.tires && (
-                  <div className="grid grid-cols-4 gap-2 text-[10px] pt-1">
-                    {[
-                      { label: 'Pneu DE', val: selectedOrderForModal.tires.frontLeft },
-                      { label: 'Pneu DD', val: selectedOrderForModal.tires.frontRight },
-                      { label: 'Pneu TE', val: selectedOrderForModal.tires.rearLeft },
-                      { label: 'Pneu TD', val: selectedOrderForModal.tires.rearRight },
-                    ].map(t => (
-                      <div
-                        key={t.label}
-                        className="rounded-lg bg-wr-surface border border-wr-border py-1.5 px-2 text-center"
-                      >
-                        <span className="text-wr-muted block">{t.label}</span>
-                        <strong
-                          className={`uppercase ${
-                            t.val === 'bom'
-                              ? 'text-emerald-500'
-                              : t.val === 'regular'
-                              ? 'text-amber-500'
-                              : 'text-rose-500'
-                          }`}
-                        >
-                          {t.val}
-                        </strong>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {selectedOrderForModal.inspection.bodyworkDamages && (
-                  <p className="text-[11px] text-wr-muted bg-wr-surface rounded-xl p-2.5 border border-wr-border">
-                    <strong className="text-amber-500">Observação de avaria:</strong>{' '}
-                    {selectedOrderForModal.inspection.bodyworkDamages}
-                  </p>
-                )}
-              </div>
-            )}
 
             {/* Mecânico */}
             <div className="wr-surface-muted p-3.5 flex items-center justify-between gap-3">
@@ -1287,7 +1237,7 @@ export const OrdersView: React.FC = () => {
 
             {/* Footer Actions */}
             <div className="flex flex-wrap items-center gap-2.5">
-              {selectedOrderForModal.status !== 'pronto' && selectedOrderForModal.status !== 'cancelado' && (
+              {selectedOrderForModal.status !== 'pago' && selectedOrderForModal.status !== 'cancelado' && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1297,7 +1247,7 @@ export const OrdersView: React.FC = () => {
                   className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 py-2.5 text-xs font-bold text-white transition-colors shadow-sm"
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  Finalizar OS &amp; Pagamento
+                  Receber Pagamento (Marcar como Paga)
                 </button>
               )}
               {selectedOrderForModal.status !== 'cancelado' && (
@@ -1324,7 +1274,17 @@ export const OrdersView: React.FC = () => {
                 className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-wr-border bg-wr-elevated py-2.5 text-xs font-semibold text-wr-text hover:border-emerald-500 transition-colors"
               >
                 <MessageCircle className="h-4 w-4 text-emerald-500" />
-                Enviar WhatsApp
+                WhatsApp
+              </button>
+              <button
+                onClick={() => {
+                  setDanfseModalOrder(selectedOrderForModal)
+                  setSelectedOrderForModal(null)
+                }}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-500/10 py-2.5 px-4 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors"
+              >
+                <FileText className="h-4 w-4" />
+                Nota Fiscal
               </button>
               <button
                 onClick={() => {
@@ -1334,7 +1294,7 @@ export const OrdersView: React.FC = () => {
                 className="wr-btn-primary flex-1 py-2.5"
               >
                 <Printer className="h-4 w-4" />
-                Imprimir OS
+                Imprimir O.S
               </button>
               <button
                 onClick={() => setSelectedOrderForModal(null)}
@@ -1493,29 +1453,6 @@ export const OrdersView: React.FC = () => {
                 </div>
               </div>
 
-              {pdfModalOrder.inspection && (
-                <div className="rounded-xl bg-slate-50 p-3 border border-slate-200 text-[11px] space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-slate-600 block">
-                    Vistoria Visual de Entrada (Faróis, Pintura, Pneus e Lataria)
-                  </span>
-                  <div className="flex flex-wrap gap-2 text-slate-800">
-                    {VISUAL_CHECKLIST_ITEMS.map(item => {
-                      const val = pdfModalOrder.inspection?.[item.key] || 'ok'
-                      return (
-                        <span key={item.key} className="text-slate-700 text-[10px]">
-                          {item.label}:{' '}
-                          <strong className={val === 'ok' ? 'text-emerald-700' : 'text-rose-600'}>
-                            {val === 'ok' ? 'OK' : 'Avaria'}
-                          </strong>
-                        </span>
-                      )
-                    })}
-                  </div>
-                  {pdfModalOrder.inspection.bodyworkDamages && (
-                    <p className="text-slate-600 text-[10px]">Obs: {pdfModalOrder.inspection.bodyworkDamages}</p>
-                  )}
-                </div>
-              )}
 
               <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                 <table className="w-full text-left text-xs min-w-[440px]">
@@ -1969,113 +1906,9 @@ export const OrdersView: React.FC = () => {
                 </div>
               </div>
 
-              {/* 2. CHECKLIST VISUAL SIMPLIFICADO (FARÓIS, PINTURA, PNEUS, ETC.) */}
-              <div className="wr-surface-muted p-4 space-y-3.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
-                    <CheckSquare className="h-4 w-4" /> Checklist Visual do Veículo
-                  </span>
-                  <span className="text-[10px] text-wr-muted">
-                    Inspeção visual na entrada do veículo na oficina
-                  </span>
-                </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {VISUAL_CHECKLIST_ITEMS.map(item => {
-                    const current = checklist[item.key]
-                    return (
-                      <div
-                        key={item.key}
-                        className="rounded-xl bg-wr-surface border border-wr-border p-2.5 space-y-2"
-                      >
-                        <span className="text-[11px] font-bold text-wr-text block truncate">
-                          {item.label}
-                        </span>
-                        <div className="grid grid-cols-2 gap-1">
-                          <button
-                            type="button"
-                            onClick={() => toggleVisualChecklist(item.key, 'ok')}
-                            className={`py-1 rounded-lg text-[10px] font-bold transition-colors ${
-                              current === 'ok'
-                                ? 'bg-emerald-600 text-white'
-                                : 'bg-wr-elevated text-wr-muted hover:text-wr-text'
-                            }`}
-                          >
-                            OK
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleVisualChecklist(item.key, 'avaria')}
-                            className={`py-1 rounded-lg text-[10px] font-bold transition-colors ${
-                              current === 'avaria'
-                                ? 'bg-rose-500 text-white'
-                                : 'bg-wr-elevated text-wr-muted hover:text-wr-text'
-                            }`}
-                          >
-                            Avaria
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
 
-                {/* Estado dos 4 Pneus */}
-                <div className="space-y-1.5 pt-2 border-t border-wr-border">
-                  <span className="text-[11px] font-semibold text-wr-muted block">
-                    Estado dos Pneus:
-                  </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {[
-                      { label: 'Diant. Esq.', val: tireFrontLeft, set: setTireFrontLeft },
-                      { label: 'Diant. Dir.', val: tireFrontRight, set: setTireFrontRight },
-                      { label: 'Tras. Esq.', val: tireRearLeft, set: setTireRearLeft },
-                      { label: 'Tras. Dir.', val: tireRearRight, set: setTireRearRight },
-                    ].map(t => (
-                      <div
-                        key={t.label}
-                        className="rounded-xl bg-wr-surface p-2 border border-wr-border space-y-1.5"
-                      >
-                        <span className="text-[10px] font-bold text-wr-text block text-center">
-                          {t.label}
-                        </span>
-                        <div className="grid grid-cols-3 gap-1">
-                          {(['bom', 'regular', 'ruim'] as TireCondition[]).map(c => (
-                            <button
-                              key={c}
-                              type="button"
-                              onClick={() => t.set(c)}
-                              className={`py-1 rounded text-[9px] font-bold uppercase transition-colors ${
-                                t.val === c
-                                  ? c === 'bom'
-                                    ? 'bg-emerald-600 text-white'
-                                    : c === 'regular'
-                                    ? 'bg-amber-500 text-white dark:text-black'
-                                    : 'bg-rose-500 text-white'
-                                  : 'bg-wr-elevated text-wr-muted'
-                              }`}
-                            >
-                              {c === 'bom' ? 'Bom' : c === 'regular' ? 'Reg' : 'Ruim'}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <input
-                  type="text"
-                  value={checklist.bodyworkDamages || ''}
-                  onChange={e =>
-                    setChecklist(prev => ({ ...prev, bodyworkDamages: e.target.value }))
-                  }
-                  placeholder="Observação rápida de riscos, arranhões ou amassados (opcional)..."
-                  className="wr-input bg-wr-surface"
-                />
-              </div>
-
-              {/* 3. SERVIÇO & MECÂNICO RESPONSÁVEL */}
+              {/* 2. SERVIÇO & MECÂNICO RESPONSÁVEL */}
               <div className="wr-surface-muted p-4 space-y-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-wr-orange block">
                   Serviço &amp; Mecânico Responsável

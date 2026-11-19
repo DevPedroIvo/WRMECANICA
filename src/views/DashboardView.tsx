@@ -62,9 +62,9 @@ export const DashboardView: React.FC = () => {
 
   const metrics = useMemo(() => {
     const inProgress = orders.filter(
-      o => o.status === 'andamento' || o.status === 'aguardando'
+      o => o.status === 'andamento' || o.status === 'aguardando' || o.status === 'pronto'
     ).length
-    const completed = orders.filter(o => o.status === 'pronto').length
+    const completed = orders.filter(o => o.status === 'pago').length
     const paidRevenue = financial
       .filter(f => f.type === 'receita' && f.status === 'pago')
       .reduce((sum, f) => sum + f.amount, 0)
@@ -553,7 +553,7 @@ export const DashboardView: React.FC = () => {
             <Wrench className="h-8 w-8 mx-auto text-wr-muted opacity-50" />
             <p className="font-semibold text-wr-text">Nenhuma ordem de serviço cadastrada</p>
             <p className="text-[11px] max-w-sm mx-auto">
-              Abra uma nova ordem para lançar peças, mão de obra, checklist e comprovante para o cliente.
+              Abra uma nova ordem para lançar peças, mão de obra e comprovante para o cliente.
             </p>
             <button onClick={() => openNewOrderModal()} className="wr-btn-primary mx-auto">
               <Plus className="h-4 w-4" /> Abrir Primeira OS
@@ -563,8 +563,10 @@ export const DashboardView: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {orders.slice(0, 4).map(order => {
               const statusColor =
-                order.status === 'pronto'
+                order.status === 'pago'
                   ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30'
+                  : order.status === 'pronto'
+                  ? 'bg-blue-500/15 text-blue-500 border-blue-500/30'
                   : order.status === 'andamento'
                   ? 'bg-wr-orange/15 text-wr-orange border-wr-orange/30'
                   : 'bg-amber-500/15 text-amber-500 border-amber-500/30'

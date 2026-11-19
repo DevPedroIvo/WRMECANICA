@@ -21,7 +21,7 @@ import {
 const TAB_TITLES: Record<string, { title: string; subtitle: string }> = {
   inicio: { title: 'Visão Geral', subtitle: 'Resumo operacional da oficina em tempo real' },
   caixa: { title: 'Caixa Diário', subtitle: 'Abertura, fechamento e controle de gaveta' },
-  os: { title: 'Ordens de Serviço', subtitle: 'Atendimentos, checklist visual e emissão de NFS-e' },
+  os: { title: 'Ordens de Serviço', subtitle: 'Atendimentos, serviços e emissão de NFS-e' },
   atendimentos: { title: 'Agendamentos', subtitle: 'Agenda do dia e controle dos boxes' },
   clientes: { title: 'Clientes & Veículos', subtitle: 'Cadastro de pessoas e todos os veículos vinculados' },
   fiado: { title: 'Pagar Depois', subtitle: 'Controle de clientes com pagamento a prazo' },

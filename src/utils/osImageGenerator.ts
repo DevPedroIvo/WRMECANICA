@@ -111,13 +111,15 @@ export async function generateOsCanvas(
   ctx.fillText(`Data: ${order.date}`, width - 55, 90)
 
   const statusText =
-    order.status === 'pronto'
-      ? 'CONCLUÍDO / PRONTO'
+    order.status === 'pago'
+      ? 'PAGO / CONCLUÍDO'
+      : order.status === 'pronto'
+      ? 'PRONTO P/ RETIRADA'
       : order.status === 'andamento'
       ? 'EM ANDAMENTO'
       : 'ORÇAMENTO / AGUARDANDO'
   ctx.fillStyle =
-    order.status === 'pronto' ? '#16A34A' : order.status === 'andamento' ? '#EA6A00' : '#D97706'
+    order.status === 'pago' || order.status === 'pronto' ? '#16A34A' : order.status === 'andamento' ? '#EA6A00' : '#D97706'
   ctx.font = 'bold 11px sans-serif'
   ctx.fillText(statusText, width - 55, 114)
   ctx.textAlign = 'left'
