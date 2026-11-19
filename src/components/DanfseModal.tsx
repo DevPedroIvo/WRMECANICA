@@ -20,11 +20,34 @@ interface DanfseModalProps {
 }
 
 export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClose }) => {
-  const invoice = order.fiscalInvoice
   const [copiedKey, setCopiedKey] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
 
-  if (!invoice) return null
+  const defaultInvoice = {
+    invoiceNumber: `${new Date().getFullYear()}${String(order.number.replace(/\D/g, '') || '1001').padStart(7, '0')}`,
+    series: '1',
+    rpsNumber: String(order.number.replace(/\D/g, '') || '1001'),
+    rpsSeries: '1',
+    issuedAt: `${order.date} 10:00:00`,
+    verificationCode: `PRTO-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+    accessKey: `1718204${new Date().getFullYear().toString().slice(-2)}0000000000010000000011987654321`,
+    status: 'autorizada' as const,
+    serviceCode: '14.01',
+    cnae: '4520-0/01',
+    issRate: settings?.issRate || 3.0,
+    issValue: ((order.laborTotal || order.totalAmount) * (settings?.issRate || 3.0)) / 100,
+    taxRegime: settings?.taxRegime || 'Simples Nacional',
+    protocolNumber: `2026.${Math.floor(100000 + Math.random() * 900000)}`,
+    xmlData: '',
+    paymentMethodDescription: order.paymentMethod
+      ? `PAGO VIA ${order.paymentMethod.replace('_', ' ').toUpperCase()}`
+      : 'À VISTA',
+  }
+
+  const invoice = {
+    ...defaultInvoice,
+    ...(order.fiscalInvoice || {}),
+  }
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)

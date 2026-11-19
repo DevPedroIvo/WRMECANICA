@@ -64,6 +64,7 @@ export const OrdersView: React.FC = () => {
     updateOrder,
     updateOrderStatus,
     finishOrder,
+    issueFiscalInvoice,
     fiscalSettings,
     formatCurrency,
     isNewOrderModalOpen,
@@ -432,9 +433,31 @@ export const OrdersView: React.FC = () => {
       totalAmount: Math.max(0, baseSubtotal - discount),
     }
 
-    setCompletedPaymentOrder(updated)
-    setFinalizingOrder(null)
+    setCompletedPaymentOrder(null)
     showToast(`Pagamento da ${finalizingOrder.number} registrado com sucesso!`, 'success')
+  }
+
+  // Abrir WhatsApp do cliente diretamente sem nenhuma mensagem pré-escrita
+  const handleOpenClientWhatsApp = (order: ServiceOrder) => {
+    const raw = (order.clientPhone || '').replace(/\D/g, '')
+    if (!raw) {
+      showToast('Cliente não possui telefone cadastrado.', 'warning')
+      return
+    }
+    const cleanNumber = raw.startsWith('55') ? raw : `55${raw}`
+    window.open(`https://wa.me/${cleanNumber}`, '_blank')
+  }
+
+  // Abrir Nota Fiscal Oficial (NFS-e) garantindo emissão prévia se necessário
+  const handleOpenNfse = (order: ServiceOrder) => {
+    let targetOrder = order
+    if (!targetOrder.fiscalInvoice) {
+      const issued = issueFiscalInvoice(targetOrder.id, targetOrder)
+      if (issued) {
+        targetOrder = { ...targetOrder, fiscalInvoice: issued }
+      }
+    }
+    setDanfseModalOrder(targetOrder)
   }
 
   // Filtragem das Ordens de Serviço
@@ -780,21 +803,21 @@ export const OrdersView: React.FC = () => {
 
                   {/* Barra com os 5 botões utilitários */}
                   <div className="grid grid-cols-5 gap-1.5">
-                    {/* 1. WhatsApp */}
+                    {/* 1. WhatsApp (direto sem mensagem) */}
                     <button
                       type="button"
-                      onClick={() => setWhatsAppModalOrder(order)}
+                      onClick={() => handleOpenClientWhatsApp(order)}
                       className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 transition-all text-[11px] font-bold"
-                      title="Enviar Ordem no WhatsApp do cliente"
+                      title="Abrir WhatsApp do cliente"
                     >
                       <MessageCircle className="h-4 w-4 shrink-0" />
                       <span className="truncate">WhatsApp</span>
                     </button>
 
-                    {/* 2. Nota Fiscal */}
+                    {/* 2. Nota Fiscal (NFS-e) */}
                     <button
                       type="button"
-                      onClick={() => setDanfseModalOrder(order)}
+                      onClick={() => handleOpenNfse(order)}
                       className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/25 transition-all text-[11px] font-bold"
                       title="Emitir ou Visualizar Nota Fiscal (NFS-e)"
                     >
@@ -1491,7 +1514,7 @@ export const OrdersView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setDanfseModalOrder(completedPaymentOrder)
+                  handleOpenNfse(completedPaymentOrder)
                   setCompletedPaymentOrder(null)
                 }}
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01] transition-all"
@@ -1500,17 +1523,16 @@ export const OrdersView: React.FC = () => {
                 <span>Compartilhar Nota Fiscal (NFS-e)</span>
               </button>
 
-              {/* Enviar Comprovante no WhatsApp */}
+              {/* Abrir WhatsApp do Cliente */}
               <button
                 type="button"
                 onClick={() => {
-                  setWhatsAppModalOrder(completedPaymentOrder)
-                  setCompletedPaymentOrder(null)
+                  handleOpenClientWhatsApp(completedPaymentOrder)
                 }}
                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01] transition-all"
               >
                 <MessageCircle className="h-4 w-4" />
-                <span>Enviar Comprovante no WhatsApp</span>
+                <span>Abrir WhatsApp do Cliente</span>
               </button>
 
               {/* Concluir */}
@@ -1578,117 +1600,300 @@ export const OrdersView: React.FC = () => {
         </div>
       )}
 
-      {/* ===================== MODAL: IMPRESSÃO OFICIAL DA OS (PDF) ===================== */}
+      {/* ===================== MODAL: IMPRESSÃO OFICIAL DA OS (PDF / VISUALIZADOR) ===================== */}
       {pdfModalOrder && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
-          <div className="relative w-full max-w-2xl rounded-[32px] border border-white/10 bg-[#12141c] p-6 shadow-2xl space-y-4 my-auto max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10 no-print">
-              <span className="font-black text-orange-400 text-sm flex items-center gap-2">
-                <Printer className="h-4 w-4" /> Visualização da Ordem de Serviço
-              </span>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-4 md:p-6 animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-4xl rounded-[32px] border border-white/10 bg-[#12141c] p-4 sm:p-6 shadow-2xl space-y-4 my-auto max-h-[95vh] overflow-y-auto">
+            {/* Barra Superior de Ações (Oculta na Impressão) */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10 no-print">
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-9 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
+                  <Printer className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-white">
+                    Ordem de Serviço &bull; {pdfModalOrder.number}
+                  </h3>
+                  <p className="text-[11px] text-neutral-400">
+                    Visualização executiva para impressão ou envio
+                  </p>
+                </div>
+              </div>
+
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-neutral-950 font-black text-xs flex items-center gap-1.5"
+                  onClick={() => handleOpenClientWhatsApp(pdfModalOrder)}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+                  title="Abrir WhatsApp do cliente"
                 >
-                  <Printer className="h-3.5 w-3.5" /> Imprimir / PDF
+                  <MessageCircle className="h-4 w-4" />
+                  <span className="hidden sm:inline">WhatsApp</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-neutral-950 font-black text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>Imprimir / PDF</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPdfModalOrder(null)}
-                  className="p-1.5 rounded-lg text-neutral-400 hover:text-white"
+                  className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
 
-            {/* Documento Branco Estilo Impressão */}
-            <div className="rounded-2xl border border-slate-300 bg-white p-6 space-y-4 text-slate-900 shadow-md">
-              <div className="flex items-start justify-between border-b border-slate-200 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-auto flex items-center justify-center p-1 rounded-xl border border-slate-200 bg-slate-50">
+            {/* Folha Oficial da OS (Design Corporativo Branco de Alta Definição) */}
+            <div className="rounded-2xl border border-slate-300 bg-white p-6 sm:p-8 space-y-6 text-slate-900 shadow-xl font-sans printable-order">
+              {/* 1. CABEÇALHO DA OFICINA */}
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-4 border-b-2 border-slate-900 pb-5">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-auto flex items-center justify-center p-2 rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
                     <WrLogo size="lg" variant="light" showSubtitle={true} />
                   </div>
                   <div>
-                    <h2 className="text-base font-black text-slate-900 uppercase">
-                      {fiscalSettings.tradeName}
-                    </h2>
-                    <p className="text-[10px] text-slate-500">
-                      CNPJ: {fiscalSettings.cnpj} &bull; Luzimangues / Porto Nacional - TO
+                    <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">
+                      {fiscalSettings.tradeName || 'WR MECÂNICA & AUTO CENTER'}
+                    </h1>
+                    <p className="text-xs font-semibold text-slate-700">
+                      {fiscalSettings.companyName || 'WR Mecânica & Cia Ltda'} &bull; CNPJ: {fiscalSettings.cnpj || '38.271.748/0001-38'}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      {fiscalSettings.address || 'Rodovia TO-080, KM 12'} &bull; {fiscalSettings.district || 'Luzimangues'}, {fiscalSettings.city || 'Porto Nacional'} - {fiscalSettings.state || 'TO'}
+                    </p>
+                    <p className="text-[11px] font-bold text-amber-700">
+                      Telefone / WhatsApp: {fiscalSettings.phone || '(63) 99208-8283'} &bull; Atendimento Especializado Multimarcas
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="font-mono text-base font-black text-amber-600 block">
+
+                <div className="text-left sm:text-right bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-0 border-slate-200 w-full sm:w-auto">
+                  <span className="text-[10px] font-black tracking-widest uppercase text-slate-500 block">
+                    ORDEM DE SERVIÇO Nº
+                  </span>
+                  <span className="font-mono text-2xl font-black text-amber-700 block">
                     {pdfModalOrder.number}
                   </span>
-                  <span className="text-[11px] text-slate-500">Data: {pdfModalOrder.date}</span>
+                  <div className="mt-1 space-y-0.5 text-xs text-slate-600">
+                    <p>
+                      <strong>Emissão:</strong> {pdfModalOrder.date} {pdfModalOrder.time ? `às ${pdfModalOrder.time}` : ''}
+                    </p>
+                    <p>
+                      <strong>Status:</strong>{' '}
+                      <span className="inline-block uppercase font-black text-[10px] px-2 py-0.5 rounded bg-slate-200 text-slate-800">
+                        {pdfModalOrder.status === 'pago'
+                          ? 'PAGA / CONCLUÍDA'
+                          : pdfModalOrder.status === 'pronto'
+                          ? 'PRONTO P/ RETIRADA'
+                          : pdfModalOrder.status === 'andamento'
+                          ? 'EM ANDAMENTO'
+                          : pdfModalOrder.status === 'cancelado'
+                          ? 'CANCELADA'
+                          : 'AGUARDANDO'}
+                      </span>
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3.5 border border-slate-200 text-xs">
-                <div>
-                  <span className="text-[9px] font-black uppercase text-amber-700 block">Cliente</span>
-                  <p className="font-bold text-slate-900">{pdfModalOrder.clientName}</p>
-                  <p className="text-slate-600 font-mono text-[11px]">{pdfModalOrder.clientPhone}</p>
+              {/* 2. DADOS DO CLIENTE E DO VEÍCULO */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Cartão Cliente */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2">
+                  <div className="flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
+                    <User className="h-4 w-4 text-amber-700" />
+                    <span className="text-xs font-black uppercase tracking-wider text-amber-800">
+                      Dados do Cliente
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="col-span-2">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Nome Completo</span>
+                      <p className="font-bold text-slate-900 text-sm">{pdfModalOrder.clientName}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Telefone</span>
+                      <p className="font-mono font-semibold text-slate-800">{pdfModalOrder.clientPhone || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">CPF / CNPJ</span>
+                      <p className="font-mono font-semibold text-slate-800">{pdfModalOrder.clientCpfCnpj || 'Não Informado'}</p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[9px] font-black uppercase text-amber-700 block">Veículo</span>
-                  <p className="font-bold text-slate-900">{pdfModalOrder.vehicleModel}</p>
-                  <p className="text-slate-600 font-mono text-[11px]">
-                    Placa: {pdfModalOrder.vehiclePlate} &bull;{' '}
-                    {pdfModalOrder.mileage ? `${pdfModalOrder.mileage.toLocaleString('pt-BR')} km` : '—'}
+
+                {/* Cartão Veículo */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2">
+                  <div className="flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
+                    <Car className="h-4 w-4 text-amber-700" />
+                    <span className="text-xs font-black uppercase tracking-wider text-amber-800">
+                      Dados do Veículo
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="col-span-2">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Modelo / Veículo</span>
+                      <p className="font-bold text-slate-900">{pdfModalOrder.vehicleModel || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Placa</span>
+                      <p className="font-mono font-black text-amber-800">{pdfModalOrder.vehiclePlate}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Quilometragem</span>
+                      <p className="font-mono font-semibold text-slate-800">
+                        {pdfModalOrder.mileage ? `${pdfModalOrder.mileage.toLocaleString('pt-BR')} km` : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Combustível</span>
+                      <p className="font-semibold text-slate-800 capitalize">
+                        {pdfModalOrder.fuelLevel === 'cheio'
+                          ? 'Cheio'
+                          : pdfModalOrder.fuelLevel === 'reserva'
+                          ? 'Reserva'
+                          : 'Médio (~1/2)'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Mecânico Resp.</span>
+                      <p className="font-semibold text-slate-800">{pdfModalOrder.mechanicAssigned || 'Roberto Silva'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. SERVIÇO SOLICITADO / RELATO DO CLIENTE */}
+              {pdfModalOrder.serviceDescription && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 space-y-1 text-xs">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 block">
+                    Serviço Solicitado / Relato do Cliente:
+                  </span>
+                  <p className="text-slate-900 font-medium leading-relaxed">
+                    {pdfModalOrder.serviceDescription}
                   </p>
                 </div>
-              </div>
-
-              {/* Tabela de Itens da OS */}
-              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 text-[10px] uppercase font-bold">
-                    <tr>
-                      <th className="p-2.5">Descrição</th>
-                      <th className="p-2.5 text-right">Peças</th>
-                      <th className="p-2.5 text-right">M. Obra</th>
-                      <th className="p-2.5 text-right">Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 text-slate-800">
-                    {pdfModalOrder.items?.map(it => (
-                      <tr key={it.id}>
-                        <td className="p-2.5 font-medium">{it.serviceDescription}</td>
-                        <td className="p-2.5 font-mono text-right text-slate-600">
-                          {formatCurrency(it.partsCost)}
-                        </td>
-                        <td className="p-2.5 font-mono text-right text-slate-600">
-                          {formatCurrency(it.laborCost)}
-                        </td>
-                        <td className="p-2.5 font-mono text-right font-bold text-slate-900">
-                          {formatCurrency(it.total)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-slate-100 border-t border-slate-200 font-bold text-xs">
-                    <tr>
-                      <td colSpan={3} className="p-2.5 text-slate-700 text-right">
-                        VALOR TOTAL:
-                      </td>
-                      <td className="p-2.5 font-mono text-right text-amber-700 text-sm font-black">
-                        {formatCurrency(pdfModalOrder.totalAmount)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-
-              {pdfModalOrder.observations && (
-                <p className="text-[11px] text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <strong className="text-slate-800">Observações:</strong> {pdfModalOrder.observations}
-                </p>
               )}
+
+              {/* 4. DISCRIMINAÇÃO DOS SERVIÇOS E PEÇAS EXECUTADAS */}
+              <div className="space-y-2">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                  <Wrench className="h-4 w-4 text-amber-700" /> Discriminação de Serviços e Peças
+                </span>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-300">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-900 text-white uppercase text-[10px] tracking-wider font-bold">
+                      <tr>
+                        <th className="py-2.5 px-3">Item / Descrição dos Serviços &amp; Aplicações</th>
+                        <th className="py-2.5 px-3 text-right">Peças (R$)</th>
+                        <th className="py-2.5 px-3 text-right">M. Obra (R$)</th>
+                        <th className="py-2.5 px-3 text-right">Total Item (R$)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 text-slate-800">
+                      {(pdfModalOrder.items || []).map((it, idx) => (
+                        <tr key={it.id || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
+                          <td className="py-2.5 px-3 font-semibold text-slate-900">
+                            <span className="text-slate-400 font-mono text-[10px] mr-2">#{String(idx + 1).padStart(2, '0')}</span>
+                            {it.serviceDescription}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-right text-slate-700">
+                            {formatCurrency(it.partsCost || 0)}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-right text-slate-700">
+                            {formatCurrency(it.laborCost || 0)}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-right font-black text-slate-900">
+                            {formatCurrency(it.total || 0)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 5. TOTAIS E FORMA DE PAGAMENTO */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start pt-2">
+                <div className="space-y-2 text-xs">
+                  {pdfModalOrder.observations && (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1">
+                      <strong className="text-[10px] uppercase font-black text-slate-700 block">
+                        Observações Técnicas:
+                      </strong>
+                      <p className="text-slate-700 leading-relaxed">{pdfModalOrder.observations}</p>
+                    </div>
+                  )}
+
+                  {/* Garantia Legal Art. 26 CDC */}
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 space-y-1 text-slate-800">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5 text-amber-700" />
+                      Garantia Legal de Serviços &bull; 90 Dias
+                    </span>
+                    <p className="text-[11px] text-slate-700 leading-tight">
+                      Garantia de 90 dias para serviços executados e peças genuínas conforme o Art. 26 do Código de Defesa do Consumidor (Lei nº 8.078/90). Não cobre mau uso ou intervenção de terceiros.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Resumo Financeiro */}
+                <div className="rounded-xl border border-slate-300 bg-slate-50 p-4 space-y-2 text-xs">
+                  <div className="flex justify-between text-slate-700">
+                    <span>Total de Peças:</span>
+                    <span className="font-mono font-bold">{formatCurrency(pdfModalOrder.partsTotal || 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-700">
+                    <span>Total Mão de Obra:</span>
+                    <span className="font-mono font-bold">{formatCurrency(pdfModalOrder.laborTotal || 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-700">
+                    <span>Subtotal Geral:</span>
+                    <span className="font-mono font-bold">
+                      {formatCurrency((pdfModalOrder.partsTotal || 0) + (pdfModalOrder.laborTotal || 0))}
+                    </span>
+                  </div>
+
+                  {(pdfModalOrder.discount || 0) > 0 && (
+                    <div className="flex justify-between text-rose-600 font-bold border-t border-slate-200 pt-1">
+                      <span>Desconto Especial:</span>
+                      <span className="font-mono">- {formatCurrency(pdfModalOrder.discount || 0)}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center text-slate-900 pt-2 border-t-2 border-slate-900">
+                    <span className="text-sm font-black uppercase">VALOR TOTAL DA OS:</span>
+                    <span className="font-mono text-2xl font-black text-amber-800">
+                      {formatCurrency(pdfModalOrder.totalAmount || 0)}
+                    </span>
+                  </div>
+
+                  <div className="pt-2 text-right text-[11px] text-slate-600">
+                    <span>Forma de Pagamento: </span>
+                    <strong className="text-slate-900 uppercase">
+                      {PAYMENT_LABELS[pdfModalOrder.paymentMethod || 'pendente']}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* 6. CAMPOS DE ASSINATURA */}
+              <div className="pt-10 grid grid-cols-2 gap-8 text-center text-xs">
+                <div className="border-t border-slate-400 pt-2">
+                  <p className="font-bold text-slate-900 uppercase">{fiscalSettings.tradeName || 'WR Mecânica & Cia'}</p>
+                  <p className="text-[10px] text-slate-500">Responsável Técnico / Mecânico</p>
+                </div>
+                <div className="border-t border-slate-400 pt-2">
+                  <p className="font-bold text-slate-900 uppercase">{pdfModalOrder.clientName}</p>
+                  <p className="text-[10px] text-slate-500">Assinatura do Cliente / Proprietário</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
