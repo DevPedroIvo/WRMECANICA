@@ -13,10 +13,11 @@ import {
   Settings,
   X,
   Receipt,
+  LogOut,
 } from 'lucide-react'
 
 export const BottomNav: React.FC = () => {
-  const { activeTab, setActiveTab, canAccess } = useApp()
+  const { activeTab, setActiveTab, canAccess, logout, currentUserRole } = useApp()
   const [moreOpen, setMoreOpen] = useState(false)
 
   const mainTabs: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -80,6 +81,26 @@ export const BottomNav: React.FC = () => {
               )
             })}
           </div>
+
+          {/* Trocar de Usuário (Mobile) */}
+          {currentUserRole && (
+            <div className="pt-2.5 mt-2.5 border-t border-wr-border flex items-center justify-between px-1">
+              <span className="text-[11px] text-wr-muted font-medium truncate max-w-[150px]">
+                {currentUserRole === 'dono' ? 'Dono (Samilly)' : 'Wr_mecanica'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreOpen(false)
+                  logout()
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-500 font-bold text-xs hover:bg-rose-500/20 transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Trocar de Usuário
+              </button>
+            </div>
+          )}
         </div>
       )}
 

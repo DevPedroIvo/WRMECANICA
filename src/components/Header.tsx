@@ -312,23 +312,26 @@ export const Header: React.FC = () => {
           )}
         </button>
 
-        {/* Operator Badge */}
+        {/* Operator Badge & Trocar Usuário */}
         {currentUserRole && (
-          <div className="flex items-center gap-1.5 rounded-xl border border-wr-border bg-wr-elevated px-2.5 py-1.5 text-xs">
-            <span
-              className={`h-2 w-2 rounded-full ${
-                currentUserRole === 'dono' ? 'bg-wr-orange animate-pulse' : 'bg-emerald-500'
-              }`}
-            />
-            <span className="font-bold text-wr-text uppercase tracking-wider text-[11px]">
-              {currentUserRole === 'dono' ? 'Dono (Samilly)' : 'Funcionário'}
-            </span>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1.5 rounded-xl border border-wr-border bg-wr-elevated px-2.5 py-1.5 text-xs">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  currentUserRole === 'dono' ? 'bg-wr-orange animate-pulse' : 'bg-emerald-500'
+                }`}
+              />
+              <span className="font-bold text-wr-text uppercase tracking-wider text-[11px]">
+                {currentUserRole === 'dono' ? 'Dono (Samilly)' : 'Funcionário'}
+              </span>
+            </div>
             <button
               onClick={logout}
-              title="Trocar Operador / Bloquear"
-              className="ml-1 text-wr-muted hover:text-rose-500 transition-colors p-0.5"
+              title="Trocar de usuário / Sair"
+              className="flex items-center gap-1.5 rounded-xl border border-wr-border bg-wr-elevated hover:bg-rose-500/10 hover:border-rose-500/30 px-2.5 py-1.5 text-xs font-bold text-wr-muted hover:text-rose-500 transition-colors"
             >
-              <LogOut className="h-3.5 w-3.5" />
+              <LogOut className="h-3.5 w-3.5 text-wr-orange" />
+              <span className="text-[11px]">Trocar Usuário</span>
             </button>
           </div>
         )}
