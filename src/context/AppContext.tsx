@@ -37,22 +37,7 @@ import {
   DEMO_DEFERRED_PAYMENTS,
 } from '../mockData'
 
-export const INITIAL_SERVICE_PRESETS: ServicePreset[] = [
-  { id: 'srv-1', name: 'Troca de Óleo e Filtros', partsCost: 180, laborCost: 120, category: 'Revisão' },
-  { id: 'srv-2', name: 'Troca de Pastilhas de Freio Dianteiras', partsCost: 185, laborCost: 150, category: 'Freios' },
-  { id: 'srv-3', name: 'Troca de Pastilhas de Freio Traseiras', partsCost: 160, laborCost: 140, category: 'Freios' },
-  { id: 'srv-4', name: 'Alinhamento 3D e Balanceamento', partsCost: 0, laborCost: 150, category: 'Suspensão' },
-  { id: 'srv-5', name: 'Sangria e Troca de Fluido de Freio DOT 4', partsCost: 90, laborCost: 120, category: 'Freios' },
-  { id: 'srv-6', name: 'Higienização de Ar Condicionado + Filtro de Cabine', partsCost: 75, laborCost: 110, category: 'Ar Condicionado' },
-  { id: 'srv-7', name: 'Diagnóstico Eletrônico Computadorizado', partsCost: 0, laborCost: 200, category: 'Diagnóstico' },
-  { id: 'srv-8', name: 'Troca de Bateria Automotiva 60Ah', partsCost: 470, laborCost: 60, category: 'Elétrica' },
-  { id: 'srv-9', name: 'Troca de Amortecedores Dianteiros (Par)', partsCost: 720, laborCost: 260, category: 'Suspensão' },
-  { id: 'srv-10', name: 'Troca de Velas de Ignição Iridium (Jogo)', partsCost: 240, laborCost: 120, category: 'Motor' },
-  { id: 'srv-11', name: 'Revisão Preventiva Completa', partsCost: 350, laborCost: 280, category: 'Revisão' },
-  { id: 'srv-12', name: 'Troca de Correia Dentada e Tensor', partsCost: 380, laborCost: 320, category: 'Motor' },
-  { id: 'srv-13', name: 'Limpeza de Bicos Injetores e TBI', partsCost: 60, laborCost: 190, category: 'Injeção' },
-  { id: 'srv-14', name: 'Substituição de Embreagem Completa', partsCost: 650, laborCost: 450, category: 'Transmissão' },
-]
+export const INITIAL_SERVICE_PRESETS: ServicePreset[] = []
 import {
   saveLocalDebounced,
   loadLocalSafe,
@@ -259,6 +244,8 @@ interface AppContextType {
   finishOrder: (orderId: string, options: FinishOrderOptions) => void
 
   storageMetrics: StorageMetrics
+  syncWithSupabase: () => Promise<{ success: boolean; message: string }>
+  pullFromSupabase: () => Promise<{ success: boolean; message: string }>
   resetDataToDefault: () => void
   clearAllData: () => void
   loadDemoData: () => void
@@ -277,8 +264,8 @@ const STORAGE_KEYS = {
   authRole: 'wr_auth_v2',
   employeePerms: 'wr_employee_perms_v1',
   reminders: 'wr_reminders_v7',
-  mechanics: 'wr_mechanics_v1',
-  servicePresets: 'wr_service_presets_v1',
+  mechanics: 'wr_mechanics_v2',
+  servicePresets: 'wr_service_presets_v2',
   activeCashShift: 'wr_active_cash_shift_v7',
   cashShiftsHistory: 'wr_cash_shifts_v7',
 } as const
@@ -357,19 +344,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadLocalSafe(STORAGE_KEYS.reminders, [])
   )
 
-  // Lista dinâmica de Mecânicos da Oficina
+  // Lista dinâmica de Mecânicos da Oficina (zerada para uso real da oficina)
   const [mechanics, setMechanics] = useState<string[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.mechanics, [
-      'Roberto Silva',
-      'Carlos Eduardo',
-      'Marcos Mecânico',
-      'Lucas Ferreira',
-    ])
+    loadLocalSafe(STORAGE_KEYS.mechanics, [])
   )
 
-  // Predefinições dinâmicas de Serviços da Oficina
+  // Predefinições dinâmicas de Serviços da Oficina (zerada para uso real da oficina)
   const [servicePresets, setServicePresets] = useState<ServicePreset[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.servicePresets, INITIAL_SERVICE_PRESETS)
+    loadLocalSafe(STORAGE_KEYS.servicePresets, [])
   )
 
   useEffect(() => {
@@ -431,7 +413,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Sincronização inicial opcional com Supabase (1 única vez por sessão graças ao TTL cache)
   useEffect(() => {
-    if (!isSupabaseConfigured) return
+    if (!isSupabaseConfigured()) return
     let active = true
     Promise.all([
       fetchTableCached<Client>('clients'),
@@ -584,10 +566,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteMechanic = useCallback(
     (name: string) => {
       setMechanics(prev => {
-        if (prev.length <= 1) {
-          showToast('A oficina deve ter pelo menos um mecânico cadastrado.', 'warning')
-          return prev
-        }
         showToast(`Mecânico "${name}" removido!`, 'info')
         return prev.filter(m => m !== name)
       })
@@ -1457,8 +1435,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveShift(null)
     setShiftHistory([])
     setReminders([])
+    setMechanics([])
+    setServicePresets([])
     setFiscalSettings(DEFAULT_FISCAL_SETTINGS)
-    showToast('Sistema 100% zerado e limpo para operação real!', 'info')
+    showToast('Sistema 100% zerado e pronto para operação!', 'info')
   }, [showToast])
 
   const loadDemoData = useCallback(() => {
@@ -1476,6 +1456,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const resetDataToDefault = useCallback(() => {
     clearAllData()
   }, [clearAllData])
+
+  const syncWithSupabase = useCallback(async (): Promise<{ success: boolean; message: string }> => {
+    if (!isSupabaseConfigured()) {
+      return { success: false, message: 'Supabase não configurado. Adicione a URL e Chave Anon Key nas configurações.' }
+    }
+    try {
+      const promises: Promise<void>[] = []
+      clients.forEach(c => promises.push(upsertDeltaRow('clients', c.id, c)))
+      vehicles.forEach(v => promises.push(upsertDeltaRow('vehicles', v.id, v, { client_id: v.clientId, plate: v.plate })))
+      orders.forEach(o => promises.push(upsertDeltaRow('service_orders', o.id, o, { client_id: o.clientId, status: o.status })))
+      stock.forEach(s => promises.push(upsertDeltaRow('stock_items', s.id, s, { code: s.code })))
+      financial.forEach(f => promises.push(upsertDeltaRow('financial_records', f.id, f, { type: f.type, status: f.status })))
+      appointments.forEach(a => promises.push(upsertDeltaRow('appointments', a.id, a, { date: a.date, status: a.status })))
+      deferredPayments.forEach(d => promises.push(upsertDeltaRow('deferred_payments', d.id, d, { client_id: d.clientId, due_date: d.dueDate })))
+      if (fiscalSettings) {
+        promises.push(upsertDeltaRow('fiscal_settings', 'default', fiscalSettings))
+      }
+
+      await Promise.all(promises)
+      showToast('Sincronização com o Supabase Cloud concluída!', 'success')
+      return { success: true, message: `${promises.length} registros sincronizados com sucesso!` }
+    } catch (err: any) {
+      const msg = err?.message || 'Falha na comunicação com o Supabase'
+      showToast(`Erro na sincronização: ${msg}`, 'warning')
+      return { success: false, message: msg }
+    }
+  }, [clients, vehicles, orders, stock, financial, appointments, deferredPayments, fiscalSettings, showToast])
+
+  const pullFromSupabase = useCallback(async (): Promise<{ success: boolean; message: string }> => {
+    if (!isSupabaseConfigured()) {
+      return { success: false, message: 'Supabase não configurado.' }
+    }
+    try {
+      const [c, v, o, d, s, f, a, fs] = await Promise.all([
+        fetchTableCached<Client>('clients', { force: true }),
+        fetchTableCached<Vehicle>('vehicles', { force: true }),
+        fetchTableCached<ServiceOrder>('service_orders', { force: true }),
+        fetchTableCached<DeferredPayment>('deferred_payments', { force: true }),
+        fetchTableCached<StockItem>('stock_items', { force: true }),
+        fetchTableCached<FinancialRecord>('financial_records', { force: true }),
+        fetchTableCached<Appointment>('appointments', { force: true }),
+        fetchTableCached<FiscalSettings>('fiscal_settings', { force: true, limit: 1 }),
+      ])
+
+      let count = 0
+      if (c && c.length > 0) { setClients(c); count += c.length }
+      if (v && v.length > 0) { setVehicles(v); count += v.length }
+      if (o && o.length > 0) { setOrders(o); count += o.length }
+      if (d && d.length > 0) { setDeferredPayments(d); count += d.length }
+      if (s && s.length > 0) { setStock(s); count += s.length }
+      if (f && f.length > 0) { setFinancial(f); count += f.length }
+      if (a && a.length > 0) { setAppointments(a); count += a.length }
+      if (fs && fs.length > 0) { setFiscalSettings(fs[0]); count += 1 }
+
+      showToast(`Dados recuperados do Supabase! ${count} registros restaurados.`, 'success')
+      return { success: true, message: `${count} registros baixados com sucesso.` }
+    } catch (err: any) {
+      const msg = err?.message || 'Falha ao baixar dados do Supabase'
+      showToast(`Erro ao puxar dados: ${msg}`, 'warning')
+      return { success: false, message: msg }
+    }
+  }, [showToast])
 
   const storageMetrics = useMemo(
     () =>
@@ -1569,6 +1611,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addCashMovement,
         finishOrder,
         storageMetrics,
+        syncWithSupabase,
+        pullFromSupabase,
         resetDataToDefault,
         clearAllData,
         loadDemoData,

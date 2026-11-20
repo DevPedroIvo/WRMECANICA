@@ -1,10 +1,11 @@
 /**
- * Camada leve de persistência otimizada para os limites do plano gratuito do Supabase:
+ * Camada leve de persistência e sincronização otimizada para o Supabase (Cloud & Offline-first):
+ * - Suporta credenciais via variáveis de ambiente (.env) OU configuração direta na tela de Configurações
  * - Zero dependências pesadas (usa fetch nativo contra PostgREST)
  * - Projeção explícita de colunas (nunca SELECT *)
- * - Cache local-first com TTL (5 min) evitando egress repetido ao navegar entre abas
+ * - Cache local-first com TTL (5 min) evitando egress repetido
  * - Escritas por delta (envia apenas o registro criado/editado, nunca tabelas inteiras)
- * - Debounce na persistência local para evitar writes excessivos
+ * - Debounce na persistência local
  * - Compactação de payload (remove campos vazios e impede blobs/base64 de imagens)
  * - Zero Realtime WebSockets e zero polling automático
  */
@@ -19,10 +20,54 @@ export type SyncTable =
   | 'appointments'
   | 'fiscal_settings'
 
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+const STORAGE_KEYS = {
+  url: 'wr_supabase_url',
+  anonKey: 'wr_supabase_anon_key',
+}
 
-export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
+/**
+ * Retorna as credenciais ativas do Supabase (checa localStorage primeiro, depois import.meta.env)
+ */
+export function getSupabaseCredentials(): { url: string; anonKey: string; isConfigured: boolean } {
+  const localUrl = (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.url) : null) || ''
+  const localKey = (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.anonKey) : null) || ''
+  const envUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
+  const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+
+  const url = (localUrl || envUrl).replace(/\/$/, '')
+  const anonKey = localKey || envKey
+
+  return {
+    url,
+    anonKey,
+    isConfigured: Boolean(url && anonKey),
+  }
+}
+
+export function saveSupabaseCredentials(url: string, anonKey: string): void {
+  if (typeof window !== 'undefined') {
+    if (url.trim()) {
+      localStorage.setItem(STORAGE_KEYS.url, url.trim().replace(/\/$/, ''))
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.url)
+    }
+
+    if (anonKey.trim()) {
+      localStorage.setItem(STORAGE_KEYS.anonKey, anonKey.trim())
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.anonKey)
+    }
+  }
+}
+
+export function clearSupabaseCredentials(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(STORAGE_KEYS.url)
+    localStorage.removeItem(STORAGE_KEYS.anonKey)
+  }
+}
+
+export const isSupabaseConfigured = () => getSupabaseCredentials().isConfigured
 
 // Projeção explícita de colunas para economizar banda (egress)
 const SELECT_COLUMNS: Record<SyncTable, string> = {
@@ -102,13 +147,78 @@ export function loadLocalSafe<T>(key: string, fallback: T): T {
 }
 
 function getHeaders(prefer?: string): HeadersInit {
+  const { anonKey } = getSupabaseCredentials()
   const headers: Record<string, string> = {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    apikey: anonKey,
+    Authorization: `Bearer ${anonKey}`,
     'Content-Type': 'application/json',
   }
   if (prefer) headers['Prefer'] = prefer
   return headers
+}
+
+/**
+ * Testa a conexão com o Supabase enviando uma requisição leve de verificação
+ */
+export async function testSupabaseConnection(
+  customUrl?: string,
+  customKey?: string
+): Promise<{ success: boolean; message: string; latencyMs?: number }> {
+  const url = (customUrl || getSupabaseCredentials().url || '').replace(/\/$/, '')
+  const anonKey = customKey || getSupabaseCredentials().anonKey || ''
+
+  if (!url || !anonKey) {
+    return {
+      success: false,
+      message: 'URL e Anon Key do Supabase são obrigatórios.',
+    }
+  }
+
+  const start = performance.now()
+  try {
+    const res = await fetch(`${url}/rest/v1/clients?limit=1`, {
+      method: 'GET',
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const latencyMs = Math.round(performance.now() - start)
+
+    if (res.ok) {
+      return {
+        success: true,
+        message: `Conectado com sucesso ao Supabase! Latência: ${latencyMs}ms`,
+        latencyMs,
+      }
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      return {
+        success: false,
+        message: 'Chave Anon Key inválida ou sem permissão de acesso ao projeto.',
+      }
+    }
+
+    if (res.status === 404) {
+      return {
+        success: false,
+        message: 'Tabela "clients" não encontrada. Execute o arquivo supabase/schema.sql no SQL Editor do Supabase.',
+      }
+    }
+
+    return {
+      success: false,
+      message: `Erro na resposta do Supabase: HTTP ${res.status}`,
+    }
+  } catch (err: any) {
+    return {
+      success: false,
+      message: `Não foi possível conectar ao Supabase: ${err.message || 'Verifique sua conexão ou a URL do projeto.'}`,
+    }
+  }
 }
 
 /**
@@ -118,7 +228,8 @@ export async function fetchTableCached<T>(
   table: SyncTable,
   options?: { force?: boolean; limit?: number }
 ): Promise<T[] | null> {
-  if (!isSupabaseConfigured) return null
+  const { url, isConfigured } = getSupabaseCredentials()
+  if (!isConfigured) return null
 
   const lastFetched = cacheTimestamps.get(table) || 0
   if (!options?.force && Date.now() - lastFetched < CACHE_TTL_MS) {
@@ -131,9 +242,9 @@ export async function fetchTableCached<T>(
   }
 
   const limit = options?.limit ?? DEFAULT_PAGE_LIMIT
-  const url = `${SUPABASE_URL}/rest/v1/${table}?select=${SELECT_COLUMNS[table]}&order=updated_at.desc&limit=${limit}`
+  const reqUrl = `${url}/rest/v1/${table}?select=${SELECT_COLUMNS[table]}&order=updated_at.desc&limit=${limit}`
 
-  const req = fetch(url, { headers: getHeaders() })
+  const req = fetch(reqUrl, { headers: getHeaders() })
     .then(async res => {
       sessionRequestsCount += 1
       if (!res.ok) return null
@@ -157,7 +268,6 @@ let writeQueue: Promise<void> = Promise.resolve()
 /**
  * Envia apenas 1 registro (delta upsert) usando Prefer: return=minimal
  * para economizar 100% de egress na resposta da API.
- * Enfileira escritas em ordem para evitar corrida de FK (ex.: cliente + 1º veículo).
  */
 export function upsertDeltaRow(
   table: SyncTable,
@@ -165,7 +275,8 @@ export function upsertDeltaRow(
   payload: unknown,
   extraColumns?: Record<string, string | number | undefined>
 ): Promise<void> {
-  if (!isSupabaseConfigured) return Promise.resolve()
+  const { url, isConfigured } = getSupabaseCredentials()
+  if (!isConfigured) return Promise.resolve()
 
   const body = {
     id,
@@ -179,7 +290,7 @@ export function upsertDeltaRow(
       sessionRequestsCount += 1
       const serialized = JSON.stringify(body)
       sessionBytesTransferred += serialized.length
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=id`, {
+      const res = await fetch(`${url}/rest/v1/${table}?on_conflict=id`, {
         method: 'POST',
         headers: getHeaders('resolution=merge-duplicates,return=minimal'),
         body: serialized,
@@ -200,12 +311,13 @@ export function upsertDeltaRow(
  * Remove 1 registro específico por ID com return=minimal (zero payload de resposta).
  */
 export function deleteDeltaRow(table: SyncTable, id: string): Promise<void> {
-  if (!isSupabaseConfigured) return Promise.resolve()
+  const { url, isConfigured } = getSupabaseCredentials()
+  if (!isConfigured) return Promise.resolve()
 
   const run = async () => {
     try {
       sessionRequestsCount += 1
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
+      const res = await fetch(`${url}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
         method: 'DELETE',
         headers: getHeaders('return=minimal'),
       })
@@ -237,7 +349,7 @@ export function getSupabaseOptimizationMetrics(snapshot: unknown): StorageMetric
   const estimatedFreeTierPercent = Number(((localPayloadKB / 512000) * 100).toFixed(4))
 
   return {
-    configured: isSupabaseConfigured,
+    configured: isSupabaseConfigured(),
     localPayloadKB,
     estimatedFreeTierPercent,
     sessionRequests: sessionRequestsCount,

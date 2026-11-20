@@ -237,7 +237,7 @@ export const OrdersView: React.FC = () => {
     setMileage(0)
     setFuelLevel('medio')
     setServiceDescription('')
-    setMechanicAssigned(mechanics[0] || 'Roberto Silva')
+    setMechanicAssigned(mechanics[0] || 'Oficina Geral')
     setObservations('')
     setItems([])
     setNewItemDesc('')
@@ -430,7 +430,7 @@ export const OrdersView: React.FC = () => {
         mileage,
         fuelLevel,
         serviceDescription: serviceDescription.trim() || (items[0]?.serviceDescription || 'Revisão Geral'),
-        mechanicAssigned: mechanicAssigned || 'Roberto Silva',
+        mechanicAssigned: mechanicAssigned || mechanics[0] || 'Oficina Geral',
         observations: observations.trim() || '',
         items,
         partsTotal,
@@ -455,7 +455,7 @@ export const OrdersView: React.FC = () => {
       mileage,
       fuelLevel,
       serviceDescription: serviceDescription.trim() || (items[0]?.serviceDescription || 'Revisão Geral'),
-      mechanicAssigned: mechanicAssigned || 'Roberto Silva',
+      mechanicAssigned: mechanicAssigned || mechanics[0] || 'Oficina Geral',
       observations: observations.trim() || '',
       items,
       warranty: {
@@ -858,7 +858,7 @@ export const OrdersView: React.FC = () => {
                         Serviço Principal
                       </span>
                       <span className="text-wr-orange font-bold text-xs">
-                        Mecânico: {order.mechanicAssigned || 'Roberto Silva'}
+                        Mecânico: {order.mechanicAssigned || 'Oficina Geral'}
                       </span>
                     </div>
 
@@ -1142,7 +1142,7 @@ export const OrdersView: React.FC = () => {
 
                   <div className="flex items-center justify-between text-xs text-wr-muted pt-1">
                     <span>Nível de Combustível: <strong className="text-wr-text capitalize">{selectedOrderDetails.fuelLevel || 'médio'}</strong></span>
-                    <span>Mecânico: <strong className="text-wr-orange">{selectedOrderDetails.mechanicAssigned || 'Roberto Silva'}</strong></span>
+                    <span>Mecânico: <strong className="text-wr-orange">{selectedOrderDetails.mechanicAssigned || 'Oficina Geral'}</strong></span>
                   </div>
                 </div>
 
@@ -1648,7 +1648,7 @@ export const OrdersView: React.FC = () => {
                           onChange={e => setMechanicAssigned(e.target.value)}
                           className="w-full p-3 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-bold"
                         >
-                          {(mechanics || ['Roberto Silva', 'Carlos Eduardo', 'Marcos Oficina']).map(m => (
+                          {(mechanics.length > 0 ? mechanics : ['Oficina Geral']).map(m => (
                             <option key={m} value={m} className="bg-wr-surface text-wr-text">
                               {m}
                             </option>
@@ -1859,7 +1859,7 @@ export const OrdersView: React.FC = () => {
 
                     <div className="pt-2 border-t border-wr-border">
                       <span className="text-[10px] text-wr-muted uppercase font-bold block">Mecânico Atribuído</span>
-                      <p className="font-bold text-wr-text">{mechanicAssigned || 'Roberto Silva'}</p>
+                      <p className="font-bold text-wr-text">{mechanicAssigned || 'Oficina Geral'}</p>
                     </div>
 
                     <div className="pt-2 border-t border-wr-border flex justify-between font-mono text-xs">
