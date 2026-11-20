@@ -47,6 +47,8 @@ import {
   Check,
   ChevronDown,
   Filter,
+  ChevronLeft,
+  Eye,
 } from 'lucide-react'
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
@@ -64,7 +66,7 @@ const STATUS_CONFIG: Record<
   { label: string; bg: string; text: string; border: string; dot: string }
 > = {
   aguardando: {
-    label: 'Aguardando',
+    label: 'Aguardando Entrada',
     bg: 'bg-amber-500/10',
     text: 'text-amber-600 dark:text-amber-400',
     border: 'border-amber-500/30',
@@ -128,6 +130,10 @@ export const OrdersView: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<
     'todas' | 'aguardando' | 'andamento' | 'pronto' | 'pago' | 'cancelado'
   >('todas')
+
+  // Paginação e controle de quantidade por tela para os cards caberem certinho
+  const [currentPage, setCurrentPage] = useState(1)
+  const [cardsPerPage, setCardsPerPage] = useState<number>(6)
 
   // Card clicado abre o Painel Lateral Amplo (Slide-Over Drawer)
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<ServiceOrder | null>(null)
@@ -198,6 +204,11 @@ export const OrdersView: React.FC = () => {
       setMechanicAssigned(mechanics[0])
     }
   }, [mechanics, mechanicAssigned])
+
+  // Reset de página ao filtrar ou pesquisar
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, activeFilter, cardsPerPage])
 
   // Processar Pré-preenchimento ao abrir modal vindo de agendamento ou cliente
   useEffect(() => {
@@ -584,6 +595,13 @@ export const OrdersView: React.FC = () => {
     }
   }, [orders])
 
+  // Paginação dos cards para garantir respiro visual
+  const totalPages = Math.ceil(filteredOrders.length / cardsPerPage) || 1
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * cardsPerPage
+    return filteredOrders.slice(start, start + cardsPerPage)
+  }, [filteredOrders, currentPage, cardsPerPage])
+
   return (
     <div className="space-y-6 select-none pb-14 animate-fadeIn">
       {/* ===================== TOPO EXECUTIVO: GESTÃO VISUAL DE CARDS ===================== */}
@@ -601,7 +619,7 @@ export const OrdersView: React.FC = () => {
               Ordens de Serviço
             </h1>
             <p className="text-xs text-wr-muted max-w-xl">
-              Navegue pelos cards clicáveis de cada ordem para abrir a ficha completa do atendimento, veículo, peças e financeiro.
+              Navegue pelos cards amplos e bem distribuídos de cada atendimento. Clique no card para abrir todos os detalhes.
             </p>
           </div>
 
@@ -623,24 +641,45 @@ export const OrdersView: React.FC = () => {
 
       {/* ===================== FILTROS VISUAIS & BARRA DE BUSCA ===================== */}
       <div className="space-y-3">
-        {/* Barra de Pesquisa */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-wr-muted pointer-events-none" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Pesquisar por cliente, placa do carro ou número da OS..."
-            className="w-full bg-wr-surface text-wr-text placeholder-wr-muted text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-wr-border focus:border-wr-orange focus:ring-2 focus:ring-wr-orange/20 outline-none transition-all shadow-xs"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-wr-muted hover:text-wr-text"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+        {/* Barra de Pesquisa & Controles de Densidade */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-wr-muted pointer-events-none" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Pesquisar por cliente, placa do carro ou número da OS..."
+              className="w-full bg-wr-surface text-wr-text placeholder-wr-muted text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-wr-border focus:border-wr-orange focus:ring-2 focus:ring-wr-orange/20 outline-none transition-all shadow-xs"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-wr-muted hover:text-wr-text"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Seletor de cards visíveis por página */}
+          <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-wr-surface border border-wr-border text-xs text-wr-muted shrink-0 shadow-xs">
+            <span className="text-[11px] font-semibold">Exibir:</span>
+            {[4, 6, 8, 12].map(num => (
+              <button
+                key={num}
+                type="button"
+                onClick={() => setCardsPerPage(num)}
+                className={`px-2.5 py-1 rounded-xl text-xs font-mono font-bold transition-all ${
+                  cardsPerPage === num
+                    ? 'bg-wr-orange text-white shadow-xs'
+                    : 'text-wr-muted hover:text-wr-text hover:bg-wr-elevated'
+                }`}
+              >
+                {num}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Filtros em Abas de Status com contadores reais */}
@@ -681,7 +720,7 @@ export const OrdersView: React.FC = () => {
         </div>
       </div>
 
-      {/* ===================== GRADE RESPONSIVA DE CARDS CLICÁVEIS ===================== */}
+      {/* ===================== GRADE ESPAÇOSA DE CARDS CLICÁVEIS ===================== */}
       {filteredOrders.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-wr-border bg-wr-surface/60 p-12 text-center text-wr-muted space-y-3">
           <ClipboardList className="h-12 w-12 mx-auto text-wr-muted opacity-50" />
@@ -702,218 +741,279 @@ export const OrdersView: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
-          {filteredOrders.map(order => {
-            const statusStyle = STATUS_CONFIG[order.status] || STATUS_CONFIG.aguardando
-            const hasFiscal = order.fiscalInvoice && order.fiscalInvoice.status === 'autorizada'
-            const isMenuOpen = openCardMenuId === order.id
+        <div className="space-y-6">
+          {/* Informações da Listagem */}
+          <div className="flex items-center justify-between text-xs text-wr-muted px-1">
+            <span>
+              Mostrando <strong className="text-wr-text font-mono font-bold">{paginatedOrders.length}</strong> de{' '}
+              <strong className="text-wr-text font-mono font-bold">{filteredOrders.length}</strong> ordens de serviço
+            </span>
+            <span className="font-medium">
+              Página <strong className="text-wr-text font-mono">{currentPage}</strong> de{' '}
+              <strong className="text-wr-text font-mono">{totalPages}</strong>
+            </span>
+          </div>
 
-            return (
-              <div
-                key={order.id}
-                onClick={() => setSelectedOrderDetails(order)}
-                className="group relative rounded-3xl border border-wr-border bg-wr-surface hover:border-wr-orange/60 p-5 shadow-card hover:shadow-elevated transition-all duration-200 cursor-pointer flex flex-col justify-between gap-4 overflow-hidden"
-              >
-                {/* Linha 1: Número da OS, Data & Badge de Status */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-black text-wr-orange px-2.5 py-1 rounded-xl bg-wr-orange/10 border border-wr-orange/25">
-                      {order.number}
-                    </span>
-                    <span className="text-[11px] font-medium text-wr-muted">
-                      {order.date}
-                    </span>
-                  </div>
+          {/* Grade com 2 a 3 colunas max para que todas as informações caibam perfeitamente */}
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+            {paginatedOrders.map(order => {
+              const statusStyle = STATUS_CONFIG[order.status] || STATUS_CONFIG.aguardando
+              const hasFiscal = order.fiscalInvoice && order.fiscalInvoice.status === 'autorizada'
+              const isMenuOpen = openCardMenuId === order.id
 
-                  <div className="flex items-center gap-1.5">
-                    {hasFiscal && (
-                      <span
-                        title="Nota Fiscal Autorizada"
-                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 font-mono"
-                      >
-                        NFS-e
-                      </span>
-                    )}
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`}
-                    >
-                      <span className={`h-1.5 w-1.5 rounded-full ${statusStyle.dot}`} />
-                      {statusStyle.label}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Linha 2: Veículo, Placa & Foto / Ícone */}
-                <div className="flex items-center gap-3">
-                  {/* Foto do Veículo ou Ícone Automotivo com estilo Mercosul */}
-                  <div className="h-12 w-12 rounded-2xl bg-wr-elevated border border-wr-border flex flex-col items-center justify-center text-wr-orange shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                    <Car className="h-5 w-5" />
-                    <span className="text-[8px] font-mono font-black text-wr-muted tracking-tighter uppercase mt-0.5">
-                      Auto
-                    </span>
-                  </div>
-
-                  <div className="min-w-0 flex-1">
+              return (
+                <div
+                  key={order.id}
+                  onClick={() => setSelectedOrderDetails(order)}
+                  className="group relative rounded-3xl border border-wr-border bg-wr-surface hover:border-wr-orange/60 p-6 shadow-card hover:shadow-elevated transition-all duration-200 cursor-pointer flex flex-col justify-between gap-5 overflow-hidden"
+                >
+                  {/* Linha 1: Tag da OS, Data & Badge de Status destacado */}
+                  <div className="flex items-center justify-between gap-3 pb-3 border-b border-wr-border">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-black px-2 py-0.5 rounded-md bg-wr-elevated border border-wr-border text-wr-text">
-                        {order.vehiclePlate}
+                      <span className="font-mono text-sm font-black text-wr-orange px-3 py-1 rounded-xl bg-wr-orange/10 border border-wr-orange/30">
+                        {order.number}
                       </span>
-                      {order.mileage ? (
-                        <span className="text-[10px] font-mono text-wr-muted">
-                          {order.mileage.toLocaleString('pt-BR')} km
-                        </span>
-                      ) : null}
+                      <span className="text-xs font-semibold text-wr-muted">
+                        {order.date}
+                      </span>
                     </div>
-                    <h3 className="text-sm font-bold text-wr-text truncate mt-1">
-                      {order.vehicleModel}
-                    </h3>
-                  </div>
-                </div>
 
-                {/* Linha 3: Cliente & Telefone */}
-                <div className="p-3 rounded-2xl bg-wr-elevated border border-wr-border space-y-1 text-xs">
-                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-wr-muted">
-                    <span>Cliente</span>
+                    <div className="flex items-center gap-2">
+                      {hasFiscal && (
+                        <span
+                          title="Nota Fiscal Autorizada"
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono"
+                        >
+                          <ShieldCheck className="h-3 w-3" /> NFS-e
+                        </span>
+                      )}
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`}
+                      >
+                        <span className={`h-2 w-2 rounded-full ${statusStyle.dot}`} />
+                        {statusStyle.label}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Linha 2: Veículo (Placa Padrão Mercosul + Modelo e KM) */}
+                  <div className="flex items-center gap-4">
+                    {/* Placa Padrão Mercosul Autêntica */}
+                    <div className="inline-flex flex-col items-center rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0D131E] shadow-xs overflow-hidden shrink-0">
+                      <div className="w-full bg-[#003399] px-2 py-0.5 text-[7px] font-black text-white text-center tracking-widest uppercase">
+                        BRASIL
+                      </div>
+                      <span className="font-mono text-xs font-black tracking-wider px-2.5 py-1 text-slate-900 dark:text-white">
+                        {order.vehiclePlate || 'SEM PLACA'}
+                      </span>
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base font-extrabold text-wr-text truncate group-hover:text-wr-orange transition-colors">
+                        {order.vehicleModel}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-wr-muted mt-0.5">
+                        {order.mileage ? (
+                          <span className="flex items-center gap-1 font-mono">
+                            <Gauge className="h-3.5 w-3.5 text-wr-orange" />
+                            {order.mileage.toLocaleString('pt-BR')} km
+                          </span>
+                        ) : null}
+                        <span className="flex items-center gap-1 capitalize">
+                          <Fuel className="h-3.5 w-3.5 text-wr-orange" />
+                          Combustível: {order.fuelLevel || 'médio'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Linha 3: Cliente & Contato */}
+                  <div className="p-3.5 rounded-2xl bg-wr-elevated border border-wr-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-8 w-8 rounded-xl bg-wr-surface border border-wr-border flex items-center justify-center text-wr-orange shrink-0">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-wr-muted block">
+                          Cliente
+                        </span>
+                        <p className="font-bold text-wr-text text-sm truncate">
+                          {order.clientName}
+                        </p>
+                      </div>
+                    </div>
+
                     {order.clientPhone && (
-                      <span className="font-mono text-wr-muted">{order.clientPhone}</span>
+                      <span className="font-mono font-bold text-wr-muted bg-wr-surface px-2.5 py-1 rounded-xl border border-wr-border shrink-0">
+                        {order.clientPhone}
+                      </span>
                     )}
                   </div>
-                  <p className="font-bold text-wr-text truncate">
-                    {order.clientName}
-                  </p>
-                </div>
 
-                {/* Linha 4: Serviço Principal Solicitado */}
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-wr-muted flex items-center gap-1">
-                    <Wrench className="h-3 w-3 text-wr-orange" /> Serviço Principal
-                  </span>
-                  <p className="text-xs text-wr-text font-medium line-clamp-2">
-                    {order.serviceDescription || (order.items?.[0]?.serviceDescription || 'Revisão Periódica Geral')}
-                  </p>
-                </div>
+                  {/* Linha 4: Serviço & Mecânico Atribuído */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold uppercase tracking-wider text-wr-muted flex items-center gap-1.5">
+                        <Wrench className="h-3.5 w-3.5 text-wr-orange" />
+                        Serviço Principal
+                      </span>
+                      <span className="text-wr-orange font-bold text-xs">
+                        Mecânico: {order.mechanicAssigned || 'Roberto Silva'}
+                      </span>
+                    </div>
 
-                {/* Linha 5: Valor Total e Barra de Ações Rápidas */}
-                <div className="pt-3 border-t border-wr-border flex items-center justify-between gap-2">
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-wr-muted">
-                      Total
-                    </span>
-                    <span className="font-mono text-base font-black text-wr-orange">
-                      {formatCurrency(order.totalAmount || 0)}
-                    </span>
+                    <div className="p-3 rounded-2xl bg-wr-elevated border border-wr-border text-xs font-medium text-wr-text line-clamp-2">
+                      {order.serviceDescription || (order.items?.[0]?.serviceDescription || 'Revisão e Manutenção Periódica Geral')}
+                    </div>
                   </div>
 
-                  {/* Botões de Ações Rápidas (com stopPropagation para não abrir o card ao clicar) */}
-                  <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                    {/* Botão de WhatsApp Rápido */}
-                    <button
-                      type="button"
-                      onClick={() => handleOpenClientWhatsApp(order)}
-                      className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
-                      title="Abrir WhatsApp do cliente"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                    </button>
+                  {/* Linha 5: Detalhamento Financeiro (Peças, Mão de Obra e Total) */}
+                  <div className="p-3.5 rounded-2xl bg-wr-elevated/70 border border-wr-border flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-xs font-mono text-wr-muted">
+                      <div>
+                        <span className="text-[10px] block uppercase font-bold">Peças</span>
+                        <span className="font-bold text-wr-text">{formatCurrency(order.partsTotal || 0)}</span>
+                      </div>
+                      <div className="h-6 w-px bg-wr-border" />
+                      <div>
+                        <span className="text-[10px] block uppercase font-bold">Mão de Obra</span>
+                        <span className="font-bold text-wr-text">{formatCurrency(order.laborTotal || 0)}</span>
+                      </div>
+                    </div>
 
-                    {/* Botão de Impressão Rápida */}
-                    <button
-                      type="button"
-                      onClick={() => setPdfModalOrder(order)}
-                      className="p-2 rounded-xl bg-wr-elevated text-wr-text border border-wr-border hover:border-wr-orange hover:text-wr-orange transition-colors"
-                      title="Imprimir Ordem de Serviço"
-                    >
-                      <Printer className="h-4 w-4" />
-                    </button>
+                    <div className="text-right">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-wr-muted block">
+                        Total Líquido
+                      </span>
+                      <span className="font-mono text-xl font-black text-wr-orange">
+                        {formatCurrency(order.totalAmount || 0)}
+                      </span>
+                    </div>
+                  </div>
 
-                    {/* Menu Mais Opções */}
-                    <div className="relative">
+                  {/* Linha 6: Barra de Ações Rápidas Espaçosas */}
+                  <div
+                    className="pt-3 border-t border-wr-border flex items-center justify-between gap-2"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <div className="flex items-center gap-2">
+                      {/* Botão WhatsApp */}
                       <button
                         type="button"
-                        onClick={() =>
-                          setOpenCardMenuId(prev => (prev === order.id ? null : order.id))
-                        }
-                        className="p-2 rounded-xl bg-wr-elevated text-wr-muted hover:text-wr-text border border-wr-border hover:border-wr-orange transition-colors"
-                        title="Mais Ações"
+                        onClick={() => handleOpenClientWhatsApp(order)}
+                        className="px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/20 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+                        title="Abrir WhatsApp do cliente"
                       >
-                        <MoreVertical className="h-4 w-4" />
+                        <MessageCircle className="h-4 w-4" />
+                        <span className="hidden sm:inline">WhatsApp</span>
                       </button>
 
-                      {/* Dropdown de Opções */}
-                      {isMenuOpen && (
-                        <div
-                          className="absolute right-0 bottom-full mb-2 w-48 rounded-2xl border border-wr-border bg-wr-surface p-1.5 shadow-elevated z-30 space-y-1 text-xs"
-                          onClick={e => e.stopPropagation()}
+                      {/* Botão Imprimir */}
+                      <button
+                        type="button"
+                        onClick={() => setPdfModalOrder(order)}
+                        className="px-3 py-2 rounded-xl bg-wr-elevated text-wr-text border border-wr-border hover:border-wr-orange hover:text-wr-orange text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+                        title="Imprimir Ordem de Serviço"
+                      >
+                        <Printer className="h-4 w-4" />
+                        <span className="hidden sm:inline">Imprimir</span>
+                      </button>
+
+                      {/* Botão Editar */}
+                      <button
+                        type="button"
+                        onClick={() => setEditingOrder(order)}
+                        className="p-2 rounded-xl bg-wr-elevated text-wr-muted hover:text-wr-text border border-wr-border hover:border-wr-orange transition-colors"
+                        title="Editar Ordem"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {/* Botão Receber Pagamento se não pago */}
+                      {order.status !== 'pago' ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFinalizingOrder(order)
+                            setCheckoutPaymentMethod('pix')
+                            setCheckoutDiscount(order.discount || 0)
+                            setCheckoutInstallments(1)
+                          }}
+                          className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
                         >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenCardMenuId(null)
-                              setEditingOrder(order)
-                            }}
-                            className="w-full px-3 py-2 rounded-xl text-left font-semibold text-wr-text hover:bg-wr-elevated flex items-center gap-2"
-                          >
-                            <Edit2 className="h-3.5 w-3.5 text-wr-orange" />
-                            <span>Editar Ordem</span>
-                          </button>
-
-                          {order.status !== 'pago' && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOpenCardMenuId(null)
-                                setFinalizingOrder(order)
-                                setCheckoutPaymentMethod('pix')
-                                setCheckoutDiscount(order.discount || 0)
-                                setCheckoutInstallments(1)
-                              }}
-                              className="w-full px-3 py-2 rounded-xl text-left font-semibold text-emerald-500 hover:bg-emerald-500/10 flex items-center gap-2"
-                            >
-                              <DollarSign className="h-3.5 w-3.5" />
-                              <span>Receber / Venda</span>
-                            </button>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenCardMenuId(null)
-                              handleOpenNfse(order)
-                            }}
-                            className="w-full px-3 py-2 rounded-xl text-left font-semibold text-blue-500 hover:bg-blue-500/10 flex items-center gap-2"
-                          >
-                            <FileText className="h-3.5 w-3.5" />
-                            <span>Nota Fiscal (NFS-e)</span>
-                          </button>
-
-                          <div className="pt-1 border-t border-wr-border">
-                            <span className="px-3 py-1 text-[9px] uppercase font-bold text-wr-muted block">
-                              Mudar Status Rápido
-                            </span>
-                            {(['aguardando', 'andamento', 'pronto'] as OrderStatus[]).map(st => (
-                              <button
-                                key={st}
-                                type="button"
-                                onClick={() => {
-                                  setOpenCardMenuId(null)
-                                  updateOrderStatus(order.id, st)
-                                  showToast(`Status atualizado para ${STATUS_CONFIG[st].label}!`, 'info')
-                                }}
-                                className="w-full px-3 py-1.5 rounded-lg text-left text-[11px] font-semibold text-wr-muted hover:text-wr-text hover:bg-wr-elevated flex items-center gap-2"
-                              >
-                                <span className={`h-1.5 w-1.5 rounded-full ${STATUS_CONFIG[st].dot}`} />
-                                <span>{STATUS_CONFIG[st].label}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
+                          <DollarSign className="h-4 w-4" />
+                          <span>Receber</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenNfse(order)}
+                          className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                        >
+                          <FileText className="h-4 w-4" />
+                          <span>NFS-e</span>
+                        </button>
                       )}
+
+                      {/* Botão Abrir Detalhes */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrderDetails(order)}
+                        className="p-2 rounded-xl bg-wr-elevated hover:bg-wr-orange text-wr-muted hover:text-white border border-wr-border transition-colors"
+                        title="Ver Ficha Completa da OS"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
                 </div>
+              )
+            })}
+          </div>
+
+          {/* Paginação Inferior com Navegação Suave */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t border-wr-border text-xs text-wr-muted">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                className="px-4 py-2.5 rounded-2xl bg-wr-surface border border-wr-border font-bold text-wr-text hover:border-wr-orange disabled:opacity-40 disabled:pointer-events-none flex items-center gap-2 transition-all shadow-xs"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span>Página Anterior</span>
+              </button>
+
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setCurrentPage(p)}
+                    className={`h-9 w-9 rounded-xl font-mono text-xs font-bold transition-all ${
+                      currentPage === p
+                        ? 'bg-wr-orange text-white shadow-xs font-black'
+                        : 'bg-wr-surface border border-wr-border text-wr-muted hover:text-wr-text hover:bg-wr-elevated'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
               </div>
-            )
-          })}
+
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                className="px-4 py-2.5 rounded-2xl bg-wr-surface border border-wr-border font-bold text-wr-text hover:border-wr-orange disabled:opacity-40 disabled:pointer-events-none flex items-center gap-2 transition-all shadow-xs"
+              >
+                <span>Próxima Página</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
