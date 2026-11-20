@@ -3,55 +3,59 @@
 @tailwind utilities;
 
 @layer base {
-  /* ===== DARK AUTOMOTIVE PREMIUM (Paleta Oficial: Fundo Grafite #0C1017, Painéis #141A24, Superfícies #1A2230, Destaque Laranja #F97316) ===== */
+  /* ===== MODO CLARO (Default / .light / .theme-light) ===== */
   :root,
-  .dark {
-    --wr-bg: 12 16 23;              /* #0C1017 - Preto Grafite Principal */
-    --wr-surface: 20 26 36;         /* #141A24 - Painéis e Cards Cinza-Carvão */
-    --wr-surface-dark: 15 20 28;    /* #0F141C - Painéis mais profundos */
-    --wr-elevated: 26 34 48;        /* #1A2230 - Superfícies secundárias / inputs */
-    --wr-sidebar: 15 20 28;         /* #0F141C - Menu lateral escuro automotivo */
-    --wr-border: 34 44 61;          /* #222C3D - Bordas sutis automotivas */
-    --wr-border-hover: 51 65 85;    /* #334155 - Bordas ativas */
+  .light,
+  .theme-light,
+  [data-theme="light"] {
+    --wr-bg: 244 246 250;           /* #F4F6FA - Fundo Claro suave e moderno */
+    --wr-surface: 255 255 255;      /* #FFFFFF - Cards Brancos puros */
+    --wr-surface-dark: 238 242 248; /* #EEF2F8 - Superfícies de apoio */
+    --wr-elevated: 248 250 252;     /* #F8FAFC - Inputs e tabelas */
+    --wr-sidebar: 17 27 43;         /* #111B2B - Menu lateral escuro e elegante */
+    --wr-border: 226 232 240;       /* #E2E8F0 - Bordas sutis claras */
+    --wr-border-hover: 203 213 225; /* #CBD5E1 - Bordas ativas */
+    --wr-text: 15 23 42;            /* #0F172A - Texto escuro nítido e legível */
+    --wr-muted: 100 116 139;        /* #64748B - Texto secundário */
+    --wr-orange: 249 115 22;        /* #F97316 - Laranja vibrante principal */
+    --wr-orange-dark: 234 88 12;    /* #EA580C - Laranja escuro */
+    --wr-orange-light: 251 146 60;  /* #FB923C - Laranja claro */
+    --wr-orange-soft: 255 240 230;  /* #FFF0E6 - Fundo suave de destaque laranja */
+    --wr-success: 16 185 129;       /* #10B981 */
+    --wr-error: 239 68 68;          /* #EF4444 */
+    --wr-alert: 245 158 11;         /* #F59E0B */
+    --wr-gold: 249 115 22;
+    --wr-logo-cutout: #FFFFFF;
+    --wr-shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+    --wr-shadow-elevated: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    color-scheme: light;
+  }
+
+  /* ===== MODO ESCURO (.dark / .theme-dark / [data-theme="dark"]) ===== */
+  .dark,
+  .theme-dark,
+  [data-theme="dark"] {
+    --wr-bg: 11 15 25;              /* #0B0F19 - Fundo escuro automotivo profundo */
+    --wr-surface: 18 27 42;         /* #121B2A - Painéis e cards sofisticados */
+    --wr-surface-dark: 13 19 30;    /* #0D131E - Superfícies mais profundas */
+    --wr-elevated: 24 35 54;        /* #182336 - Superfícies secundárias / inputs */
+    --wr-sidebar: 13 19 30;         /* #0D131E - Menu lateral escuro automotivo */
+    --wr-border: 32 47 70;          /* #202F46 - Bordas sutis automotivas */
+    --wr-border-hover: 51 72 104;   /* #334868 - Bordas ativas */
     --wr-text: 248 250 252;         /* #F8FAFC - Branco puro e nítido */
     --wr-muted: 148 163 184;        /* #94A3B8 - Cinza claro secundário */
     --wr-orange: 249 115 22;        /* #F97316 - Laranja vibrante principal */
     --wr-orange-dark: 234 88 12;    /* #EA580C - Laranja escuro */
     --wr-orange-light: 251 146 60;  /* #FB923C - Laranja claro */
-    --wr-orange-soft: 39 28 20;     /* #271C14 - Fundo sutil laranja escuro */
-    --wr-success: 22 163 106;       /* #16A36A - Verde sucesso */
-    --wr-error: 220 69 69;          /* #DC4545 - Vermelho erro */
-    --wr-alert: 233 154 39;         /* #E99A27 - Amarelo alerta */
-    --wr-gold: 249 115 22;          /* #F97316 - Destaques unificados em laranja */
-    --wr-logo-cutout: #0F141C;
+    --wr-orange-soft: 41 27 18;     /* #291B12 - Fundo sutil laranja escuro */
+    --wr-success: 16 185 129;       /* #10B981 */
+    --wr-error: 239 68 68;          /* #EF4444 */
+    --wr-alert: 245 158 11;         /* #F59E0B */
+    --wr-gold: 249 115 22;
+    --wr-logo-cutout: #121B2A;
     --wr-shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.45), 0 2px 6px -1px rgba(0, 0, 0, 0.35);
     --wr-shadow-elevated: 0 16px 36px -4px rgba(0, 0, 0, 0.65), 0 8px 16px -4px rgba(0, 0, 0, 0.45);
     color-scheme: dark;
-  }
-
-  /* Modo Claro Opcional (apenas para preferência explícita do usuário) */
-  .theme-light {
-    --wr-bg: 243 245 248;
-    --wr-surface: 255 255 255;
-    --wr-surface-dark: 235 240 248;
-    --wr-elevated: 248 250 252;
-    --wr-sidebar: 15 20 28;
-    --wr-border: 229 233 240;
-    --wr-border-hover: 203 213 225;
-    --wr-text: 24 34 48;
-    --wr-muted: 137 147 164;
-    --wr-orange: 249 115 22;
-    --wr-orange-dark: 234 88 12;
-    --wr-orange-light: 251 146 60;
-    --wr-orange-soft: 255 240 230;
-    --wr-success: 22 163 106;
-    --wr-error: 220 69 69;
-    --wr-alert: 233 154 39;
-    --wr-gold: 249 115 22;
-    --wr-logo-cutout: #FFFFFF;
-    --wr-shadow-card: 0 1px 3px rgba(16, 24, 39, 0.05), 0 1px 2px rgba(16, 24, 39, 0.03);
-    --wr-shadow-elevated: 0 10px 25px -5px rgba(16, 24, 39, 0.08);
-    color-scheme: light;
   }
 
   body {
@@ -59,17 +63,27 @@
     background-color: rgb(var(--wr-bg));
     color: rgb(var(--wr-text));
     overflow-x: hidden;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .dark body {
     background-image:
       radial-gradient(circle at 85% 5%, rgba(249, 115, 22, 0.05) 0px, transparent 600px),
       radial-gradient(circle at 10% 90%, rgba(234, 88, 12, 0.03) 0px, transparent 500px);
     background-attachment: fixed;
-    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .light body {
+    background-image:
+      radial-gradient(circle at 90% 5%, rgba(249, 115, 22, 0.03) 0px, transparent 600px),
+      radial-gradient(circle at 10% 95%, rgba(241, 245, 249, 0.8) 0px, transparent 500px);
+    background-attachment: fixed;
   }
 }
 
 @layer components {
   .wr-card {
-    @apply rounded-2xl border border-wr-border bg-wr-surface shadow-card transition-colors duration-200;
+    @apply rounded-2xl border border-wr-border bg-wr-surface shadow-card transition-all duration-200;
   }
 
   .wr-card-interactive {
@@ -85,7 +99,7 @@
   }
 
   .wr-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-wr-orange hover:bg-wr-orangeDark px-4 py-2.5 text-xs font-bold text-white transition-all shadow-sm active:scale-[0.99] disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-wr-orange to-wr-orangeDark hover:brightness-110 px-4 py-2.5 text-xs font-bold text-white transition-all shadow-sm active:scale-[0.99] disabled:opacity-50;
   }
 
   .wr-btn-secondary {
@@ -101,23 +115,23 @@
   }
 
   .wr-badge-orange {
-    @apply bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/40;
+    @apply bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/30;
   }
 
   .wr-badge-success {
-    @apply bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40;
+    @apply bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30;
   }
 
   .wr-badge-alert {
-    @apply bg-orange-50 text-orange-800 border border-orange-200 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800/30;
+    @apply bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30;
   }
 
   .wr-badge-error {
-    @apply bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/40;
+    @apply bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30;
   }
 
   .wr-badge-neutral {
-    @apply bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700/60;
+    @apply bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-500/20;
   }
 
   .wr-modal-backdrop {
@@ -138,36 +152,9 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgb(var(--wr-border-hover));
+  background: rgba(148, 163, 184, 0.25);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--wr-orange));
-}
-
-/* Subtle animations */
-@keyframes fadeSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeSlideUp 0.2s ease-out forwards;
-}
-
-/* Print Styles */
-@media print {
-  aside, header, .no-print {
-    display: none !important;
-  }
-  body {
-    background: #ffffff !important;
-    color: #111827 !important;
-  }
+  background: rgba(249, 115, 22, 0.4);
 }

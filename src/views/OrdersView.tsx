@@ -48,6 +48,8 @@ import {
   Layers,
   ChevronRight,
   AlertTriangle,
+  Play,
+  ArrowUpRight,
 } from 'lucide-react'
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
@@ -119,7 +121,7 @@ export const OrdersView: React.FC = () => {
   const [clientSearchQuery, setClientSearchQuery] = useState('')
   const [clientName, setClientName] = useState('')
   const [clientPhone, setClientPhone] = useState('')
-  const [clientCpfCnpj, setClientCpfCnpj] = useState('')
+  const [clientCpf, setClientCpf] = useState('')
 
   const [vehicleModel, setVehicleModel] = useState('')
   const [vehiclePlate, setVehiclePlate] = useState('')
@@ -127,324 +129,284 @@ export const OrdersView: React.FC = () => {
   const [fuelLevel, setFuelLevel] = useState<FuelStatus>('medio')
 
   const [serviceDescription, setServiceDescription] = useState('')
-  const [technicalDiagnostic, setTechnicalDiagnostic] = useState('')
-  const [mechanicAssigned, setMechanicAssigned] = useState(mechanics?.[0] || 'Roberto Silva')
+  const [mechanicAssigned, setMechanicAssigned] = useState('')
   const [observations, setObservations] = useState('')
 
-  // Itens de serviço e peças
+  // Itens de Serviço
   const [items, setItems] = useState<OrderItem[]>([])
-  const [itemDesc, setItemDesc] = useState('')
-  const [itemPartsCost, setItemPartsCost] = useState('')
-  const [itemLaborCost, setItemLaborCost] = useState('')
-  const [showPresetsDropdown, setShowPresetsDropdown] = useState(false)
+  const [newItemDesc, setNewItemDesc] = useState('')
+  const [newItemParts, setNewItemParts] = useState<number>(0)
+  const [newItemLabor, setNewItemLabor] = useState<number>(0)
 
-  // ===================== ESTADO DO PAINEL DE VENDA (CHECKOUT) =====================
+  // Desconto e Pagamento (para finalização)
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<PaymentMethod>('pix')
-  const [checkoutInstallments, setCheckoutInstallments] = useState(1)
   const [checkoutDiscount, setCheckoutDiscount] = useState<number>(0)
-  const [checkoutDueDate, setCheckoutDueDate] = useState(() =>
-    new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-  )
+  const [checkoutInstallments, setCheckoutInstallments] = useState<number>(1)
+  const [checkoutDueDate, setCheckoutDueDate] = useState<string>(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 30)
+    return d.toISOString().slice(0, 10)
+  })
 
-  // Garante seleção padrão de mecânico
+  // Sincroniza Mecânico Padrão
   useEffect(() => {
-    if (!mechanicAssigned && mechanics?.length > 0) {
+    if (mechanics && mechanics.length > 0 && !mechanicAssigned) {
       setMechanicAssigned(mechanics[0])
     }
-  }, [mechanics])
+  }, [mechanics, mechanicAssigned])
 
-  // Trata abertura do modal de Nova OS com ou sem prefill
+  // Processar Pré-preenchimento ao abrir modal vindo de agendamento ou cliente
   useEffect(() => {
-    if (!isNewOrderModalOpen) return
-    setWizardStep(1)
-
     if (orderPrefill) {
-      if (orderPrefill.clientId) {
-        const c = clients.find(cl => cl.id === orderPrefill.clientId)
-        if (c) {
-          setSelectedClientId(c.id)
-          setClientName(c.name)
-          setClientPhone(c.phone)
-          setClientCpfCnpj(c.cpfCnpj || '')
-        }
-      } else {
-        setSelectedClientId('')
-        setClientName(orderPrefill.clientName || '')
-        setClientPhone(orderPrefill.clientPhone || '')
-        setClientCpfCnpj('')
-      }
-
+      setClientName(orderPrefill.clientName || '')
+      setClientPhone(orderPrefill.clientPhone || '')
       setVehicleModel(orderPrefill.vehicleModel || '')
       setVehiclePlate(orderPrefill.vehiclePlate || '')
-      setMileage(0)
-      setFuelLevel('medio')
       setServiceDescription(orderPrefill.serviceDescription || '')
+      if (orderPrefill.clientId) setSelectedClientId(orderPrefill.clientId)
+      setWizardStep(1)
+      setIsNewOrderModalOpen(true)
       setOrderPrefill(null)
-    } else {
-      setSelectedClientId('')
-      setClientName('')
-      setClientPhone('')
-      setClientCpfCnpj('')
-      setVehicleModel('')
-      setVehiclePlate('')
-      setMileage(0)
-      setFuelLevel('medio')
-      setServiceDescription('')
-      setTechnicalDiagnostic('')
     }
+  }, [orderPrefill, setOrderPrefill, setIsNewOrderModalOpen])
 
+  // Resetar formulário
+  const resetForm = () => {
     setFormStatus('aguardando')
-    setMechanicAssigned(mechanics?.[0] || 'Roberto Silva')
+    setSelectedClientId('')
+    setClientName('')
+    setClientPhone('')
+    setClientCpf('')
+    setVehicleModel('')
+    setVehiclePlate('')
+    setMileage(0)
+    setFuelLevel('medio')
+    setServiceDescription('')
+    setMechanicAssigned(mechanics[0] || 'Roberto Silva')
     setObservations('')
     setItems([])
-    setItemDesc('')
-    setItemPartsCost('')
-    setItemLaborCost('')
-    setShowPresetsDropdown(false)
+    setNewItemDesc('')
+    setNewItemParts(0)
+    setNewItemLabor(0)
+    setWizardStep(1)
     setShowClientSelector(false)
     setClientSearchQuery('')
-  }, [isNewOrderModalOpen])
+    setEditingOrder(null)
+  }
 
-  // Trata abertura do modal de EDIÇÃO com a OS selecionada
+  // Preencher dados ao editar uma OS
   useEffect(() => {
-    if (!editingOrder) return
+    if (editingOrder) {
+      setFormStatus(editingOrder.status)
+      setSelectedClientId(editingOrder.clientId || '')
+      setClientName(editingOrder.clientName)
+      setClientPhone(editingOrder.clientPhone)
+      setClientCpf(editingOrder.clientCpfCnpj || '')
+      setVehicleModel(editingOrder.vehicleModel)
+      setVehiclePlate(editingOrder.vehiclePlate)
+      setMileage(editingOrder.mileage || 0)
+      setFuelLevel(editingOrder.fuelLevel || 'medio')
+      setServiceDescription(editingOrder.serviceDescription)
+      setMechanicAssigned(editingOrder.mechanicAssigned)
+      setObservations(editingOrder.observations || '')
+      setItems(editingOrder.items || [])
+      setWizardStep(1)
+      setIsNewOrderModalOpen(true)
+    }
+  }, [editingOrder, setIsNewOrderModalOpen])
 
-    setFormStatus(editingOrder.status)
-    setSelectedClientId(editingOrder.clientId || '')
-    setClientName(editingOrder.clientName || '')
-    setClientPhone(editingOrder.clientPhone || '')
-    setClientCpfCnpj(editingOrder.clientCpfCnpj || '')
-
-    setVehicleModel(editingOrder.vehicleModel || '')
-    setVehiclePlate(editingOrder.vehiclePlate || '')
-    setMileage(editingOrder.mileage || 0)
-    setFuelLevel(editingOrder.fuelLevel || 'medio')
-
-    setServiceDescription(editingOrder.serviceDescription || '')
-    setMechanicAssigned(editingOrder.mechanicAssigned || mechanics?.[0] || 'Roberto Silva')
-    setObservations(editingOrder.observations || '')
-    const cleanItems = (editingOrder.items || []).filter(
-      it =>
-        it.serviceDescription !== 'Serviço a Avaliar / Orçamento' ||
-        (it.partsCost || 0) > 0 ||
-        (it.laborCost || 0) > 0
-    )
-    setItems(cleanItems)
-    setItemDesc('')
-    setItemPartsCost('')
-    setItemLaborCost('')
-    setShowPresetsDropdown(false)
-    setShowClientSelector(false)
-    setClientSearchQuery('')
-  }, [editingOrder])
-
-  // WhatsApp Canvas Generator
+  // Gerar Canvas para WhatsApp sempre que abrir modal de WhatsApp
   useEffect(() => {
-    if (!whatsAppModalOrder) return
-    let objectUrl = ''
-    setGeneratedImageUrl('')
-    setImageBlob(null)
-    setCopyFeedback(false)
+    if (!whatsAppModalOrder) {
+      setGeneratedImageUrl('')
+      setImageBlob(null)
+      setCopyFeedback(false)
+      return
+    }
 
-    generateOsCanvas(whatsAppModalOrder, DEFAULT_WORKSHOP_INFO).then(canvas => {
-      canvas.toBlob(blob => {
-        if (blob) {
-          objectUrl = URL.createObjectURL(blob)
-          setImageBlob(blob)
-          setGeneratedImageUrl(objectUrl)
-        }
-      }, 'image/png')
-    })
+    let isMounted = true
+    generateOsCanvas(whatsAppModalOrder, DEFAULT_WORKSHOP_INFO)
+      .then(canvas => {
+        if (!isMounted) return
+        const url = canvas.toDataURL('image/png')
+        setGeneratedImageUrl(url)
+        canvas.toBlob(blob => {
+          if (isMounted && blob) {
+            setImageBlob(blob)
+          }
+        }, 'image/png')
+      })
+      .catch(err => {
+        console.error('Erro ao gerar imagem da OS:', err)
+      })
 
     return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
+      isMounted = false
     }
   }, [whatsAppModalOrder])
 
-  // Predefinições filtradas para a busca
-  const filteredPresets = useMemo(() => {
-    const q = itemDesc.trim().toLowerCase()
-    return (servicePresets || []).filter(s => s.name.toLowerCase().includes(q))
-  }, [servicePresets, itemDesc])
+  // Adicionar item de serviço à OS
+  const handleAddItem = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!newItemDesc.trim()) {
+      showToast('Informe a descrição do serviço ou peça.', 'warning')
+      return
+    }
 
-  // Lista de clientes já cadastrados filtrada para o seletor
-  const filteredClientsList = useMemo(() => {
+    const pCost = Number(newItemParts) || 0
+    const lCost = Number(newItemLabor) || 0
+    const itemTotal = pCost + lCost
+
+    const newItem: OrderItem = {
+      id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      serviceDescription: newItemDesc.trim(),
+      partsCost: pCost,
+      laborCost: lCost,
+      total: itemTotal,
+    }
+
+    setItems(prev => [...prev, newItem])
+    setNewItemDesc('')
+    setNewItemParts(0)
+    setNewItemLabor(0)
+  }
+
+  // Adicionar item pré-definido com 1 clique
+  const handleAddPreset = (preset: ServicePreset) => {
+    const newItem: OrderItem = {
+      id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      serviceDescription: preset.name,
+      partsCost: preset.partsCost,
+      laborCost: preset.laborCost,
+      total: preset.partsCost + preset.laborCost,
+    }
+    setItems(prev => [...prev, newItem])
+    showToast(`Adicionado: ${preset.name}`, 'info')
+  }
+
+  const handleRemoveItem = (id: string) => {
+    setItems(prev => prev.filter(it => it.id !== id))
+  }
+
+  // Cálculos de totais
+  const partsTotal = items.reduce((sum, it) => sum + (it.partsCost || 0), 0)
+  const laborTotal = items.reduce((sum, it) => sum + (it.laborCost || 0), 0)
+  const itemsGrandTotal = partsTotal + laborTotal
+
+  // Seleção de cliente já existente
+  const filteredExistingClients = useMemo(() => {
+    if (!clientSearchQuery.trim()) return clients.slice(0, 8)
     const q = clientSearchQuery.toLowerCase().trim()
-    if (!q) return clients.slice(0, 10)
-    return clients
-      .filter(
-        c =>
-          c.name.toLowerCase().includes(q) ||
-          (c.phone || '').includes(q) ||
-          (c.cpfCnpj || '').includes(q)
-      )
-      .slice(0, 10)
+    return clients.filter(
+      c =>
+        c.name.toLowerCase().includes(q) ||
+        c.phone.includes(q) ||
+        (c.cpfCnpj && c.cpfCnpj.includes(q))
+    )
   }, [clients, clientSearchQuery])
 
-  // Veículos do cliente selecionado no assistente
-  const selectedClientVehicles = useMemo(() => {
-    if (!selectedClientId) return []
-    return vehicles.filter(v => v.clientId === selectedClientId)
-  }, [vehicles, selectedClientId])
-
-  // Ação ao selecionar um cliente já cadastrado
-  const handleSelectExistingClient = (c: (typeof clients)[0]) => {
+  const handleSelectExistingClient = (c: typeof clients[0]) => {
     setSelectedClientId(c.id)
     setClientName(c.name)
     setClientPhone(c.phone)
-    setClientCpfCnpj(c.cpfCnpj || '')
-
-    const clientVehicles = vehicles.filter(v => v.clientId === c.id)
-    if (clientVehicles.length > 0) {
-      const firstV = clientVehicles[0]
-      setVehicleModel(`${firstV.brand} ${firstV.model}`.trim())
-      setVehiclePlate(firstV.plate)
-      if (firstV.currentMileage) {
-        setMileage(firstV.currentMileage)
-      }
-    }
+    setClientCpf(c.cpfCnpj || '')
     setShowClientSelector(false)
-    setClientSearchQuery('')
-    showToast(`Cliente "${c.name}" selecionado!`, 'info')
-  }
 
-  // Adicionar item à tabela
-  const handleAddItem = () => {
-    if (!itemDesc.trim()) {
-      showToast('Digite a descrição do serviço ou peça.', 'warning')
-      return
+    // Busca veículos deste cliente para autocompletar
+    const clientVehs = vehicles.filter(v => v.clientId === c.id)
+    if (clientVehs.length > 0) {
+      const v = clientVehs[0]
+      setVehicleModel(`${v.brand} ${v.model}`.trim())
+      setVehiclePlate(v.plate)
+      if (v.currentMileage) setMileage(v.currentMileage)
     }
-    const pCost = parseFloat(String(itemPartsCost).replace(',', '.')) || 0
-    const lCost = parseFloat(String(itemLaborCost).replace(',', '.')) || 0
-    const newItem: OrderItem = {
-      id: `it-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      serviceDescription: itemDesc.trim(),
-      partsCost: pCost,
-      laborCost: lCost,
-      total: pCost + lCost,
-      serviceCode: '14.01',
-      cnae: '4520-0/01',
-    }
-    setItems(prev => [...prev, newItem])
-    setItemDesc('')
-    setItemPartsCost('')
-    setItemLaborCost('')
-    setShowPresetsDropdown(false)
+    showToast(`Cliente selecionado: ${c.name}`, 'info')
   }
 
-  // Preencher dados ao selecionar uma predefinição
-  const handleSelectPreset = (preset: ServicePreset) => {
-    setItemDesc(preset.name)
-    setItemPartsCost(preset.partsCost > 0 ? String(preset.partsCost) : '')
-    setItemLaborCost(preset.laborCost > 0 ? String(preset.laborCost) : '')
-    setShowPresetsDropdown(false)
-  }
+  const selectedClientVehicles = useMemo(() => {
+    if (!selectedClientId) return []
+    return vehicles.filter(v => v.clientId === selectedClientId)
+  }, [selectedClientId, vehicles])
 
-  // Remover item da tabela
-  const handleRemoveItem = (id: string) => {
-    setItems(prev => prev.filter(i => i.id !== id))
-  }
-
-  // Cálculos de totais dos itens adicionados
-  const calculatedPartsTotal = items.reduce((acc, i) => acc + (Number(i.partsCost) || 0), 0)
-  const calculatedLaborTotal = items.reduce((acc, i) => acc + (Number(i.laborCost) || 0), 0)
-  const calculatedGrandTotal = calculatedPartsTotal + calculatedLaborTotal
-
-  // Salvar Ordem de Serviço (Nova ou Edição)
+  // Salvar Ordem de Serviço (Criar ou Atualizar)
   const handleSaveOrder = () => {
     if (!clientName.trim()) {
-      showToast('Preencha o nome do cliente.', 'warning')
+      showToast('Por favor, informe o nome do cliente.', 'warning')
       setWizardStep(1)
       return
     }
-    if (!vehiclePlate.trim() && !vehicleModel.trim()) {
-      showToast('Preencha o veículo ou placa.', 'warning')
+    if (!vehicleModel.trim() && !vehiclePlate.trim()) {
+      showToast('Por favor, informe o modelo ou a placa do veículo.', 'warning')
       setWizardStep(2)
       return
     }
 
-    // Se estiver em modo de edição
-    if (editingOrder) {
-      const finalItems: OrderItem[] = items
-      const partsTotal = finalItems.reduce((acc, i) => acc + (Number(i.partsCost) || 0), 0)
-      const laborTotal = finalItems.reduce((acc, i) => acc + (Number(i.laborCost) || 0), 0)
-      const discount = editingOrder.discount || 0
-      const totalAmount = Math.max(0, partsTotal + laborTotal - discount)
+    let finalClientId = selectedClientId
+    if (!finalClientId) {
+      const created = addClient({
+        name: clientName.trim(),
+        phone: clientPhone.trim() || '(63) 99999-0000',
+        cpfCnpj: clientCpf.trim() || undefined,
+      })
+      finalClientId = created.id
+    }
 
-      const updatedData: Partial<ServiceOrder> = {
+    if (vehiclePlate.trim()) {
+      const existingVehicle = vehicles.find(
+        v => v.plate.toUpperCase().trim() === vehiclePlate.toUpperCase().trim()
+      )
+      if (!existingVehicle) {
+        addVehicle({
+          clientId: finalClientId || `cli-${Date.now()}`,
+          clientName: clientName.trim(),
+          brand: vehicleModel.split(' ')[0] || 'Geral',
+          model: vehicleModel.trim(),
+          plate: vehiclePlate.toUpperCase().trim(),
+          year: new Date().getFullYear(),
+          currentMileage: mileage || 0,
+        })
+      }
+    }
+
+    if (editingOrder) {
+      updateOrder(editingOrder.id, {
         status: formStatus,
         clientName: clientName.trim(),
         clientPhone: clientPhone.trim(),
-        clientCpfCnpj: clientCpfCnpj.trim() || undefined,
-        vehicleModel: vehicleModel.trim() || 'Veículo',
-        vehiclePlate: vehiclePlate.toUpperCase().trim() || 'SEM PLACA',
-        mileage: Number(mileage) || 0,
+        clientCpfCnpj: clientCpf.trim() || undefined,
+        vehicleModel: vehicleModel.trim(),
+        vehiclePlate: vehiclePlate.toUpperCase().trim(),
+        mileage,
         fuelLevel,
-        serviceDescription: serviceDescription.trim() || (finalItems[0]?.serviceDescription || 'Serviço Geral'),
-        mechanicAssigned,
-        observations: observations.trim(),
-        items: finalItems,
+        serviceDescription: serviceDescription.trim() || (items[0]?.serviceDescription || 'Revisão Geral'),
+        mechanicAssigned: mechanicAssigned || 'Roberto Silva',
+        observations: observations.trim() || '',
+        items,
         partsTotal,
         laborTotal,
-        totalAmount,
-      }
-
-      updateOrder(editingOrder.id, updatedData)
+        totalAmount: partsTotal + laborTotal,
+      })
       setEditingOrder(null)
-      showToast(`OS #${editingOrder.number} atualizada com sucesso!`, 'success')
+      setIsNewOrderModalOpen(false)
+      showToast('Ordem de Serviço atualizada com sucesso!', 'success')
       return
     }
 
-    // Modo Criação de Nova OS
-    let effectiveClientId = selectedClientId
-    let effectiveVehicleId = ''
-
-    if (!effectiveClientId) {
-      const newCli = addClient({
-        name: clientName.trim(),
-        phone: clientPhone.trim() || '(63) 99999-9999',
-        cpfCnpj: clientCpfCnpj.trim() || undefined,
-      })
-      effectiveClientId = newCli.id
-    }
-
-    if (vehiclePlate.trim() || vehicleModel.trim()) {
-      const parts = vehicleModel.trim().split(' ')
-      const brand = parts[0] || 'Geral'
-      const model = parts.slice(1).join(' ') || vehicleModel.trim() || 'Veículo'
-      const newVeh = addVehicle({
-        clientId: effectiveClientId,
-        brand,
-        model,
-        plate: vehiclePlate.toUpperCase().trim() || 'SEM PLACA',
-        year: new Date().getFullYear(),
-        currentMileage: Number(mileage) || 0,
-      })
-      effectiveVehicleId = newVeh.id
-    }
-
-    const finalItems: OrderItem[] = items
-    const partsTotal = finalItems.reduce((acc, i) => acc + (Number(i.partsCost) || 0), 0)
-    const laborTotal = finalItems.reduce((acc, i) => acc + (Number(i.laborCost) || 0), 0)
-
     addOrder({
-      clientId: effectiveClientId,
-      clientName: clientName.trim(),
-      clientPhone: clientPhone.trim() || '(63) 99999-9999',
-      clientCpfCnpj: clientCpfCnpj.trim() || undefined,
-      vehicleId: effectiveVehicleId || undefined,
-      vehicleModel: vehicleModel.trim() || 'Veículo',
-      vehiclePlate: vehiclePlate.toUpperCase().trim() || 'SEM PLACA',
-      mileage: Number(mileage) || 0,
-      fuelLevel,
-      mechanicAssigned,
-      serviceDescription: serviceDescription.trim() || (finalItems[0]?.serviceDescription || 'Serviço Geral'),
-      items: finalItems,
-      observations: observations.trim(),
-      date: new Date().toLocaleDateString('pt-BR'),
-      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       status: formStatus,
-      paymentMethod: 'pendente',
+      date: new Date().toLocaleDateString('pt-BR'),
+      clientId: finalClientId || `cli-${Date.now()}`,
+      clientName: clientName.trim(),
+      clientPhone: clientPhone.trim() || '(63) 99999-0000',
+      clientCpfCnpj: clientCpf.trim() || undefined,
+      vehicleModel: vehicleModel.trim(),
+      vehiclePlate: vehiclePlate.toUpperCase().trim(),
+      mileage,
+      fuelLevel,
+      serviceDescription: serviceDescription.trim() || (items[0]?.serviceDescription || 'Revisão Geral'),
+      mechanicAssigned: mechanicAssigned || 'Roberto Silva',
+      observations: observations.trim() || '',
+      items,
       warranty: {
         days: 90,
         expirationDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
@@ -457,6 +419,7 @@ export const OrdersView: React.FC = () => {
     })
 
     setIsNewOrderModalOpen(false)
+    resetForm()
     showToast('Ordem de Serviço criada com sucesso!', 'success')
   }
 
@@ -556,42 +519,42 @@ export const OrdersView: React.FC = () => {
     switch (status) {
       case 'aguardando':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#1A2230] text-slate-300 border border-[#2A364C]">
-            <Clock className="h-3.5 w-3.5 text-slate-400" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+            <Clock className="h-3.5 w-3.5" />
             Aguardando
           </span>
         )
       case 'andamento':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#271C14] text-[#F97316] border border-[#F97316]/40 shadow-sm shadow-[#F97316]/10">
-            <span className="h-2 w-2 rounded-full bg-[#F97316] animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-wr-orange/15 text-wr-orange border border-wr-orange/30 shadow-xs">
+            <span className="h-2 w-2 rounded-full bg-wr-orange animate-pulse" />
             Em Execução
           </span>
         )
       case 'pronto':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#142338] text-blue-400 border border-blue-500/30">
-            <CheckCircle2 className="h-3.5 w-3.5 text-blue-400" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+            <CheckCircle2 className="h-3.5 w-3.5" />
             Pronto p/ Retirada
           </span>
         )
       case 'pago':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#142921] text-emerald-400 border border-emerald-500/30">
-            <DollarSign className="h-3.5 w-3.5 text-emerald-400" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+            <DollarSign className="h-3.5 w-3.5" />
             Concluída &amp; Paga
           </span>
         )
       case 'cancelado':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#2C191D] text-rose-400 border border-rose-500/30">
-            <XCircle className="h-3.5 w-3.5 text-rose-400" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+            <XCircle className="h-3.5 w-3.5" />
             Cancelada
           </span>
         )
       default:
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#1A2230] text-slate-400 border border-[#2A364C]">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-wr-elevated text-wr-muted border border-wr-border">
             {status}
           </span>
         )
@@ -618,7 +581,6 @@ export const OrdersView: React.FC = () => {
       updateOrderStatus(orderId, 'pronto')
       showToast(`OS #${targetOrder.number} marcada como Pronta p/ Retirada!`, 'info')
     } else if (targetStatus === 'pago') {
-      // Abre o modal de finalização/pagamento para garantir a integridade financeira
       setFinalizingOrder(targetOrder)
       setCheckoutPaymentMethod('pix')
       setCheckoutDiscount(targetOrder.discount || 0)
@@ -665,40 +627,40 @@ export const OrdersView: React.FC = () => {
 
   return (
     <div className="space-y-6 select-none pb-12 animate-fadeIn">
-      {/* ===================== TOPO EXECUTIVO AUTOMOTIVO ===================== */}
-      <div className="relative rounded-3xl border border-[#222C3D] bg-gradient-to-r from-[#141A24] via-[#161D2B] to-[#141A24] p-5 sm:p-6 shadow-card overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-full bg-gradient-to-l from-[#F97316]/10 to-transparent pointer-events-none" />
+      {/* ===================== TOPO EXECUTIVO: DESIGN ADAPTÁVEL CLARO / ESCURO ===================== */}
+      <div className="relative rounded-3xl border border-wr-border bg-wr-surface p-5 sm:p-6 shadow-card overflow-hidden transition-colors">
+        <div className="absolute top-0 right-0 w-80 h-full bg-gradient-to-l from-wr-orange/10 to-transparent pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F97316]/15 border border-[#F97316]/30 text-[11px] font-black uppercase tracking-wider text-[#F97316]">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-wr-orange/15 border border-wr-orange/30 text-[11px] font-black uppercase tracking-wider text-wr-orange">
               <Sparkles className="h-3.5 w-3.5" />
-              Central de Gestão de Ordens de Serviço
+              Gestão Dinâmica de Ordens de Serviço
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-              <ClipboardList className="h-6 w-6 text-[#F97316]" />
+            <h1 className="text-xl sm:text-2xl font-black text-wr-text tracking-tight flex items-center gap-2.5">
+              <ClipboardList className="h-6 w-6 text-wr-orange" />
               Ordens de Serviço &bull; WR Mecânica
             </h1>
-            <p className="text-xs text-slate-400 max-w-xl">
-              Gerencie atendimentos com quadro visual Kanban ou lista detalhada, diagnóstico técnico, estepe, peças e faturamento integrado.
+            <p className="text-xs text-wr-muted max-w-xl">
+              Gerencie atendimentos com quadro visual Kanban ou lista analítica, controle de peças, mão de obra e faturamento integrado.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {/* Alternador de Visualização: Lista vs Kanban */}
-            <div className="inline-flex items-center rounded-2xl bg-[#0F141C] border border-[#222C3D] p-1">
+            <div className="inline-flex items-center rounded-2xl bg-wr-elevated border border-wr-border p-1 shadow-xs">
               <button
                 type="button"
                 onClick={() => setViewMode('kanban')}
                 className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
                   viewMode === 'kanban'
-                    ? 'bg-[#F97316] text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-wr-orange text-white shadow-sm'
+                    : 'text-wr-muted hover:text-wr-text'
                 }`}
                 title="Visualização em Quadro Kanban"
               >
                 <Kanban className="h-3.5 w-3.5" />
-                <span>Kanban</span>
+                <span>Quadro Kanban</span>
               </button>
 
               <button
@@ -706,10 +668,10 @@ export const OrdersView: React.FC = () => {
                 onClick={() => setViewMode('lista')}
                 className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
                   viewMode === 'lista'
-                    ? 'bg-[#F97316] text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-wr-orange text-white shadow-sm'
+                    : 'text-wr-muted hover:text-wr-text'
                 }`}
-                title="Visualização em Lista Compacta"
+                title="Visualização em Lista Detalhada"
               >
                 <List className="h-3.5 w-3.5" />
                 <span>Lista</span>
@@ -719,8 +681,11 @@ export const OrdersView: React.FC = () => {
             {/* Botão de Criação de OS com Assistente */}
             <button
               type="button"
-              onClick={() => setIsNewOrderModalOpen(true)}
-              className="bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:brightness-110 text-white font-black text-xs uppercase tracking-wider px-5 py-3 rounded-2xl shadow-md shadow-[#F97316]/25 transition-all flex items-center gap-2"
+              onClick={() => {
+                resetForm()
+                setIsNewOrderModalOpen(true)
+              }}
+              className="wr-btn-primary px-5 py-3 rounded-2xl text-xs uppercase tracking-wider shadow-md hover:shadow-wr-orange/20"
             >
               <Plus className="h-4 w-4 stroke-[3]" />
               <span>Nova Ordem de Serviço</span>
@@ -732,22 +697,22 @@ export const OrdersView: React.FC = () => {
       {/* ===================== CARDS DE KPIS DA OFICINA ===================== */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: 'Total Geral', val: tabCounts.todas, color: 'text-white', border: 'hover:border-slate-500', tab: 'todas' },
-          { label: 'Aguardando', val: tabCounts.aguardando, color: 'text-slate-300', border: 'hover:border-slate-400', tab: 'aguardando' },
-          { label: 'Em Execução', val: tabCounts.andamento, color: 'text-[#F97316]', border: 'hover:border-[#F97316]', tab: 'andamento' },
-          { label: 'Prontos Retirada', val: tabCounts.pronto, color: 'text-blue-400', border: 'hover:border-blue-400', tab: 'pronto' },
-          { label: 'Concluídas / Pagas', val: tabCounts.pago, color: 'text-emerald-400', border: 'hover:border-emerald-400', tab: 'pago' },
-          { label: 'Canceladas', val: tabCounts.cancelado, color: 'text-rose-400', border: 'hover:border-rose-400', tab: 'cancelado' },
+          { label: 'Total Geral', val: tabCounts.todas, color: 'text-wr-text', border: 'hover:border-wr-borderHover', tab: 'todas' },
+          { label: 'Aguardando', val: tabCounts.aguardando, color: 'text-amber-500', border: 'hover:border-amber-500/50', tab: 'aguardando' },
+          { label: 'Em Execução', val: tabCounts.andamento, color: 'text-wr-orange', border: 'hover:border-wr-orange/50', tab: 'andamento' },
+          { label: 'Prontos Retirada', val: tabCounts.pronto, color: 'text-blue-500', border: 'hover:border-blue-500/50', tab: 'pronto' },
+          { label: 'Concluídas / Pagas', val: tabCounts.pago, color: 'text-emerald-500', border: 'hover:border-emerald-500/50', tab: 'pago' },
+          { label: 'Canceladas', val: tabCounts.cancelado, color: 'text-rose-500', border: 'hover:border-rose-500/50', tab: 'cancelado' },
         ].map(kpi => (
           <button
             key={kpi.label}
             type="button"
             onClick={() => setActiveTab(kpi.tab as typeof activeTab)}
-            className={`p-3.5 rounded-2xl bg-[#141A24] border border-[#222C3D] text-left transition-all ${kpi.border} ${
-              activeTab === kpi.tab ? 'ring-2 ring-[#F97316]/50 bg-[#1A2230]' : ''
+            className={`p-3.5 rounded-2xl bg-wr-surface border border-wr-border text-left transition-all shadow-xs ${kpi.border} ${
+              activeTab === kpi.tab ? 'ring-2 ring-wr-orange/50 bg-wr-elevated' : ''
             }`}
           >
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-wr-muted block truncate">
               {kpi.label}
             </span>
             <span className={`text-xl font-black font-mono mt-1 block ${kpi.color}`}>
@@ -760,18 +725,18 @@ export const OrdersView: React.FC = () => {
       {/* ===================== BARRA DE BUSCA & FILTROS ===================== */}
       <div className="space-y-3">
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-wr-muted pointer-events-none" />
           <input
             type="text"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder="Buscar por cliente, placa, modelo do carro, telefone, OS ou mecânico..."
-            className="w-full bg-[#141A24] text-white placeholder-slate-400 text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-[#222C3D] focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 outline-none transition-all shadow-inner"
+            className="w-full bg-wr-surface text-wr-text placeholder-wr-muted text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-wr-border focus:border-wr-orange focus:ring-2 focus:ring-wr-orange/20 outline-none transition-all shadow-xs"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-wr-muted hover:text-wr-text"
             >
               <X className="h-4 w-4" />
             </button>
@@ -792,18 +757,18 @@ export const OrdersView: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`flex items-center gap-2 whitespace-nowrap px-4 py-2 rounded-xl font-bold transition-all ${
+              className={`flex items-center gap-2 whitespace-nowrap px-4 py-2 rounded-xl font-bold transition-all shadow-xs ${
                 activeTab === tab.id
-                  ? 'bg-[#F97316] text-white shadow-md font-black'
-                  : 'bg-[#141A24] border border-[#222C3D] text-slate-400 hover:text-white hover:bg-[#1A2230]'
+                  ? 'bg-wr-orange text-white font-black shadow-sm'
+                  : 'bg-wr-surface border border-wr-border text-wr-muted hover:text-wr-text hover:bg-wr-elevated'
               }`}
             >
               <span>{tab.label}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
                   activeTab === tab.id
-                    ? 'bg-black/30 text-white font-black'
-                    : 'bg-[#0F141C] text-slate-400 border border-[#222C3D]'
+                    ? 'bg-black/25 text-white font-black'
+                    : 'bg-wr-elevated text-wr-muted border border-wr-border'
                 }`}
               >
                 {tab.count}
@@ -815,14 +780,14 @@ export const OrdersView: React.FC = () => {
 
       {/* ===================== ÁREA PRINCIPAL: KANBAN OU LISTA ===================== */}
       {viewMode === 'kanban' ? (
-        /* ===================== MODO KANBAN AUTOMOTIVO ===================== */
+        /* ===================== MODO KANBAN MODERNO ===================== */
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-start">
           {[
-            { status: 'aguardando' as OrderStatus, title: 'Aguardando Entrada', color: 'border-slate-500/40 text-slate-300', dot: 'bg-slate-400' },
-            { status: 'andamento' as OrderStatus, title: 'Em Execução', color: 'border-[#F97316]/50 text-[#F97316]', dot: 'bg-[#F97316]' },
-            { status: 'pronto' as OrderStatus, title: 'Pronto p/ Retirada', color: 'border-blue-500/50 text-blue-400', dot: 'bg-blue-400' },
-            { status: 'pago' as OrderStatus, title: 'Concluída & Paga', color: 'border-emerald-500/50 text-emerald-400', dot: 'bg-emerald-400' },
-            { status: 'cancelado' as OrderStatus, title: 'Cancelada', color: 'border-rose-500/50 text-rose-400', dot: 'bg-rose-400' },
+            { status: 'aguardando' as OrderStatus, title: 'Aguardando Entrada', dot: 'bg-amber-500' },
+            { status: 'andamento' as OrderStatus, title: 'Em Execução', dot: 'bg-wr-orange' },
+            { status: 'pronto' as OrderStatus, title: 'Pronto p/ Retirada', dot: 'bg-blue-500' },
+            { status: 'pago' as OrderStatus, title: 'Concluída & Paga', dot: 'bg-emerald-500' },
+            { status: 'cancelado' as OrderStatus, title: 'Cancelada', dot: 'bg-rose-500' },
           ].map(col => {
             const colOrders = filteredOrders.filter(o => o.status === col.status)
             const colTotal = colOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0)
@@ -832,30 +797,30 @@ export const OrdersView: React.FC = () => {
                 key={col.status}
                 onDragOver={handleDragOver}
                 onDrop={e => handleDropOnColumn(e, col.status)}
-                className="rounded-3xl border border-[#222C3D] bg-[#0F141C]/80 p-3.5 flex flex-col gap-3 min-h-[460px] transition-colors"
+                className="rounded-3xl border border-wr-border bg-wr-surface/70 dark:bg-wr-surfaceDark/60 p-3.5 flex flex-col gap-3 min-h-[460px] transition-colors shadow-xs"
               >
                 {/* Cabeçalho da Coluna Kanban */}
-                <div className="flex items-center justify-between pb-2.5 border-b border-[#222C3D] px-1">
+                <div className="flex items-center justify-between pb-2.5 border-b border-wr-border px-1">
                   <div className="flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${col.dot}`} />
-                    <span className="text-xs font-black uppercase tracking-wider text-white">
+                    <span className="text-xs font-black uppercase tracking-wider text-wr-text">
                       {col.title}
                     </span>
                   </div>
-                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#1A2230] text-slate-300 border border-[#2A364C]">
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-wr-elevated text-wr-text border border-wr-border">
                     {colOrders.length}
                   </span>
                 </div>
 
-                <div className="text-[10px] text-slate-400 px-1 font-mono font-semibold flex justify-between">
+                <div className="text-[10px] text-wr-muted px-1 font-mono font-semibold flex justify-between">
                   <span>Subtotal etapa:</span>
-                  <span className="text-white font-bold">{formatCurrency(colTotal)}</span>
+                  <span className="text-wr-text font-bold">{formatCurrency(colTotal)}</span>
                 </div>
 
                 {/* Lista de Cards da Coluna */}
                 <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[75vh] pr-1">
                   {colOrders.length === 0 ? (
-                    <div className="py-12 text-center rounded-2xl border border-dashed border-[#222C3D]/80 p-4 text-[11px] text-slate-500">
+                    <div className="py-12 text-center rounded-2xl border border-dashed border-wr-border p-4 text-[11px] text-wr-muted">
                       Nenhuma OS nesta etapa
                     </div>
                   ) : (
@@ -868,35 +833,35 @@ export const OrdersView: React.FC = () => {
                           setSelectedDetailOrder(order)
                           setDetailTab('resumo')
                         }}
-                        className="p-3.5 rounded-2xl border border-[#222C3D] bg-[#141A24] hover:border-[#F97316]/60 hover:shadow-lg transition-all cursor-pointer space-y-2.5 group"
+                        className="p-3.5 rounded-2xl border border-wr-border bg-wr-surface hover:border-wr-orange/60 hover:shadow-card transition-all cursor-pointer space-y-2.5 group"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-mono text-xs font-black text-[#F97316]">
+                          <span className="font-mono text-xs font-black text-wr-orange">
                             {order.number}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-medium">
+                          <span className="text-[10px] text-wr-muted font-medium">
                             {order.date}
                           </span>
                         </div>
 
                         <div>
-                          <p className="text-xs font-bold text-white group-hover:text-[#F97316] transition-colors truncate">
+                          <p className="text-xs font-bold text-wr-text group-hover:text-wr-orange transition-colors truncate">
                             {order.clientName}
                           </p>
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-0.5">
+                          <div className="flex items-center gap-1.5 text-[11px] text-wr-muted mt-0.5">
                             <span className="truncate">{order.vehicleModel}</span>
-                            <span className="font-mono text-[9px] font-black px-1.5 py-0.2 rounded bg-[#1A2230] border border-[#222C3D] text-[#F97316]">
+                            <span className="font-mono text-[9px] font-black px-1.5 py-0.2 rounded bg-wr-elevated border border-wr-border text-wr-orange">
                               {order.vehiclePlate}
                             </span>
                           </div>
                         </div>
 
-                        <p className="text-[11px] text-slate-400 line-clamp-2">
+                        <p className="text-[11px] text-wr-muted line-clamp-2">
                           {order.serviceDescription || 'Serviço Geral'}
                         </p>
 
-                        <div className="pt-2 border-t border-[#222C3D] flex items-center justify-between">
-                          <span className="text-xs font-black font-mono text-white">
+                        <div className="pt-2 border-t border-wr-border flex items-center justify-between">
+                          <span className="text-xs font-black font-mono text-wr-text">
                             {formatCurrency(order.totalAmount || 0)}
                           </span>
 
@@ -907,7 +872,7 @@ export const OrdersView: React.FC = () => {
                                 e.stopPropagation()
                                 handleOpenClientWhatsApp(order)
                               }}
-                              className="p-1 rounded-lg text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                              className="p-1 rounded-lg text-emerald-500 hover:bg-emerald-500/20 transition-colors"
                               title="WhatsApp"
                             >
                               <MessageCircle className="h-3.5 w-3.5" />
@@ -918,7 +883,7 @@ export const OrdersView: React.FC = () => {
                                 e.stopPropagation()
                                 setPdfModalOrder(order)
                               }}
-                              className="p-1 rounded-lg text-[#F97316] hover:bg-[#F97316]/20 transition-colors"
+                              className="p-1 rounded-lg text-wr-orange hover:bg-wr-orange/20 transition-colors"
                               title="Imprimir O.S"
                             >
                               <Printer className="h-3.5 w-3.5" />
@@ -937,7 +902,7 @@ export const OrdersView: React.FC = () => {
                                   updateOrderStatus(order.id, 'andamento')
                                   showToast(`OS #${order.number} em execução!`, 'info')
                                 }}
-                                className="w-full py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-[#F97316]/15 hover:bg-[#F97316]/30 text-[#F97316] border border-[#F97316]/30 flex items-center justify-center gap-1"
+                                className="w-full py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-wr-orange/15 hover:bg-wr-orange/25 text-wr-orange border border-wr-orange/30 flex items-center justify-center gap-1 transition-colors"
                               >
                                 <span>Iniciar Execução</span>
                                 <ArrowRight className="h-3 w-3" />
@@ -951,7 +916,7 @@ export const OrdersView: React.FC = () => {
                                   updateOrderStatus(order.id, 'pronto')
                                   showToast(`OS #${order.number} pronta p/ retirada!`, 'info')
                                 }}
-                                className="w-full py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-blue-500/15 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 flex items-center justify-center gap-1"
+                                className="w-full py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center justify-center gap-1 transition-colors"
                               >
                                 <span>Marcar Pronto</span>
                                 <CheckCircle2 className="h-3 w-3" />
@@ -967,7 +932,7 @@ export const OrdersView: React.FC = () => {
                                   setCheckoutDiscount(order.discount || 0)
                                   setCheckoutInstallments(1)
                                 }}
-                                className="w-full py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-1"
+                                className="w-full py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-1 transition-colors"
                               >
                                 <span>Receber Venda</span>
                                 <DollarSign className="h-3 w-3" />
@@ -984,13 +949,13 @@ export const OrdersView: React.FC = () => {
           })}
         </div>
       ) : (
-        /* ===================== MODO LISTA COMPACTA AUTOMOTIVA ===================== */
+        /* ===================== MODO LISTA ANALÍTICA ===================== */
         <div className="space-y-3">
           {filteredOrders.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-[#222C3D] bg-[#141A24]/60 p-12 text-center text-slate-400 space-y-3">
-              <ClipboardList className="h-10 w-10 mx-auto text-slate-500 opacity-50" />
-              <p className="text-sm font-bold text-white">Nenhuma ordem de serviço encontrada</p>
-              <p className="text-xs max-w-sm mx-auto text-slate-400">
+            <div className="rounded-3xl border border-dashed border-wr-border bg-wr-surface/60 p-12 text-center text-wr-muted space-y-3">
+              <ClipboardList className="h-10 w-10 mx-auto text-wr-muted opacity-50" />
+              <p className="text-sm font-bold text-wr-text">Nenhuma ordem de serviço encontrada</p>
+              <p className="text-xs max-w-sm mx-auto text-wr-muted">
                 Alterne os filtros acima ou abra uma nova OS no botão superior.
               </p>
             </div>
@@ -1003,10 +968,10 @@ export const OrdersView: React.FC = () => {
                 return (
                   <div
                     key={order.id}
-                    className="rounded-3xl border border-[#222C3D] bg-[#141A24] p-5 shadow-card hover:border-[#F97316]/50 transition-all flex flex-col justify-between gap-4 group"
+                    className="rounded-3xl border border-wr-border bg-wr-surface p-5 shadow-card hover:border-wr-orange/50 transition-all flex flex-col justify-between gap-4 group"
                   >
                     {/* Cabeçalho do Card */}
-                    <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#222C3D]">
+                    <div className="flex items-center justify-between gap-2 pb-3 border-b border-wr-border">
                       <div className="flex items-center gap-2 flex-wrap">
                         <button
                           type="button"
@@ -1014,13 +979,13 @@ export const OrdersView: React.FC = () => {
                             setSelectedDetailOrder(order)
                             setDetailTab('resumo')
                           }}
-                          className="font-mono text-xs font-black text-[#F97316] bg-[#F97316]/10 border border-[#F97316]/30 px-3 py-1 rounded-xl hover:bg-[#F97316]/20 transition-colors"
+                          className="font-mono text-xs font-black text-wr-orange bg-wr-orange/10 border border-wr-orange/30 px-3 py-1 rounded-xl hover:bg-wr-orange/20 transition-colors"
                         >
                           {order.number}
                         </button>
-                        <span className="text-xs text-slate-400 font-medium">{order.date}</span>
+                        <span className="text-xs text-wr-muted font-medium">{order.date}</span>
                         {hasFiscal && (
-                          <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-black text-emerald-400 font-mono">
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 font-mono">
                             <ShieldCheck className="h-3 w-3" /> NFS-e
                           </span>
                         )}
@@ -1034,22 +999,22 @@ export const OrdersView: React.FC = () => {
                       {/* Cliente & Telefone */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="h-9 w-9 rounded-xl bg-[#F97316]/10 border border-[#F97316]/25 flex items-center justify-center text-[#F97316] shrink-0">
+                          <div className="h-9 w-9 rounded-xl bg-wr-orange/10 border border-wr-orange/25 flex items-center justify-center text-wr-orange shrink-0">
                             <User className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-wr-muted block">
                               Cliente
                             </span>
-                            <h3 className="text-sm font-bold text-white truncate">{order.clientName}</h3>
+                            <h3 className="text-sm font-bold text-wr-text truncate">{order.clientName}</h3>
                           </div>
                         </div>
                         {order.clientPhone && (
                           <a
                             href={`tel:${order.clientPhone.replace(/\D/g, '')}`}
-                            className="text-xs font-mono text-slate-300 bg-[#1A2230] px-2.5 py-1 rounded-lg border border-[#222C3D] hover:text-white flex items-center gap-1 shrink-0 transition-colors"
+                            className="text-xs font-mono text-wr-muted bg-wr-elevated px-2.5 py-1 rounded-lg border border-wr-border hover:text-wr-text flex items-center gap-1 shrink-0 transition-colors"
                           >
-                            <Phone className="h-3 w-3 text-[#F97316]" />
+                            <Phone className="h-3 w-3 text-wr-orange" />
                             {order.clientPhone}
                           </a>
                         )}
@@ -1057,53 +1022,53 @@ export const OrdersView: React.FC = () => {
 
                       {/* Veículo, Placa, KM */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                        <div className="p-2.5 rounded-xl bg-[#1A2230] border border-[#222C3D] flex items-center gap-2 col-span-2">
-                          <Car className="h-4 w-4 text-[#F97316] shrink-0" />
+                        <div className="p-2.5 rounded-xl bg-wr-elevated border border-wr-border flex items-center gap-2 col-span-2">
+                          <Car className="h-4 w-4 text-wr-orange shrink-0" />
                           <div className="min-w-0">
-                            <span className="text-[9px] uppercase font-bold text-slate-400 block">Veículo</span>
-                            <span className="font-bold text-white block truncate">{order.vehicleModel}</span>
+                            <span className="text-[9px] uppercase font-bold text-wr-muted block">Veículo</span>
+                            <span className="font-bold text-wr-text block truncate">{order.vehicleModel}</span>
                           </div>
                         </div>
 
-                        <div className="p-2.5 rounded-xl bg-[#1A2230] border border-[#222C3D] text-center">
-                          <span className="text-[9px] uppercase font-bold text-slate-400 block">Placa</span>
-                          <span className="font-mono font-black text-[#F97316]">{order.vehiclePlate}</span>
+                        <div className="p-2.5 rounded-xl bg-wr-elevated border border-wr-border text-center">
+                          <span className="text-[9px] uppercase font-bold text-wr-muted block">Placa</span>
+                          <span className="font-mono font-black text-wr-orange">{order.vehiclePlate}</span>
                         </div>
 
-                        <div className="p-2.5 rounded-xl bg-[#1A2230] border border-[#222C3D] text-center">
-                          <span className="text-[9px] uppercase font-bold text-slate-400 block">KM</span>
-                          <span className="font-mono font-bold text-white">
+                        <div className="p-2.5 rounded-xl bg-wr-elevated border border-wr-border text-center">
+                          <span className="text-[9px] uppercase font-bold text-wr-muted block">KM</span>
+                          <span className="font-mono font-bold text-wr-text">
                             {order.mileage ? `${order.mileage.toLocaleString('pt-BR')} km` : '—'}
                           </span>
                         </div>
                       </div>
 
                       {/* Serviço & Mecânico */}
-                      <div className="p-3 rounded-2xl bg-[#1A2230] border border-[#222C3D] space-y-1 text-xs">
-                        <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      <div className="p-3 rounded-2xl bg-wr-elevated border border-wr-border space-y-1 text-xs">
+                        <div className="flex items-center justify-between text-[10px] text-wr-muted font-bold uppercase tracking-wider">
                           <span>Serviço Solicitado</span>
-                          <span className="text-[#F97316] flex items-center gap-1">
+                          <span className="text-wr-orange flex items-center gap-1">
                             <Wrench className="h-3 w-3" /> {order.mechanicAssigned || 'Roberto Silva'}
                           </span>
                         </div>
-                        <p className="text-white font-semibold line-clamp-2">
+                        <p className="text-wr-text font-semibold line-clamp-2">
                           {order.serviceDescription || 'Serviço Geral'}
                         </p>
                       </div>
 
                       {/* Total */}
                       <div className="flex items-center justify-between pt-1">
-                        <span className="text-xs font-black uppercase tracking-wider text-slate-400">
+                        <span className="text-xs font-black uppercase tracking-wider text-wr-muted">
                           Total da OS
                         </span>
-                        <span className="font-mono text-xl font-black text-[#F97316]">
+                        <span className="font-mono text-xl font-black text-wr-orange">
                           {formatCurrency(order.totalAmount || 0)}
                         </span>
                       </div>
                     </div>
 
                     {/* Botões de Ação */}
-                    <div className="space-y-2 pt-2 border-t border-[#222C3D]">
+                    <div className="space-y-2 pt-2 border-t border-wr-border">
                       {/* Botão de Checkout se não paga */}
                       {!isPaid && (
                         <button
@@ -1134,17 +1099,17 @@ export const OrdersView: React.FC = () => {
                             setSelectedDetailOrder(order)
                             setDetailTab('resumo')
                           }}
-                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-[#1A2230] hover:bg-[#222C3D] text-white border border-[#222C3D] transition-all text-[11px] font-bold"
+                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-wr-elevated hover:bg-wr-surface text-wr-text border border-wr-border transition-all text-[11px] font-bold"
                           title="Ver Detalhes Completos"
                         >
-                          <Eye className="h-4 w-4 text-[#F97316] shrink-0" />
+                          <Eye className="h-4 w-4 text-wr-orange shrink-0" />
                           <span className="truncate">Detalhes</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => handleOpenClientWhatsApp(order)}
-                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 transition-all text-[11px] font-bold"
+                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 transition-all text-[11px] font-bold"
                           title="Abrir WhatsApp do cliente"
                         >
                           <MessageCircle className="h-4 w-4 shrink-0" />
@@ -1154,7 +1119,7 @@ export const OrdersView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenNfse(order)}
-                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/25 transition-all text-[11px] font-bold"
+                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/25 transition-all text-[11px] font-bold"
                           title="Nota Fiscal (NFS-e)"
                         >
                           <FileText className="h-4 w-4 shrink-0" />
@@ -1164,7 +1129,7 @@ export const OrdersView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setPdfModalOrder(order)}
-                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-[#F97316]/10 hover:bg-[#F97316]/20 text-[#F97316] border border-[#F97316]/25 transition-all text-[11px] font-bold"
+                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-wr-orange/10 hover:bg-wr-orange/20 text-wr-orange border border-wr-orange/25 transition-all text-[11px] font-bold"
                           title="Visualizar e Imprimir Ordem de Serviço"
                         >
                           <Printer className="h-4 w-4 shrink-0" />
@@ -1174,7 +1139,7 @@ export const OrdersView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setEditingOrder(order)}
-                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-[#1A2230] hover:bg-[#222C3D] text-slate-300 border border-[#222C3D] transition-all text-[11px] font-bold"
+                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-wr-elevated hover:bg-wr-surface text-wr-muted hover:text-wr-text border border-wr-border transition-all text-[11px] font-bold"
                           title="Editar OS"
                         >
                           <Edit2 className="h-4 w-4 shrink-0" />
@@ -1190,24 +1155,24 @@ export const OrdersView: React.FC = () => {
         </div>
       )}
 
-      {/* ===================== NOVO MODAL DE DETALHES COMPLETOS DA OS ===================== */}
+      {/* ===================== MODAL DE DETALHES COMPLETOS DA OS ===================== */}
       {selectedDetailOrder && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
-          <div className="relative w-full max-w-4xl rounded-[32px] border border-[#222C3D] bg-[#141A24] p-5 sm:p-7 shadow-elevated space-y-6 my-auto max-h-[92vh] overflow-y-auto text-white">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-4xl rounded-[32px] border border-wr-border bg-wr-surface p-5 sm:p-7 shadow-elevated space-y-6 my-auto max-h-[92vh] overflow-y-auto text-wr-text">
             {/* Cabeçalho do Modal de Detalhes */}
-            <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#222C3D]">
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-wr-border">
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-2xl bg-[#F97316]/15 border border-[#F97316]/30 flex items-center justify-center text-[#F97316] shrink-0">
+                <div className="h-12 w-12 rounded-2xl bg-wr-orange/15 border border-wr-orange/30 flex items-center justify-center text-wr-orange shrink-0">
                   <ClipboardList className="h-6 w-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-base font-black text-[#F97316]">
+                    <span className="font-mono text-base font-black text-wr-orange">
                       {selectedDetailOrder.number}
                     </span>
                     {getStatusBadge(selectedDetailOrder.status)}
                   </div>
-                  <h3 className="text-base sm:text-lg font-bold text-white mt-0.5">
+                  <h3 className="text-base sm:text-lg font-bold text-wr-text mt-0.5">
                     {selectedDetailOrder.clientName} &bull; {selectedDetailOrder.vehicleModel} ({selectedDetailOrder.vehiclePlate})
                   </h3>
                 </div>
@@ -1215,8 +1180,8 @@ export const OrdersView: React.FC = () => {
 
               <div className="flex items-center gap-3">
                 <div className="text-right">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Valor Total</span>
-                  <span className="font-mono text-xl font-black text-[#F97316]">
+                  <span className="text-[10px] text-wr-muted uppercase font-bold block">Valor Total</span>
+                  <span className="font-mono text-xl font-black text-wr-orange">
                     {formatCurrency(selectedDetailOrder.totalAmount || 0)}
                   </span>
                 </div>
@@ -1224,7 +1189,7 @@ export const OrdersView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedDetailOrder(null)}
-                  className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-[#1A2230] transition-colors"
+                  className="rounded-xl p-2 text-wr-muted hover:text-wr-text hover:bg-wr-elevated transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1232,7 +1197,7 @@ export const OrdersView: React.FC = () => {
             </div>
 
             {/* Abas de Navegação Interna */}
-            <div className="flex items-center gap-2 border-b border-[#222C3D] pb-1 overflow-x-auto">
+            <div className="flex items-center gap-2 border-b border-wr-border pb-1 overflow-x-auto">
               {[
                 { id: 'resumo', label: '1. Resumo Geral' },
                 { id: 'itens', label: '2. Serviços & Peças' },
@@ -1245,8 +1210,8 @@ export const OrdersView: React.FC = () => {
                   onClick={() => setDetailTab(tab.id as typeof detailTab)}
                   className={`px-4 py-2 text-xs font-bold whitespace-nowrap rounded-xl transition-all ${
                     detailTab === tab.id
-                      ? 'bg-[#F97316] text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white hover:bg-[#1A2230]'
+                      ? 'bg-wr-orange text-white shadow-sm'
+                      : 'text-wr-muted hover:text-wr-text hover:bg-wr-elevated'
                   }`}
                 >
                   {tab.label}
@@ -1254,238 +1219,239 @@ export const OrdersView: React.FC = () => {
               ))}
             </div>
 
-            {/* Conteúdo da Aba Selecionada */}
-            <div className="space-y-4 min-h-[220px]">
-              {detailTab === 'resumo' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                  <div className="p-4 rounded-2xl bg-[#1A2230] border border-[#222C3D] space-y-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[#F97316] block">
-                      Dados do Cliente
+            {/* CONTEÚDO DAS ABAS */}
+            {detailTab === 'resumo' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                      <User className="h-4 w-4" /> Dados do Cliente
                     </span>
-                    <p className="text-sm font-bold text-white">{selectedDetailOrder.clientName}</p>
-                    <p className="text-slate-400 flex items-center gap-1.5">
-                      <Phone className="h-3.5 w-3.5 text-[#F97316]" /> {selectedDetailOrder.clientPhone}
-                    </p>
+                    <p className="text-sm font-bold text-wr-text">{selectedDetailOrder.clientName}</p>
+                    <p className="text-xs text-wr-muted">Telefone: {selectedDetailOrder.clientPhone}</p>
                     {selectedDetailOrder.clientCpfCnpj && (
-                      <p className="text-slate-400 font-mono">CPF/CNPJ: {selectedDetailOrder.clientCpfCnpj}</p>
+                      <p className="text-xs text-wr-muted">CPF/CNPJ: {selectedDetailOrder.clientCpfCnpj}</p>
                     )}
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-[#1A2230] border border-[#222C3D] space-y-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[#F97316] block">
-                      Dados do Veículo
+                  <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                      <Car className="h-4 w-4" /> Dados do Veículo
                     </span>
-                    <p className="text-sm font-bold text-white">{selectedDetailOrder.vehicleModel}</p>
-                    <p className="text-slate-400 font-mono">
-                      Placa: <strong className="text-[#F97316]">{selectedDetailOrder.vehiclePlate}</strong> &bull; KM: {selectedDetailOrder.mileage.toLocaleString('pt-BR')} km
-                    </p>
-                    <p className="text-slate-400 uppercase">
-                      Combustível: <strong className="text-white">{selectedDetailOrder.fuelLevel || 'Médio'}</strong> &bull; Mecânico: <strong className="text-white">{selectedDetailOrder.mechanicAssigned}</strong>
-                    </p>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-[#1A2230] border border-[#222C3D] space-y-2 md:col-span-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                      Descrição Principal do Serviço
-                    </span>
-                    <p className="text-white text-sm font-semibold">
-                      {selectedDetailOrder.serviceDescription || 'Revisão e Manutenção Geral'}
-                    </p>
-                    {selectedDetailOrder.observations && (
-                      <p className="text-slate-400 text-xs italic mt-1">
-                        Obs: {selectedDetailOrder.observations}
-                      </p>
-                    )}
+                    <p className="text-sm font-bold text-wr-text">{selectedDetailOrder.vehicleModel}</p>
+                    <p className="text-xs text-wr-muted font-mono font-bold">Placa: {selectedDetailOrder.vehiclePlate}</p>
+                    <p className="text-xs text-wr-muted">KM: {selectedDetailOrder.mileage || 'Não informado'}</p>
+                    <p className="text-xs text-wr-muted capitalize">Combustível: {selectedDetailOrder.fuelLevel || 'médio'}</p>
                   </div>
                 </div>
-              )}
 
-              {detailTab === 'itens' && (
-                <div className="space-y-3">
-                  <div className="overflow-x-auto rounded-2xl border border-[#222C3D] bg-[#1A2230]">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-[#0F141C] text-slate-400 border-b border-[#222C3D] text-[11px] uppercase font-bold">
-                        <tr>
-                          <th className="py-2.5 px-3">Serviço / Peça</th>
-                          <th className="py-2.5 px-3 text-right">Peças</th>
-                          <th className="py-2.5 px-3 text-right">Mão de Obra</th>
-                          <th className="py-2.5 px-3 text-right">Subtotal</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#222C3D] text-white">
-                        {selectedDetailOrder.items && selectedDetailOrder.items.length > 0 ? (
-                          selectedDetailOrder.items.map(it => (
-                            <tr key={it.id}>
-                              <td className="py-2.5 px-3 font-semibold">{it.serviceDescription}</td>
-                              <td className="py-2.5 px-3 font-mono text-right text-slate-400">
-                                {formatCurrency(it.partsCost)}
-                              </td>
-                              <td className="py-2.5 px-3 font-mono text-right text-slate-400">
-                                {formatCurrency(it.laborCost)}
-                              </td>
-                              <td className="py-2.5 px-3 font-mono text-right font-black text-[#F97316]">
-                                {formatCurrency(it.total)}
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={4} className="py-6 text-center text-slate-400">
-                              Nenhum item discriminado individualmente.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="p-3.5 rounded-2xl bg-[#1A2230] border border-[#222C3D] flex flex-wrap items-center justify-between text-xs font-mono">
-                    <span className="text-slate-400">Peças: {formatCurrency(selectedDetailOrder.partsTotal || 0)}</span>
-                    <span className="text-slate-400">Mão de Obra: {formatCurrency(selectedDetailOrder.laborTotal || 0)}</span>
-                    {selectedDetailOrder.discount ? (
-                      <span className="text-rose-400">Desconto: -{formatCurrency(selectedDetailOrder.discount)}</span>
-                    ) : null}
-                    <span className="text-base font-black text-[#F97316]">Total: {formatCurrency(selectedDetailOrder.totalAmount || 0)}</span>
-                  </div>
-                </div>
-              )}
-
-              {detailTab === 'diagnostico' && (
-                <div className="space-y-3 text-xs">
-                  <div className="p-4 rounded-2xl bg-[#1A2230] border border-[#222C3D] space-y-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[#F97316] block">
-                      Diagnóstico Técnico Registrado
-                    </span>
-                    <p className="text-white font-medium">
-                      {selectedDetailOrder.serviceDescription}
-                    </p>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-[#1A2230] border border-[#222C3D] space-y-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                      Observações e Reclamação Relatada
-                    </span>
-                    <p className="text-slate-300">
-                      {selectedDetailOrder.observations || 'Nenhuma avaria ou reclamação específica anotada.'}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {detailTab === 'historico' && (
-                <div className="p-4 rounded-2xl bg-[#1A2230] border border-[#222C3D] space-y-3 text-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                    Linha do Tempo Operacional
+                <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                    <Wrench className="h-4 w-4" /> Mecânico &amp; Diagnóstico
                   </span>
-                  <div className="space-y-3 border-l-2 border-[#F97316]/40 pl-4 ml-2">
-                    <div>
-                      <p className="font-bold text-white">Abertura da OS #{selectedDetailOrder.number}</p>
-                      <p className="text-slate-400 text-[11px]">{selectedDetailOrder.date} {selectedDetailOrder.time ? `às ${selectedDetailOrder.time}` : ''}</p>
+                  <p className="text-xs text-wr-muted">
+                    Responsável: <strong className="text-wr-text">{selectedDetailOrder.mechanicAssigned || 'Roberto Silva'}</strong>
+                  </p>
+                  <p className="text-xs text-wr-text">
+                    {selectedDetailOrder.serviceDescription || 'Revisão periódica geral'}
+                  </p>
+                  {selectedDetailOrder.observations && (
+                    <p className="text-xs text-wr-muted italic mt-1">
+                      Obs: {selectedDetailOrder.observations}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {detailTab === 'itens' && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-wr-border overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-wr-elevated text-wr-muted font-bold border-b border-wr-border">
+                      <tr>
+                        <th className="p-3">Descrição do Serviço / Peça</th>
+                        <th className="p-3 text-right">Peças</th>
+                        <th className="p-3 text-right">Mão de Obra</th>
+                        <th className="p-3 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-wr-border">
+                      {selectedDetailOrder.items && selectedDetailOrder.items.length > 0 ? (
+                        selectedDetailOrder.items.map(it => (
+                          <tr key={it.id} className="hover:bg-wr-elevated/50">
+                            <td className="p-3 font-semibold text-wr-text">{it.serviceDescription}</td>
+                            <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(it.partsCost)}</td>
+                            <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(it.laborCost)}</td>
+                            <td className="p-3 text-right font-mono font-bold text-wr-text">{formatCurrency(it.total)}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td className="p-3 font-semibold text-wr-text">{selectedDetailOrder.serviceDescription}</td>
+                          <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(selectedDetailOrder.partsTotal || 0)}</td>
+                          <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(selectedDetailOrder.laborTotal || 0)}</td>
+                          <td className="p-3 text-right font-mono font-bold text-wr-text">{formatCurrency(selectedDetailOrder.totalAmount || 0)}</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex justify-end">
+                  <div className="w-64 p-3.5 rounded-2xl bg-wr-elevated border border-wr-border space-y-1.5 font-mono text-xs">
+                    <div className="flex justify-between text-wr-muted">
+                      <span>Total Peças:</span>
+                      <span>{formatCurrency(selectedDetailOrder.partsTotal || 0)}</span>
                     </div>
-                    <div>
-                      <p className="font-bold text-white">Status Atual: {selectedDetailOrder.status.toUpperCase()}</p>
-                      <p className="text-slate-400 text-[11px]">Mecânico responsável: {selectedDetailOrder.mechanicAssigned}</p>
+                    <div className="flex justify-between text-wr-muted">
+                      <span>Total Mão de Obra:</span>
+                      <span>{formatCurrency(selectedDetailOrder.laborTotal || 0)}</span>
+                    </div>
+                    <div className="flex justify-between font-black text-sm text-wr-orange pt-2 border-t border-wr-border">
+                      <span>Total Líquido:</span>
+                      <span>{formatCurrency(selectedDetailOrder.totalAmount || 0)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {detailTab === 'diagnostico' && (
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-wr-orange">Checklist de Vistoria de Entrada</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-wr-surface border border-wr-border text-center">
+                      <span className="text-[10px] text-wr-muted block">Faróis e Lanternas</span>
+                      <span className="font-bold text-emerald-500">Aprovado</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-wr-surface border border-wr-border text-center">
+                      <span className="text-[10px] text-wr-muted block">Pintura e Lataria</span>
+                      <span className="font-bold text-emerald-500">Conferido</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-wr-surface border border-wr-border text-center">
+                      <span className="text-[10px] text-wr-muted block">Vidros e Retrovisores</span>
+                      <span className="font-bold text-emerald-500">Sem Avarias</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-wr-surface border border-wr-border text-center">
+                      <span className="text-[10px] text-wr-muted block">Rodas e Estepe</span>
+                      <span className="font-bold text-emerald-500">No Veículo</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-wr-orange">Laudo e Observações do Mecânico</h4>
+                  <p className="text-xs text-wr-text">
+                    {selectedDetailOrder.observations || 'Nenhuma avaria grave identificada na inspeção visual de entrada.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {detailTab === 'historico' && (
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-wr-orange">Linha do Tempo do Atendimento</h4>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center gap-3">
+                      <span className="h-2 w-2 rounded-full bg-wr-orange" />
+                      <span className="font-bold text-wr-text">OS Aberta</span>
+                      <span className="text-wr-muted">&bull; {selectedDetailOrder.date}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="h-2 w-2 rounded-full bg-blue-500" />
+                      <span className="font-bold text-wr-text">Mecânico Atribuído:</span>
+                      <span className="text-wr-muted">{selectedDetailOrder.mechanicAssigned || 'Roberto Silva'}</span>
                     </div>
                     {selectedDetailOrder.status === 'pago' && (
-                      <div>
-                        <p className="font-bold text-emerald-400">Pagamento Confirmado</p>
-                        <p className="text-slate-400 text-[11px]">
-                          Forma: {PAYMENT_LABELS[selectedDetailOrder.paymentMethod || 'pix']} &bull; Total: {formatCurrency(selectedDetailOrder.totalAmount)}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                        <span className="font-bold text-emerald-500">OS Finalizada e Paga</span>
+                        <span className="text-wr-muted">&bull; Pagamento confirmado</span>
                       </div>
                     )}
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {detailTab === 'financeiro' && (
-                <div className="space-y-3 text-xs">
-                  <div className="p-4 rounded-2xl bg-[#1A2230] border border-[#222C3D] flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Forma de Pagamento</span>
-                      <span className="text-sm font-bold text-white font-mono">
+            {detailTab === 'financeiro' && (
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-wr-orange">Dados Financeiros &amp; Fiscal</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="p-3 rounded-xl bg-wr-surface border border-wr-border">
+                      <span className="text-[10px] text-wr-muted block">Forma de Pagamento</span>
+                      <span className="font-bold text-wr-text capitalize">
                         {PAYMENT_LABELS[selectedDetailOrder.paymentMethod || 'pendente']}
-                        {selectedDetailOrder.paymentInstallments && selectedDetailOrder.paymentInstallments > 1 ? ` (${selectedDetailOrder.paymentInstallments}x)` : ''}
                       </span>
                     </div>
-
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Garantia Legal</span>
-                      <span className="text-xs font-semibold text-emerald-400">90 dias (CDC)</span>
+                    <div className="p-3 rounded-xl bg-wr-surface border border-wr-border">
+                      <span className="text-[10px] text-wr-muted block">Status de Pagamento</span>
+                      <span className="font-bold text-wr-text capitalize">{selectedDetailOrder.status}</span>
                     </div>
-
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Nota Fiscal (NFS-e)</span>
-                      <span className="text-xs font-semibold text-white">
-                        {selectedDetailOrder.fiscalInvoice?.status === 'autorizada' ? '✓ Autorizada' : 'Pendente de Emissão'}
+                    <div className="p-3 rounded-xl bg-wr-surface border border-wr-border">
+                      <span className="text-[10px] text-wr-muted block">Desconto Aplicado</span>
+                      <span className="font-mono font-bold text-wr-text">
+                        {selectedDetailOrder.discount ? formatCurrency(selectedDetailOrder.discount) : 'R$ 0,00'}
                       </span>
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Ações Rápidas no Rodapé do Modal */}
-            <div className="pt-4 border-t border-[#222C3D] flex flex-wrap items-center justify-between gap-3">
+                <div className="flex gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenNfse(selectedDetailOrder)}
+                    className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase flex items-center justify-center gap-2 shadow-sm transition-all"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>Visualizar NFS-e Municipal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPdfModalOrder(selectedDetailOrder)}
+                    className="flex-1 py-3 px-4 rounded-xl bg-wr-orange hover:bg-wr-orangeDark text-white font-bold text-xs uppercase flex items-center justify-center gap-2 shadow-sm transition-all"
+                  >
+                    <Printer className="h-4 w-4" />
+                    <span>Imprimir OS Oficial</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Rodapé de Ações do Modal de Detalhes */}
+            <div className="pt-4 border-t border-wr-border flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedDetailOrder(null)}
+                className="px-5 py-2.5 rounded-xl border border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text font-bold text-xs uppercase"
+              >
+                Fechar
+              </button>
+
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleOpenClientWhatsApp(selectedDetailOrder)}
-                  className="px-4 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 font-bold text-xs flex items-center gap-1.5 transition-colors"
+                  className="px-4 py-2.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 font-bold text-xs flex items-center gap-1.5 transition-colors"
                 >
                   <MessageCircle className="h-4 w-4" />
-                  WhatsApp
+                  <span>WhatsApp</span>
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPdfModalOrder(selectedDetailOrder)}
-                  className="px-4 py-2.5 rounded-xl bg-[#F97316]/15 hover:bg-[#F97316]/25 text-[#F97316] border border-[#F97316]/30 font-bold text-xs flex items-center gap-1.5 transition-colors"
-                >
-                  <Printer className="h-4 w-4" />
-                  Imprimir / PDF
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleOpenNfse(selectedDetailOrder)}
-                  className="px-4 py-2.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/30 font-bold text-xs flex items-center gap-1.5 transition-colors"
-                >
-                  <FileText className="h-4 w-4" />
-                  NFS-e
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {selectedDetailOrder.status !== 'pago' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const tgt = selectedDetailOrder
-                      setSelectedDetailOrder(null)
-                      setFinalizingOrder(tgt)
-                      setCheckoutPaymentMethod('pix')
-                      setCheckoutDiscount(tgt.discount || 0)
-                      setCheckoutInstallments(1)
-                    }}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-md hover:brightness-110"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Receber Pagamento
-                  </button>
-                )}
 
                 <button
                   type="button"
                   onClick={() => {
-                    const tgt = selectedDetailOrder
+                    setEditingOrder(selectedDetailOrder)
                     setSelectedDetailOrder(null)
-                    setEditingOrder(tgt)
                   }}
-                  className="px-4 py-2.5 rounded-xl bg-[#1A2230] hover:bg-[#222C3D] text-white border border-[#222C3D] font-bold text-xs flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-xl bg-wr-elevated border border-wr-border hover:border-wr-orange text-wr-text font-bold text-xs flex items-center gap-1.5 transition-colors"
                 >
-                  <Edit2 className="h-4 w-4" />
-                  Editar OS
+                  <Edit2 className="h-4 w-4 text-wr-orange" />
+                  <span>Editar OS</span>
                 </button>
               </div>
             </div>
@@ -1493,22 +1459,22 @@ export const OrdersView: React.FC = () => {
         </div>
       )}
 
-      {/* ===================== ASSISTENTE DE CRIAÇÃO EM 5 ETAPAS (STEPPER) ===================== */}
-      {(isNewOrderModalOpen || editingOrder) && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
-          <div className="relative w-full max-w-3xl rounded-[32px] border border-[#222C3D] bg-[#141A24] p-5 sm:p-7 shadow-elevated space-y-5 my-auto max-h-[92vh] overflow-y-auto text-white">
-            {/* Cabeçalho do Modal */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#222C3D]">
+      {/* ===================== ASSISTENTE DE CRIAÇÃO DE OS EM 5 ETAPAS (STEPPER) ===================== */}
+      {isNewOrderModalOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-3xl rounded-[32px] border border-wr-border bg-wr-surface p-5 sm:p-8 shadow-elevated space-y-6 my-auto max-h-[92vh] overflow-y-auto text-wr-text">
+            {/* Cabeçalho do Stepper */}
+            <div className="flex items-center justify-between pb-3 border-b border-wr-border">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-[#F97316]/15 border border-[#F97316]/30 flex items-center justify-center text-[#F97316]">
+                <div className="h-10 w-10 rounded-2xl bg-wr-orange/15 border border-wr-orange/30 flex items-center justify-center text-wr-orange">
                   <ClipboardList className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-black text-white">
-                    {editingOrder ? `Editar ${editingOrder.number}` : 'Nova Ordem de Serviço'}
+                  <h3 className="text-lg font-black text-wr-text">
+                    {editingOrder ? `Editar OS #${editingOrder.number}` : 'Assistente de Nova Ordem de Serviço'}
                   </h3>
-                  <p className="text-xs text-slate-400">
-                    Assistente estruturado em 5 etapas para abertura e diagnóstico do serviço
+                  <p className="text-xs text-wr-muted">
+                    Preencha as informações do cliente, veículo, diagnóstico e peças
                   </p>
                 </div>
               </div>
@@ -1517,140 +1483,149 @@ export const OrdersView: React.FC = () => {
                 onClick={() => {
                   setIsNewOrderModalOpen(false)
                   setEditingOrder(null)
-                  setShowClientSelector(false)
                 }}
-                className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-[#1A2230] transition-colors"
+                className="rounded-xl p-2 text-wr-muted hover:text-wr-text hover:bg-wr-elevated transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Stepper Visual (1 a 5) */}
-            <div className="grid grid-cols-5 gap-1.5 text-center text-xs pb-2 border-b border-[#222C3D]">
+            {/* Stepper Visual (5 Etapas) */}
+            <div className="grid grid-cols-5 gap-1.5 text-center text-xs">
               {[
-                { step: 1 as const, label: '1. Cliente' },
-                { step: 2 as const, label: '2. Veículo' },
-                { step: 3 as const, label: '3. Diagnóstico' },
-                { step: 4 as const, label: '4. Peças & Serviços' },
-                { step: 5 as const, label: '5. Revisão' },
-              ].map(st => (
+                { step: 1, label: 'Cliente', icon: User },
+                { step: 2, label: 'Veículo', icon: Car },
+                { step: 3, label: 'Diagnóstico', icon: Wrench },
+                { step: 4, label: 'Serviços & Peças', icon: Layers },
+                { step: 5, label: 'Revisão', icon: CheckCircle2 },
+              ].map(s => (
                 <button
-                  key={st.step}
+                  key={s.step}
                   type="button"
-                  onClick={() => setWizardStep(st.step)}
-                  className={`py-2 px-1 rounded-xl font-bold transition-all truncate text-[11px] sm:text-xs ${
-                    wizardStep === st.step
-                      ? 'bg-[#F97316] text-white shadow-md'
-                      : wizardStep > st.step
-                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                      : 'bg-[#1A2230] text-slate-400 border border-[#222C3D]'
+                  onClick={() => setWizardStep(s.step as typeof wizardStep)}
+                  className={`p-2 rounded-xl border text-[11px] font-bold flex flex-col items-center gap-1 transition-all ${
+                    wizardStep === s.step
+                      ? 'bg-wr-orange text-white border-wr-orange shadow-sm font-black'
+                      : wizardStep > s.step
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                      : 'bg-wr-elevated text-wr-muted border-wr-border'
                   }`}
                 >
-                  {st.label}
+                  <s.icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{s.label}</span>
                 </button>
               ))}
             </div>
 
-            {/* Conteúdo da Etapa Atual do Wizard */}
+            {/* CORPO DO STEPPER POR ETAPA */}
             <div className="space-y-4">
               {/* ETAPA 1: CLIENTE */}
               {wizardStep === 1 && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-[#1A2230] border border-[#222C3D] space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black uppercase tracking-wider text-[#F97316] flex items-center gap-1.5">
-                        <User className="h-4 w-4" /> Selecionar ou Cadastrar Cliente
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setShowClientSelector(prev => !prev)}
-                        className="text-xs text-[#F97316] font-bold hover:underline flex items-center gap-1"
-                      >
-                        <Users className="h-3.5 w-3.5" />
-                        {showClientSelector ? 'Fechar Lista' : 'Selecionar Cliente Existente'}
-                      </button>
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                      <User className="h-4 w-4" /> Identificação do Cliente
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowClientSelector(prev => !prev)}
+                      className="text-xs font-bold text-wr-orange hover:underline flex items-center gap-1"
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      <span>{showClientSelector ? 'Digitar Manualmente' : 'Selecionar Cliente Cadastrado'}</span>
+                    </button>
+                  </div>
 
-                    {showClientSelector && (
-                      <div className="p-3 rounded-xl bg-[#0F141C] border border-[#222C3D] space-y-2">
+                  {showClientSelector ? (
+                    <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-wr-muted" />
                         <input
                           type="text"
                           value={clientSearchQuery}
                           onChange={e => setClientSearchQuery(e.target.value)}
-                          placeholder="Pesquisar por nome, telefone ou CPF..."
-                          className="w-full p-2.5 rounded-xl bg-[#141A24] text-white border border-[#222C3D] text-xs focus:border-[#F97316] outline-none"
+                          placeholder="Buscar cliente por nome, telefone ou CPF..."
+                          className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-wr-surface text-wr-text border border-wr-border outline-none focus:border-wr-orange"
                         />
-                        <div className="max-h-36 overflow-y-auto space-y-1">
-                          {filteredClientsList.map(c => (
+                      </div>
+
+                      <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                        {filteredExistingClients.length === 0 ? (
+                          <p className="text-xs text-wr-muted text-center py-4">Nenhum cliente encontrado.</p>
+                        ) : (
+                          filteredExistingClients.map(c => (
                             <button
                               key={c.id}
                               type="button"
                               onClick={() => handleSelectExistingClient(c)}
-                              className="w-full text-left p-2 rounded-lg hover:bg-[#1A2230] flex items-center justify-between text-xs transition-colors"
+                              className="w-full p-2.5 rounded-xl bg-wr-surface border border-wr-border hover:border-wr-orange flex items-center justify-between text-left text-xs transition-colors"
                             >
-                              <span className="font-bold text-white">{c.name}</span>
-                              <span className="font-mono text-slate-400 text-[11px]">{c.phone}</span>
+                              <div>
+                                <p className="font-bold text-wr-text">{c.name}</p>
+                                <p className="text-[11px] text-wr-muted">{c.phone} {c.cpfCnpj ? `• ${c.cpfCnpj}` : ''}</p>
+                              </div>
+                              <span className="text-wr-orange font-bold text-[11px]">Selecionar</span>
                             </button>
-                          ))}
-                        </div>
+                          ))
+                        )}
                       </div>
-                    )}
+                    </div>
+                  ) : null}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                          Nome Completo do Cliente *
-                        </label>
-                        <input
-                          type="text"
-                          value={clientName}
-                          onChange={e => setClientName(e.target.value)}
-                          placeholder="Ex: João da Silva"
-                          className="w-full p-3 rounded-xl bg-[#141A24] text-white border border-[#222C3D] focus:border-[#F97316] outline-none"
-                          required
-                        />
-                      </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-wr-muted mb-1">
+                        Nome Completo do Cliente *
+                      </label>
+                      <input
+                        type="text"
+                        value={clientName}
+                        onChange={e => setClientName(e.target.value)}
+                        placeholder="Ex: João da Silva"
+                        className="w-full p-3 rounded-xl bg-wr-elevated text-wr-text border border-wr-border focus:border-wr-orange outline-none"
+                        required
+                      />
+                    </div>
 
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                          Telefone / WhatsApp *
-                        </label>
-                        <input
-                          type="text"
-                          value={clientPhone}
-                          onChange={e => setClientPhone(e.target.value)}
-                          placeholder="(63) 99999-0000"
-                          className="w-full p-3 rounded-xl bg-[#141A24] text-white border border-[#222C3D] focus:border-[#F97316] outline-none font-mono"
-                          required
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-wr-muted mb-1">
+                        Telefone / WhatsApp *
+                      </label>
+                      <input
+                        type="text"
+                        value={clientPhone}
+                        onChange={e => setClientPhone(e.target.value)}
+                        placeholder="(63) 99999-9999"
+                        className="w-full p-3 rounded-xl bg-wr-elevated text-wr-text border border-wr-border focus:border-wr-orange outline-none font-mono"
+                        required
+                      />
+                    </div>
 
-                      <div className="sm:col-span-2">
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                          CPF / CNPJ <span className="text-slate-500 font-normal">(Opcional)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={clientCpfCnpj}
-                          onChange={e => setClientCpfCnpj(e.target.value)}
-                          placeholder="000.000.000-00"
-                          className="w-full p-3 rounded-xl bg-[#141A24] text-white border border-[#222C3D] focus:border-[#F97316] outline-none font-mono"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-wr-muted mb-1">
+                        CPF / CNPJ (Opcional p/ Nota Fiscal)
+                      </label>
+                      <input
+                        type="text"
+                        value={clientCpf}
+                        onChange={e => setClientCpf(e.target.value)}
+                        placeholder="000.000.000-00"
+                        className="w-full p-3 rounded-xl bg-wr-elevated text-wr-text border border-wr-border focus:border-wr-orange outline-none font-mono"
+                      />
                     </div>
                   </div>
 
-                  <div className="flex justify-end">
+                  <div className="flex justify-end pt-2">
                     <button
                       type="button"
                       onClick={() => {
                         if (!clientName.trim()) {
-                          showToast('Preencha o nome do cliente para prosseguir.', 'warning')
+                          showToast('Informe o nome do cliente.', 'warning')
                           return
                         }
                         setWizardStep(2)
                       }}
-                      className="px-6 py-3 rounded-2xl bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2"
+                      className="px-6 py-3 rounded-2xl bg-wr-orange hover:bg-wr-orangeDark text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all"
                     >
                       <span>Avançar para Veículo</span>
                       <ArrowRight className="h-4 w-4" />
@@ -1663,8 +1638,8 @@ export const OrdersView: React.FC = () => {
               {wizardStep === 2 && (
                 <div className="space-y-4">
                   {selectedClientVehicles.length > 0 && (
-                    <div className="p-3.5 rounded-2xl bg-[#1A2230] border border-[#222C3D] space-y-2">
-                      <span className="text-xs font-bold text-[#F97316] block">
+                    <div className="p-3.5 rounded-2xl bg-wr-elevated border border-wr-border space-y-2">
+                      <span className="text-xs font-bold text-wr-orange block">
                         Veículos já vinculados a este cliente:
                       </span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1678,24 +1653,24 @@ export const OrdersView: React.FC = () => {
                               if (v.currentMileage) setMileage(v.currentMileage)
                               showToast(`Veículo ${v.plate} selecionado!`, 'info')
                             }}
-                            className="p-2.5 rounded-xl bg-[#141A24] border border-[#222C3D] hover:border-[#F97316] flex items-center justify-between text-left text-xs transition-colors"
+                            className="p-2.5 rounded-xl bg-wr-surface border border-wr-border hover:border-wr-orange flex items-center justify-between text-left text-xs transition-colors"
                           >
-                            <span className="font-bold text-white">{v.brand} {v.model}</span>
-                            <span className="font-mono text-[#F97316] font-bold">{v.plate}</span>
+                            <span className="font-bold text-wr-text">{v.brand} {v.model}</span>
+                            <span className="font-mono text-wr-orange font-bold">{v.plate}</span>
                           </button>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  <div className="p-4 rounded-2xl bg-[#1A2230] border border-[#222C3D] space-y-3">
-                    <span className="text-xs font-black uppercase tracking-wider text-[#F97316] flex items-center gap-1.5">
+                  <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
+                    <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
                       <Car className="h-4 w-4" /> Dados do Veículo
                     </span>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                        <label className="block text-[11px] font-bold text-wr-muted mb-1">
                           Marca e Modelo do Carro *
                         </label>
                         <input
@@ -1703,13 +1678,13 @@ export const OrdersView: React.FC = () => {
                           value={vehicleModel}
                           onChange={e => setVehicleModel(e.target.value)}
                           placeholder="Ex: Honda Civic 2.0"
-                          className="w-full p-3 rounded-xl bg-[#141A24] text-white border border-[#222C3D] focus:border-[#F97316] outline-none"
+                          className="w-full p-3 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                        <label className="block text-[11px] font-bold text-wr-muted mb-1">
                           Placa do Veículo *
                         </label>
                         <input
@@ -1717,13 +1692,13 @@ export const OrdersView: React.FC = () => {
                           value={vehiclePlate}
                           onChange={e => setVehiclePlate(e.target.value.toUpperCase())}
                           placeholder="ABC1D23"
-                          className="w-full p-3 rounded-xl bg-[#141A24] text-white border border-[#222C3D] focus:border-[#F97316] outline-none font-mono uppercase font-bold"
+                          className="w-full p-3 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-mono uppercase font-bold"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                        <label className="block text-[11px] font-bold text-wr-muted mb-1">
                           Quilometragem (KM de Entrada)
                         </label>
                         <input
@@ -1731,12 +1706,12 @@ export const OrdersView: React.FC = () => {
                           value={mileage || ''}
                           onChange={e => setMileage(Number(e.target.value) || 0)}
                           placeholder="Ex: 85000"
-                          className="w-full p-3 rounded-xl bg-[#141A24] text-white border border-[#222C3D] focus:border-[#F97316] outline-none font-mono"
+                          className="w-full p-3 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-mono"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                        <label className="block text-[11px] font-bold text-wr-muted mb-1">
                           Nível de Combustível
                         </label>
                         <div className="grid grid-cols-3 gap-1.5">
@@ -1751,8 +1726,8 @@ export const OrdersView: React.FC = () => {
                               onClick={() => setFuelLevel(f.id as FuelStatus)}
                               className={`py-2.5 rounded-xl border text-[11px] font-bold transition-all ${
                                 fuelLevel === f.id
-                                  ? 'bg-[#F97316] text-white border-[#F97316]'
-                                  : 'bg-[#141A24] text-slate-400 border-[#222C3D] hover:text-white'
+                                  ? 'bg-wr-orange text-white border-wr-orange'
+                                  : 'bg-wr-surface text-wr-muted border-wr-border hover:text-wr-text'
                               }`}
                             >
                               {f.label}
@@ -1767,7 +1742,7 @@ export const OrdersView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setWizardStep(1)}
-                      className="px-5 py-3 rounded-2xl bg-[#1A2230] text-slate-300 font-bold text-xs uppercase flex items-center gap-2"
+                      className="px-5 py-3 rounded-2xl bg-wr-elevated border border-wr-border text-wr-text font-bold text-xs uppercase flex items-center gap-2"
                     >
                       <ArrowLeft className="h-4 w-4" />
                       <span>Voltar</span>
@@ -1782,7 +1757,7 @@ export const OrdersView: React.FC = () => {
                         }
                         setWizardStep(3)
                       }}
-                      className="px-6 py-3 rounded-2xl bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2"
+                      className="px-6 py-3 rounded-2xl bg-wr-orange hover:bg-wr-orangeDark text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-sm"
                     >
                       <span>Avançar para Diagnóstico</span>
                       <ArrowRight className="h-4 w-4" />
@@ -1794,14 +1769,14 @@ export const OrdersView: React.FC = () => {
               {/* ETAPA 3: DIAGNÓSTICO E SERVIÇO */}
               {wizardStep === 3 && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-[#1A2230] border border-[#222C3D] space-y-3">
-                    <span className="text-xs font-black uppercase tracking-wider text-[#F97316] flex items-center gap-1.5">
+                  <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
+                    <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
                       <Wrench className="h-4 w-4" /> Reclamação &amp; Diagnóstico Técnico
                     </span>
 
                     <div className="space-y-3 text-xs">
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                        <label className="block text-[11px] font-bold text-wr-muted mb-1">
                           Reclamação Relatada pelo Cliente / Serviço Solicitado *
                         </label>
                         <input
@@ -1809,22 +1784,22 @@ export const OrdersView: React.FC = () => {
                           value={serviceDescription}
                           onChange={e => setServiceDescription(e.target.value)}
                           placeholder="Ex: Barulho na suspensão dianteira ao passar em lombadas"
-                          className="w-full p-3 rounded-xl bg-[#141A24] text-white border border-[#222C3D] focus:border-[#F97316] outline-none"
+                          className="w-full p-3 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                        <label className="block text-[11px] font-bold text-wr-muted mb-1">
                           Mecânico Responsável Atribuído
                         </label>
                         <select
                           value={mechanicAssigned}
                           onChange={e => setMechanicAssigned(e.target.value)}
-                          className="w-full p-3 rounded-xl bg-[#141A24] text-white border border-[#222C3D] focus:border-[#F97316] outline-none font-bold"
+                          className="w-full p-3 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-bold"
                         >
                           {(mechanics || ['Roberto Silva', 'Carlos Eduardo', 'Marcos Oficina']).map(m => (
-                            <option key={m} value={m} className="bg-[#141A24] text-white">
+                            <option key={m} value={m} className="bg-wr-surface text-wr-text">
                               {m}
                             </option>
                           ))}
@@ -1832,7 +1807,7 @@ export const OrdersView: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                        <label className="block text-[11px] font-bold text-wr-muted mb-1">
                           Observações Gerais de Entrada / Vistoria
                         </label>
                         <textarea
@@ -1840,7 +1815,7 @@ export const OrdersView: React.FC = () => {
                           value={observations}
                           onChange={e => setObservations(e.target.value)}
                           placeholder="Ex: Riscos no para-choque traseiro, estepe e macaco conferidos."
-                          className="w-full p-3 rounded-xl bg-[#141A24] text-white border border-[#222C3D] focus:border-[#F97316] outline-none"
+                          className="w-full p-3 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none"
                         />
                       </div>
                     </div>
@@ -1850,7 +1825,7 @@ export const OrdersView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setWizardStep(2)}
-                      className="px-5 py-3 rounded-2xl bg-[#1A2230] text-slate-300 font-bold text-xs uppercase flex items-center gap-2"
+                      className="px-5 py-3 rounded-2xl bg-wr-elevated border border-wr-border text-wr-text font-bold text-xs uppercase flex items-center gap-2"
                     >
                       <ArrowLeft className="h-4 w-4" />
                       <span>Voltar</span>
@@ -1859,137 +1834,140 @@ export const OrdersView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setWizardStep(4)}
-                      className="px-6 py-3 rounded-2xl bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2"
+                      className="px-6 py-3 rounded-2xl bg-wr-orange hover:bg-wr-orangeDark text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-sm"
                     >
-                      <span>Avançar para Peças &amp; Serviços</span>
+                      <span>Avançar para Serviços &amp; Peças</span>
                       <ArrowRight className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* ETAPA 4: PEÇAS E SERVIÇOS */}
+              {/* ETAPA 4: SERVIÇOS E PEÇAS */}
               {wizardStep === 4 && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-[#1A2230] border border-[#222C3D] space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black uppercase tracking-wider text-[#F97316] flex items-center gap-1.5">
-                        <DollarSign className="h-4 w-4" /> Adicionar Peças &amp; Mão de Obra
+                  {/* Atalhos de Predefinição */}
+                  {servicePresets && servicePresets.length > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-wr-elevated border border-wr-border space-y-2">
+                      <span className="text-xs font-bold text-wr-orange flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5" /> Adicionar Serviços Pré-definidos com 1 Clique:
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setShowPresetsDropdown(prev => !prev)}
-                        className="text-xs text-[#F97316] font-bold hover:underline flex items-center gap-1"
-                      >
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Catálogo de Predefinições
-                      </button>
-                    </div>
-
-                    {showPresetsDropdown && (
-                      <div className="p-3 rounded-xl bg-[#0F141C] border border-[#222C3D] space-y-1.5 max-h-36 overflow-y-auto">
-                        {(servicePresets || []).map(p => (
+                      <div className="flex flex-wrap gap-1.5">
+                        {servicePresets.slice(0, 6).map(preset => (
                           <button
-                            key={p.id}
+                            key={preset.id}
                             type="button"
-                            onClick={() => handleSelectPreset(p)}
-                            className="w-full text-left p-2 rounded-lg hover:bg-[#1A2230] flex items-center justify-between text-xs transition-colors"
+                            onClick={() => handleAddPreset(preset)}
+                            className="px-3 py-1.5 rounded-xl bg-wr-surface border border-wr-border hover:border-wr-orange text-xs text-wr-text font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
                           >
-                            <span className="font-bold text-white">{p.name}</span>
-                            <span className="font-mono text-[#F97316]">{formatCurrency((p.partsCost || 0) + (p.laborCost || 0))}</span>
+                            <Plus className="h-3 w-3 text-wr-orange" />
+                            <span>{preset.name}</span>
+                            <span className="text-[10px] font-mono text-wr-muted font-bold">
+                              ({formatCurrency(preset.partsCost + preset.laborCost)})
+                            </span>
                           </button>
                         ))}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
-                      <div className="sm:col-span-2">
-                        <label className="block text-[10px] font-bold text-slate-400 mb-1">Descrição do Item</label>
+                  {/* Formulário para Adicionar Item */}
+                  <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
+                    <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                      <Plus className="h-4 w-4" /> Lançar Serviço ou Peça Manual
+                    </span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
+                      <div className="sm:col-span-6">
+                        <label className="block text-[10px] font-bold text-wr-muted mb-1">Descrição</label>
                         <input
                           type="text"
-                          value={itemDesc}
-                          onChange={e => setItemDesc(e.target.value)}
-                          placeholder="Ex: Jogo de Pastilhas de Freio"
-                          className="w-full p-2.5 rounded-xl bg-[#141A24] text-white border border-[#222C3D] focus:border-[#F97316] outline-none"
+                          value={newItemDesc}
+                          onChange={e => setNewItemDesc(e.target.value)}
+                          placeholder="Ex: Troca de pastilhas de freio"
+                          className="w-full p-2.5 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none"
                         />
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 mb-1">Valor Peças (R$)</label>
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-bold text-wr-muted mb-1">Valor Peças</label>
                         <input
                           type="number"
-                          step="0.01"
-                          value={itemPartsCost}
-                          onChange={e => setItemPartsCost(e.target.value)}
-                          placeholder="0,00"
-                          className="w-full p-2.5 rounded-xl bg-[#141A24] text-white border border-[#222C3D] focus:border-[#F97316] outline-none font-mono"
+                          value={newItemParts || ''}
+                          onChange={e => setNewItemParts(Number(e.target.value) || 0)}
+                          placeholder="0.00"
+                          className="w-full p-2.5 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-mono"
                         />
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 mb-1">Mão de Obra (R$)</label>
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-bold text-wr-muted mb-1">Mão de Obra</label>
                         <input
                           type="number"
-                          step="0.01"
-                          value={itemLaborCost}
-                          onChange={e => setItemLaborCost(e.target.value)}
-                          placeholder="0,00"
-                          className="w-full p-2.5 rounded-xl bg-[#141A24] text-white border border-[#222C3D] focus:border-[#F97316] outline-none font-mono"
+                          value={newItemLabor || ''}
+                          onChange={e => setNewItemLabor(Number(e.target.value) || 0)}
+                          placeholder="0.00"
+                          className="w-full p-2.5 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-mono"
                         />
+                      </div>
+                      <div className="sm:col-span-2 flex items-end">
+                        <button
+                          type="button"
+                          onClick={() => handleAddItem()}
+                          className="w-full py-2.5 rounded-xl bg-wr-orange hover:bg-wr-orangeDark text-white font-bold text-xs uppercase flex items-center justify-center gap-1 shadow-sm"
+                        >
+                          <Plus className="h-4 w-4" />
+                          <span>Adicionar</span>
+                        </button>
                       </div>
                     </div>
+                  </div>
 
-                    <button
-                      type="button"
-                      onClick={handleAddItem}
-                      className="w-full py-2.5 rounded-xl bg-[#141A24] hover:bg-[#F97316]/20 text-[#F97316] border border-[#F97316]/40 font-bold text-xs uppercase flex items-center justify-center gap-1.5 transition-colors"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Adicionar Item à OS</span>
-                    </button>
-
-                    {/* Tabela de Itens Adicionados */}
-                    {items.length > 0 && (
-                      <div className="overflow-x-auto rounded-xl border border-[#222C3D] bg-[#0F141C]">
-                        <table className="w-full text-left text-xs">
-                          <thead className="bg-[#141A24] text-slate-400 border-b border-[#222C3D] text-[10px] uppercase font-bold">
-                            <tr>
-                              <th className="py-2 px-3">Item / Serviço</th>
-                              <th className="py-2 px-3 text-right">Peças</th>
-                              <th className="py-2 px-3 text-right">M.O</th>
-                              <th className="py-2 px-3 text-right">Total</th>
-                              <th className="py-2 px-2 w-8"></th>
+                  {/* Tabela dos Itens Lançados */}
+                  <div className="rounded-2xl border border-wr-border overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-wr-elevated text-wr-muted font-bold border-b border-wr-border">
+                        <tr>
+                          <th className="p-3">Item / Serviço</th>
+                          <th className="p-3 text-right">Peças</th>
+                          <th className="p-3 text-right">M.O</th>
+                          <th className="p-3 text-right">Total</th>
+                          <th className="p-3 text-center">Remover</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-wr-border">
+                        {items.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="p-4 text-center text-wr-muted">
+                              Nenhum item adicionado ainda. Lance acima ou use uma predefinição.
+                            </td>
+                          </tr>
+                        ) : (
+                          items.map(it => (
+                            <tr key={it.id} className="hover:bg-wr-elevated/40">
+                              <td className="p-3 font-semibold text-wr-text">{it.serviceDescription}</td>
+                              <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(it.partsCost)}</td>
+                              <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(it.laborCost)}</td>
+                              <td className="p-3 text-right font-mono font-bold text-wr-text">{formatCurrency(it.total)}</td>
+                              <td className="p-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveItem(it.id)}
+                                  className="p-1 text-rose-500 hover:bg-rose-500/10 rounded-lg"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </td>
                             </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#222C3D] text-white">
-                            {items.map(it => (
-                              <tr key={it.id}>
-                                <td className="py-2 px-3 font-semibold">{it.serviceDescription}</td>
-                                <td className="py-2 px-3 font-mono text-right text-slate-400">{formatCurrency(it.partsCost)}</td>
-                                <td className="py-2 px-3 font-mono text-right text-slate-400">{formatCurrency(it.laborCost)}</td>
-                                <td className="py-2 px-3 font-mono text-right font-black text-[#F97316]">{formatCurrency(it.total)}</td>
-                                <td className="py-2 px-2 text-center">
-                                  <button type="button" onClick={() => handleRemoveItem(it.id)} className="text-rose-400 hover:text-rose-300">
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-
-                    <div className="p-3 rounded-xl bg-[#0F141C] border border-[#222C3D] flex items-center justify-between text-xs font-mono">
-                      <span className="text-slate-400">Peças: {formatCurrency(calculatedPartsTotal)}</span>
-                      <span className="text-slate-400">M.O: {formatCurrency(calculatedLaborTotal)}</span>
-                      <span className="text-sm font-black text-[#F97316]">Total: {formatCurrency(calculatedGrandTotal)}</span>
-                    </div>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <button
                       type="button"
                       onClick={() => setWizardStep(3)}
-                      className="px-5 py-3 rounded-2xl bg-[#1A2230] text-slate-300 font-bold text-xs uppercase flex items-center gap-2"
+                      className="px-5 py-3 rounded-2xl bg-wr-elevated border border-wr-border text-wr-text font-bold text-xs uppercase flex items-center gap-2"
                     >
                       <ArrowLeft className="h-4 w-4" />
                       <span>Voltar</span>
@@ -1998,7 +1976,7 @@ export const OrdersView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setWizardStep(5)}
-                      className="px-6 py-3 rounded-2xl bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2"
+                      className="px-6 py-3 rounded-2xl bg-wr-orange hover:bg-wr-orangeDark text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-sm"
                     >
                       <span>Avançar para Revisão</span>
                       <ArrowRight className="h-4 w-4" />
@@ -2007,76 +1985,76 @@ export const OrdersView: React.FC = () => {
                 </div>
               )}
 
-              {/* ETAPA 5: REVISÃO & CONFIRMAÇÃO */}
+              {/* ETAPA 5: REVISÃO & SALVAR */}
               {wizardStep === 5 && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-[#1A2230] border border-[#222C3D] space-y-3 text-xs">
-                    <span className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                      <CheckCircle2 className="h-4 w-4" /> Revisão Geral da Ordem de Serviço
+                  <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
+                    <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4" /> Resumo Consolidado da Ordem de Serviço
                     </span>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="p-3 rounded-xl bg-[#141A24] border border-[#222C3D] space-y-1">
-                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Cliente</span>
-                        <p className="font-bold text-white">{clientName}</p>
-                        <p className="font-mono text-slate-400">{clientPhone}</p>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-wr-muted uppercase font-bold block">Cliente</span>
+                        <p className="font-bold text-wr-text">{clientName}</p>
+                        <p className="text-wr-muted">{clientPhone}</p>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-[#141A24] border border-[#222C3D] space-y-1">
-                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Veículo</span>
-                        <p className="font-bold text-white">{vehicleModel}</p>
-                        <p className="font-mono text-[#F97316] font-bold">{vehiclePlate}</p>
+                      <div>
+                        <span className="text-[10px] text-wr-muted uppercase font-bold block">Veículo</span>
+                        <p className="font-bold text-wr-text">{vehicleModel}</p>
+                        <p className="font-mono font-bold text-wr-orange">{vehiclePlate} • {mileage} km</p>
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-[#141A24] border border-[#222C3D] space-y-1">
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Serviço &amp; Mecânico</span>
-                      <p className="font-bold text-white">{serviceDescription || 'Serviço Geral'}</p>
-                      <p className="text-slate-400">Responsável: <strong className="text-white">{mechanicAssigned}</strong></p>
+                    <div className="pt-2 border-t border-wr-border">
+                      <span className="text-[10px] text-wr-muted uppercase font-bold block">Mecânico Atribuído</span>
+                      <p className="font-bold text-wr-text">{mechanicAssigned || 'Roberto Silva'}</p>
                     </div>
 
-                    <div className="p-3.5 rounded-xl bg-[#0F141C] border border-[#222C3D] flex items-center justify-between font-mono">
-                      <span className="text-slate-400">Total de Itens: {items.length}</span>
-                      <span className="text-base font-black text-[#F97316]">
-                        Valor Total da OS: {formatCurrency(calculatedGrandTotal)}
+                    <div className="pt-2 border-t border-wr-border flex justify-between font-mono text-xs">
+                      <span className="text-wr-muted">Total Peças: {formatCurrency(partsTotal)}</span>
+                      <span className="text-wr-muted">Total Mão de Obra: {formatCurrency(laborTotal)}</span>
+                    </div>
+
+                    <div className="pt-3 border-t border-wr-border flex items-center justify-between">
+                      <span className="text-xs font-black uppercase tracking-wider text-wr-text">Valor Total Geral:</span>
+                      <span className="font-mono text-2xl font-black text-wr-orange">
+                        {formatCurrency(itemsGrandTotal)}
                       </span>
-                    </div>
-
-                    {/* Status Inicial */}
-                    <div className="pt-2">
-                      <label className="block text-[11px] font-bold text-slate-400 mb-1.5">Status Inicial da OS:</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setFormStatus('aguardando')}
-                          className={`py-2 rounded-xl border text-xs font-bold transition-all ${
-                            formStatus === 'aguardando'
-                              ? 'bg-[#1A2230] text-white border-[#F97316] ring-2 ring-[#F97316]/30'
-                              : 'bg-[#141A24] text-slate-400 border-[#222C3D]'
-                          }`}
-                        >
-                          Aguardando Entrada
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFormStatus('andamento')}
-                          className={`py-2 rounded-xl border text-xs font-bold transition-all ${
-                            formStatus === 'andamento'
-                              ? 'bg-[#F97316] text-white border-[#F97316]'
-                              : 'bg-[#141A24] text-slate-400 border-[#222C3D]'
-                          }`}
-                        >
-                          Em Execução
-                        </button>
-                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  {/* Status Inicial da OS */}
+                  <div className="p-3.5 rounded-2xl bg-wr-elevated border border-wr-border space-y-2">
+                    <label className="block text-xs font-bold text-wr-muted">Status Inicial da OS:</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'aguardando', label: 'Aguardando' },
+                        { id: 'andamento', label: 'Em Andamento' },
+                        { id: 'pronto', label: 'Pronto p/ Retirada' },
+                      ].map(st => (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => setFormStatus(st.id as OrderStatus)}
+                          className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                            formStatus === st.id
+                              ? 'bg-wr-orange text-white border-wr-orange shadow-sm'
+                              : 'bg-wr-surface text-wr-muted border-wr-border hover:text-wr-text'
+                          }`}
+                        >
+                          {st.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
                     <button
                       type="button"
                       onClick={() => setWizardStep(4)}
-                      className="px-5 py-3 rounded-2xl bg-[#1A2230] text-slate-300 font-bold text-xs uppercase flex items-center gap-2"
+                      className="px-5 py-3 rounded-2xl bg-wr-elevated border border-wr-border text-wr-text font-bold text-xs uppercase flex items-center gap-2"
                     >
                       <ArrowLeft className="h-4 w-4" />
                       <span>Voltar</span>
@@ -2085,10 +2063,10 @@ export const OrdersView: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleSaveOrder}
-                      className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:brightness-110 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center gap-2"
+                      className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg transition-all"
                     >
-                      <Check className="h-4 w-4 stroke-[3]" />
-                      <span>{editingOrder ? 'Salvar Alterações da OS' : 'Salvar e Abrir Ordem de Serviço'}</span>
+                      <Save className="h-4 w-4" />
+                      <span>{editingOrder ? 'Salvar Alterações' : 'Emitir Ordem de Serviço'}</span>
                     </button>
                   </div>
                 </div>
@@ -2100,16 +2078,16 @@ export const OrdersView: React.FC = () => {
 
       {/* ===================== MODAL: PAINEL DE VENDA (CHECKOUT AO MARCAR COMO PRONTO) ===================== */}
       {finalizingOrder && (
-        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
-          <div className="relative w-full max-w-lg rounded-[32px] border border-[#222C3D] bg-[#141A24] p-6 sm:p-8 shadow-elevated space-y-6 my-auto text-white">
-            <div className="flex items-center justify-between pb-3 border-b border-[#222C3D]">
+        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/75 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-[32px] border border-wr-border bg-wr-surface p-6 sm:p-8 shadow-elevated space-y-6 my-auto text-wr-text">
+            <div className="flex items-center justify-between pb-3 border-b border-wr-border">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <div className="h-10 w-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-500">
                   <DollarSign className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-white">Painel de Venda &amp; Pagamento</h3>
-                  <p className="text-xs text-slate-400">
+                  <h3 className="text-lg font-black text-wr-text">Painel de Venda &amp; Pagamento</h3>
+                  <p className="text-xs text-wr-muted">
                     Finalização da OS {finalizingOrder.number} &bull; {finalizingOrder.clientName}
                   </p>
                 </div>
@@ -2117,28 +2095,28 @@ export const OrdersView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFinalizingOrder(null)}
-                className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-[#1A2230] transition-colors"
+                className="rounded-xl p-2 text-wr-muted hover:text-wr-text hover:bg-wr-elevated transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#0F141C] border border-[#222C3D] space-y-2 text-xs font-mono">
-              <div className="flex justify-between text-slate-400">
+            <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-2 text-xs font-mono">
+              <div className="flex justify-between text-wr-muted">
                 <span>Peças:</span>
                 <span>{formatCurrency(finalizingOrder.partsTotal || 0)}</span>
               </div>
-              <div className="flex justify-between text-slate-400">
+              <div className="flex justify-between text-wr-muted">
                 <span>Mão de Obra:</span>
                 <span>{formatCurrency(finalizingOrder.laborTotal || 0)}</span>
               </div>
               {checkoutDiscount > 0 && (
-                <div className="flex justify-between text-rose-400">
+                <div className="flex justify-between text-rose-500">
                   <span>Desconto Concedido:</span>
                   <span>- {formatCurrency(checkoutDiscount)}</span>
                 </div>
               )}
-              <div className="pt-2 border-t border-[#222C3D] flex justify-between text-base font-black text-[#F97316]">
+              <div className="pt-2 border-t border-wr-border flex justify-between text-base font-black text-wr-orange">
                 <span>Total a Cobrar:</span>
                 <span>
                   {formatCurrency(
@@ -2153,7 +2131,7 @@ export const OrdersView: React.FC = () => {
 
             {/* Seleção do Método de Pagamento */}
             <div className="space-y-2">
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
+              <label className="block text-xs font-black uppercase tracking-wider text-wr-muted">
                 Método de Pagamento
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -2171,8 +2149,8 @@ export const OrdersView: React.FC = () => {
                     onClick={() => setCheckoutPaymentMethod(m.id as PaymentMethod)}
                     className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all ${
                       checkoutPaymentMethod === m.id
-                        ? 'bg-[#F97316] text-white border-[#F97316] shadow-sm'
-                        : 'bg-[#1A2230] text-slate-300 border-[#222C3D] hover:text-white'
+                        ? 'bg-wr-orange text-white border-wr-orange shadow-sm'
+                        : 'bg-wr-elevated text-wr-muted border-wr-border hover:text-wr-text'
                     }`}
                   >
                     {m.label}
@@ -2183,14 +2161,14 @@ export const OrdersView: React.FC = () => {
 
             {checkoutPaymentMethod === 'cartao_credito' && (
               <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1">Parcelamento</label>
+                <label className="block text-xs font-bold text-wr-muted mb-1">Parcelamento</label>
                 <select
                   value={checkoutInstallments}
                   onChange={e => setCheckoutInstallments(Number(e.target.value))}
-                  className="w-full p-2.5 rounded-xl bg-[#1A2230] text-white border border-[#222C3D] text-xs font-bold font-mono outline-none"
+                  className="w-full p-2.5 rounded-xl bg-wr-elevated text-wr-text border border-wr-border text-xs font-bold font-mono outline-none"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
-                    <option key={n} value={n} className="bg-[#141A24]">
+                    <option key={n} value={n} className="bg-wr-surface text-wr-text">
                       {n === 1 ? '1x à vista' : `${n}x parcelado`}
                     </option>
                   ))}
@@ -2200,17 +2178,17 @@ export const OrdersView: React.FC = () => {
 
             {checkoutPaymentMethod === 'pagar_depois' && (
               <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1">Data de Vencimento Combinada</label>
+                <label className="block text-xs font-bold text-wr-muted mb-1">Data de Vencimento Combinada</label>
                 <input
                   type="date"
                   value={checkoutDueDate}
                   onChange={e => setCheckoutDueDate(e.target.value)}
-                  className="w-full p-2.5 rounded-xl bg-[#1A2230] text-white border border-[#222C3D] text-xs font-mono outline-none"
+                  className="w-full p-2.5 rounded-xl bg-wr-elevated text-wr-text border border-wr-border text-xs font-mono outline-none"
                 />
               </div>
             )}
 
-            <div className="flex items-center gap-3 pt-3 border-t border-[#222C3D]">
+            <div className="flex items-center gap-3 pt-3 border-t border-wr-border">
               <button
                 type="button"
                 onClick={handleConfirmCheckout}
@@ -2222,7 +2200,7 @@ export const OrdersView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFinalizingOrder(null)}
-                className="px-5 py-3.5 rounded-2xl bg-[#1A2230] text-slate-300 font-bold text-xs uppercase"
+                className="px-5 py-3.5 rounded-2xl bg-wr-elevated border border-wr-border text-wr-muted hover:text-wr-text font-bold text-xs uppercase"
               >
                 Cancelar
               </button>
@@ -2233,16 +2211,16 @@ export const OrdersView: React.FC = () => {
 
       {/* ===================== MODAL: SUCESSO DO PAGAMENTO ===================== */}
       {completedPaymentOrder && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn">
-          <div className="relative w-full max-w-md rounded-[32px] border border-emerald-500/40 bg-[#141A24] p-6 sm:p-8 shadow-elevated space-y-6 text-center text-white">
-            <div className="h-16 w-16 rounded-full bg-emerald-500/15 border-2 border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="relative w-full max-w-md rounded-[32px] border border-emerald-500/40 bg-wr-surface p-6 sm:p-8 shadow-elevated space-y-6 text-center text-wr-text">
+            <div className="h-16 w-16 rounded-full bg-emerald-500/15 border-2 border-emerald-500/30 flex items-center justify-center text-emerald-500 mx-auto">
               <CheckCircle2 className="h-9 w-9 stroke-[2.5]" />
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-xl font-black text-white">Pagamento Confirmado!</h3>
-              <p className="text-xs text-slate-400">
-                A OS <strong className="text-[#F97316] font-mono">{completedPaymentOrder.number}</strong> foi quitada com sucesso.
+              <h3 className="text-xl font-black text-wr-text">Pagamento Confirmado!</h3>
+              <p className="text-xs text-wr-muted">
+                A OS <strong className="text-wr-orange font-mono">{completedPaymentOrder.number}</strong> foi quitada com sucesso.
               </p>
             </div>
 
@@ -2276,7 +2254,7 @@ export const OrdersView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setCompletedPaymentOrder(null)}
-                className="w-full py-2.5 text-xs text-slate-400 hover:text-white font-bold"
+                className="w-full py-2.5 text-xs text-wr-muted hover:text-wr-text font-bold"
               >
                 Fechar
               </button>
@@ -2287,23 +2265,23 @@ export const OrdersView: React.FC = () => {
 
       {/* ===================== MODAL: WHATSAPP ===================== */}
       {whatsAppModalOrder && (
-        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
-          <div className="relative w-full max-w-xl rounded-[32px] border border-[#222C3D] bg-[#141A24] p-6 shadow-elevated space-y-4 my-auto text-white">
-            <div className="flex items-center justify-between pb-3 border-b border-[#222C3D]">
+        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/75 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-xl rounded-[32px] border border-wr-border bg-wr-surface p-6 shadow-elevated space-y-4 my-auto text-wr-text">
+            <div className="flex items-center justify-between pb-3 border-b border-wr-border">
               <div className="flex items-center gap-2">
-                <MessageCircle className="h-5 w-5 text-emerald-400" />
-                <h3 className="text-base font-bold text-white">Comprovante de OS para WhatsApp</h3>
+                <MessageCircle className="h-5 w-5 text-emerald-500" />
+                <h3 className="text-base font-bold text-wr-text">Comprovante de OS para WhatsApp</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setWhatsAppModalOrder(null)}
-                className="rounded-xl p-1.5 text-slate-400 hover:text-white"
+                className="rounded-xl p-1.5 text-wr-muted hover:text-wr-text"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="rounded-2xl border border-[#222C3D] bg-[#0F141C] p-2 flex items-center justify-center min-h-[280px]">
+            <div className="rounded-2xl border border-wr-border bg-wr-elevated p-2 flex items-center justify-center min-h-[280px]">
               {generatedImageUrl ? (
                 <img
                   src={generatedImageUrl}
@@ -2311,8 +2289,8 @@ export const OrdersView: React.FC = () => {
                   className="rounded-xl max-h-[50vh] w-auto shadow-md"
                 />
               ) : (
-                <div className="text-xs text-slate-400 flex items-center gap-2">
-                  <Clock className="h-4 w-4 animate-spin text-[#F97316]" />
+                <div className="text-xs text-wr-muted flex items-center gap-2">
+                  <Clock className="h-4 w-4 animate-spin text-wr-orange" />
                   <span>Gerando comprovante oficial da OS...</span>
                 </div>
               )}
@@ -2332,7 +2310,7 @@ export const OrdersView: React.FC = () => {
                 <a
                   href={generatedImageUrl}
                   download={`OS-${whatsAppModalOrder.number}.png`}
-                  className="p-3 rounded-2xl bg-[#1A2230] text-slate-300 hover:text-white border border-[#222C3D]"
+                  className="p-3 rounded-2xl bg-wr-elevated text-wr-text hover:text-wr-orange border border-wr-border"
                   title="Baixar imagem"
                 >
                   <Download className="h-4 w-4" />
@@ -2345,8 +2323,8 @@ export const OrdersView: React.FC = () => {
 
       {/* ===================== MODAL: IMPRESSÃO OFICIAL DA OS (PDF) ===================== */}
       {pdfModalOrder && (
-        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-6 animate-fadeIn overflow-y-auto">
-          <div className="relative w-full max-w-4xl rounded-[32px] border border-[#222C3D] bg-white text-slate-900 p-6 sm:p-8 shadow-elevated space-y-6 my-auto max-h-[95vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/75 backdrop-blur-md p-2 sm:p-6 animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-4xl rounded-[32px] border border-wr-border bg-white text-slate-900 p-6 sm:p-8 shadow-elevated space-y-6 my-auto max-h-[95vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 no-print">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Visualização de Impressão Oficial &bull; OS #{pdfModalOrder.number}
@@ -2355,7 +2333,7 @@ export const OrdersView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="px-4 py-2 rounded-xl bg-[#F97316] text-white font-bold text-xs uppercase flex items-center gap-1.5 shadow-sm"
+                  className="px-4 py-2 rounded-xl bg-wr-orange hover:bg-wr-orangeDark text-white font-bold text-xs uppercase flex items-center gap-1.5 shadow-sm"
                 >
                   <Printer className="h-4 w-4" />
                   <span>Imprimir Agora</span>
@@ -2372,14 +2350,14 @@ export const OrdersView: React.FC = () => {
 
             {/* Documento Impresso Oficial */}
             <div className="space-y-6 text-xs text-slate-800">
-              <div className="flex items-center justify-between border-b-2 border-[#F97316] pb-4">
+              <div className="flex items-center justify-between border-b-2 border-wr-orange pb-4">
                 <div>
                   <h2 className="text-xl font-black text-slate-900">WR MECÂNICA &amp; CIA</h2>
                   <p className="text-slate-600">Serviços Mecânicos Especializados &bull; Luzimangues / Porto Nacional - TO</p>
                   <p className="text-[11px] text-slate-500">WhatsApp: (63) 99234-5678</p>
                 </div>
                 <div className="text-right">
-                  <span className="font-mono text-xl font-black text-[#F97316] block">OS #{pdfModalOrder.number}</span>
+                  <span className="font-mono text-xl font-black text-wr-orange block">OS #{pdfModalOrder.number}</span>
                   <span className="text-[11px] text-slate-500">Data: {pdfModalOrder.date}</span>
                 </div>
               </div>

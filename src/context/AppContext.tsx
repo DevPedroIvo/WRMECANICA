@@ -418,8 +418,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Aplicar tema claro/escuro no <html>
   useEffect(() => {
     const root = document.documentElement
-    root.classList.remove('light', 'dark')
+    root.classList.remove('light', 'dark', 'theme-light', 'theme-dark')
     root.classList.add(theme)
+    root.classList.add(`theme-${theme}`)
+    root.setAttribute('data-theme', theme)
     localStorage.setItem(STORAGE_KEYS.theme, theme)
   }, [theme])
 
