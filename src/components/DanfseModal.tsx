@@ -10,7 +10,11 @@ import {
   Check,
   MessageCircle,
   ExternalLink,
+  FileText,
+  Loader2,
+  Share2,
 } from 'lucide-react'
+import { generateNfsePdfBlob, shareNfsePdf } from '../utils/nfsePdfGenerator'
 
 interface DanfseModalProps {
   order: ServiceOrder
@@ -30,6 +34,8 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClose }) => {
   const [copiedKey, setCopiedKey] = useState(false)
+  const [isProcessingPdf, setIsProcessingPdf] = useState(false)
+  const [pdfFeedback, setPdfFeedback] = useState<string | null>(null)
 
   const installmentsSuffix =
     order.paymentInstallments && order.paymentInstallments > 1
@@ -82,16 +88,54 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
     setTimeout(() => setCopiedKey(false), 2000)
   }
 
-  const handleShareWhatsApp = () => {
-    const rawPhone = (order.clientPhone || '').replace(/\D/g, '')
-    const fullPhone = rawPhone.startsWith('55') ? rawPhone : `55${rawPhone}`
+  // 🚀 Compartilhar o arquivo PDF oficial da Nota Fiscal
+  const handleSharePdf = async () => {
+    try {
+      setIsProcessingPdf(true)
+      setPdfFeedback('Gerando arquivo PDF oficial da Nota Fiscal...')
 
-    const message = `Olá *${order.clientName}*, segue a sua *Nota Fiscal de Serviços Eletrônica (NFS-e nº ${invoice.invoiceNumber})* emitida pela *WR Mecânica & Cia*.\n\n🚗 *Veículo:* ${order.vehicleModel} (Placa ${order.vehiclePlate})\n📄 *Valor Total:* ${formatCurrency(order.totalAmount)}\n💳 *Forma de Pagamento:* ${paymentDesc}\n🔑 *Chave de Acesso:* ${invoice.accessKey}\n🔗 *Consulta Oficial:* https://www.nfse.gov.br/emissornacional/ConsultaPublica\n\n_Documento fiscal oficial emitido em Porto Nacional / Luzimangues - TO._`
+      const result = await shareNfsePdf(order, settings, invoice, paymentDesc)
 
-    if (rawPhone) {
-      window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`, '_blank')
-    } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank')
+      if (result.sharedDirectly) {
+        setPdfFeedback('PDF compartilhado com sucesso via WhatsApp!')
+      } else {
+        setPdfFeedback('PDF baixado! Abrindo conversa do WhatsApp para envio do arquivo.')
+      }
+
+      setTimeout(() => setPdfFeedback(null), 5000)
+    } catch (err) {
+      console.error('Erro ao compartilhar PDF:', err)
+      setPdfFeedback('Não foi possível gerar o PDF. Tente imprimir ou baixar diretamente.')
+      setTimeout(() => setPdfFeedback(null), 4000)
+    } finally {
+      setIsProcessingPdf(false)
+    }
+  }
+
+  // 📥 Download direto do PDF da Nota Fiscal
+  const handleDownloadPdf = async () => {
+    try {
+      setIsProcessingPdf(true)
+      setPdfFeedback('Compilando PDF da NFS-e...')
+      const { blob, fileName } = await generateNfsePdfBlob(order, settings, invoice, paymentDesc)
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      setPdfFeedback('Download do PDF concluído!')
+      setTimeout(() => setPdfFeedback(null), 3000)
+    } catch (err) {
+      console.error('Erro ao baixar PDF:', err)
+      setPdfFeedback('Erro ao baixar PDF.')
+      setTimeout(() => setPdfFeedback(null), 3000)
+    } finally {
+      setIsProcessingPdf(false)
     }
   }
 
@@ -169,26 +213,46 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* BOTÃO COMPARTILHAR PDF NO WHATSAPP */}
             <button
               type="button"
-              onClick={handleShareWhatsApp}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-bold text-white transition-all shadow-xs"
-              title="Compartilhar via WhatsApp com o cliente"
+              disabled={isProcessingPdf}
+              onClick={handleSharePdf}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-bold text-white transition-all shadow-xs disabled:opacity-50"
+              title="Compartilhar arquivo PDF da Nota Fiscal no WhatsApp"
             >
-              <MessageCircle className="h-4 w-4" />
-              <span>WhatsApp</span>
+              {isProcessingPdf ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MessageCircle className="h-4 w-4" />
+              )}
+              <span>Compartilhar PDF</span>
             </button>
 
+            {/* BOTÃO BAIXAR ARQUIVO PDF */}
+            <button
+              type="button"
+              disabled={isProcessingPdf}
+              onClick={handleDownloadPdf}
+              className="wr-btn-secondary px-3.5 py-2"
+              title="Baixar arquivo PDF no computador"
+            >
+              <FileText className="h-4 w-4 text-wr-orange" />
+              <span>Baixar PDF</span>
+            </button>
+
+            {/* BOTÃO IMPRIMIR */}
             <button
               type="button"
               onClick={() => window.print()}
-              className="wr-btn-secondary px-3.5 py-2"
-              title="Imprimir ou Salvar em PDF"
+              className="wr-btn-secondary px-3 py-2"
+              title="Imprimir ou Salvar em PDF do Navegador"
             >
               <Printer className="h-4 w-4 text-wr-orange" />
-              <span>Imprimir / PDF</span>
+              <span className="hidden sm:inline">Imprimir</span>
             </button>
 
+            {/* BOTÃO XML */}
             <button
               type="button"
               onClick={handleDownloadXml}
@@ -209,6 +273,23 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
             </button>
           </div>
         </div>
+
+        {/* Notificação / Feedback de Compartilhamento de PDF */}
+        {pdfFeedback && (
+          <div className="no-print p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-semibold text-xs flex items-center justify-between gap-3 animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+              <span>{pdfFeedback}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPdfFeedback(null)}
+              className="text-emerald-600 hover:text-emerald-700"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* ============================================================== */}
         {/* DOCUMENTO FISCAL LIMPO, PROFISSIONAL E EXECUTIVO (A4 / TELA) */}
