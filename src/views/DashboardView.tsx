@@ -18,10 +18,16 @@ import {
   Calendar,
   Sparkles,
   TrendingUp,
+  TrendingDown,
   Package,
   Bell,
   ArrowUpRight,
   ChevronRight,
+  ShieldCheck,
+  Fuel,
+  Gauge,
+  Layers,
+  FileText,
 } from 'lucide-react'
 
 export const DashboardView: React.FC = () => {
@@ -39,6 +45,7 @@ export const DashboardView: React.FC = () => {
     setActiveTab,
     sendWhatsApp,
     openNewOrderModal,
+    setSelectedOrderForModal,
   } = useApp()
 
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(() => {
@@ -60,14 +67,24 @@ export const DashboardView: React.FC = () => {
     })
   }, [])
 
+  // Métricas financeiras e operacionais consolidadas
   const metrics = useMemo(() => {
     const inProgress = orders.filter(
       o => o.status === 'andamento' || o.status === 'aguardando' || o.status === 'pronto'
     ).length
+    const openOrders = orders.filter(o => o.status === 'aguardando').length
+    const executingOrders = orders.filter(o => o.status === 'andamento').length
+    const readyOrders = orders.filter(o => o.status === 'pronto').length
     const completed = orders.filter(o => o.status === 'pago').length
+
     const paidRevenue = financial
       .filter(f => f.type === 'receita' && f.status === 'pago')
       .reduce((sum, f) => sum + f.amount, 0)
+    const paidExpenses = financial
+      .filter(f => f.type === 'despesa' && f.status === 'pago')
+      .reduce((sum, f) => sum + f.amount, 0)
+    const netBalance = paidRevenue - paidExpenses
+
     const deferredOpen = deferredPayments.reduce(
       (sum, d) => sum + Math.max(0, d.totalAmount - d.paidAmount),
       0
@@ -80,14 +97,52 @@ export const DashboardView: React.FC = () => {
 
     return {
       inProgress,
+      openOrders,
+      executingOrders,
+      readyOrders,
       completed,
       paidRevenue,
+      paidExpenses,
+      netBalance,
       deferredOpen,
       deferredOverdueCount,
       lowStock,
       pendingReminders,
     }
   }, [orders, financial, deferredPayments, stock, reminders, todayISO])
+
+  // Ranking dos serviços mais realizados
+  const topServices = useMemo(() => {
+    const counts: Record<string, { count: number; totalValue: number }> = {}
+    orders.forEach(o => {
+      if (o.items && o.items.length > 0) {
+        o.items.forEach(it => {
+          const name = it.serviceDescription.trim()
+          if (name) {
+            if (!counts[name]) counts[name] = { count: 0, totalValue: 0 }
+            counts[name].count += 1
+            counts[name].totalValue += (it.laborCost || 0) + (it.partsCost || 0)
+          }
+        })
+      } else if (o.serviceDescription) {
+        const name = o.serviceDescription.trim()
+        if (!counts[name]) counts[name] = { count: 0, totalValue: 0 }
+        counts[name].count += 1
+        counts[name].totalValue += o.totalAmount || 0
+      }
+    })
+    return Object.entries(counts)
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+  }, [orders])
+
+  // Veículos atualmente no pátio / em manutenção
+  const vehiclesInShop = useMemo(() => {
+    return orders
+      .filter(o => o.status === 'andamento' || o.status === 'aguardando')
+      .slice(0, 4)
+  }, [orders])
 
   // Movimentação semanal real calculada das ordens
   const dailyServiceData = useMemo(() => {
@@ -143,17 +198,17 @@ export const DashboardView: React.FC = () => {
       : 0
 
   return (
-    <div className="space-y-6 select-none animate-fadeIn">
-      {/* 🌟 HERO BANNER PREMIUM: Design Automotivo de Alto Impacto */}
+    <div className="space-y-6 select-none animate-fadeIn pb-10">
+      {/* 🌟 HERO BANNER PREMIUM: Design Dark Automotive de Alto Impacto */}
       <div className="relative rounded-3xl border border-wr-border bg-gradient-to-br from-wr-surface via-wr-elevated/90 to-wr-surface p-6 sm:p-7 shadow-elevated overflow-hidden">
         {/* Glow de fundo automotivo */}
         <div className="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-wr-orange/10 blur-3xl pointer-events-none" />
-        <div className="absolute -left-16 -bottom-16 w-80 h-80 rounded-full bg-wr-gold/5 blur-3xl pointer-events-none" />
+        <div className="absolute -left-16 -bottom-16 w-80 h-80 rounded-full bg-wr-orangeDark/5 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           {/* Logo Oficial + Dados da Oficina */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start lg:items-center gap-5 text-center sm:text-left">
-            <div className="p-3 rounded-2xl bg-wr-surface/90 border border-wr-border shadow-md backdrop-blur-sm shrink-0">
+            <div className="p-3.5 rounded-2xl bg-wr-surface/90 border border-wr-border shadow-md backdrop-blur-sm shrink-0">
               <WrLogo size="lg" showSubtitle={true} />
             </div>
 
@@ -201,66 +256,243 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* 📊 4 CARDS DE MÉTRICAS (KPIs) COM VISUAL MODERNO & REFINADO */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Ordens em Andamento */}
+      {/* 🚀 BARRA DE ATALHOS OPERACIONAIS RÁPIDOS */}
+      <div className="rounded-2xl border border-wr-border bg-wr-surface p-3 shadow-card flex items-center justify-between gap-2 overflow-x-auto scrollbar-none">
+        <button
+          type="button"
+          onClick={() => openNewOrderModal()}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-wr-orange text-white dark:text-[#0C1017] text-xs font-bold shadow-sm hover:brightness-110 shrink-0 transition-all"
+        >
+          <Plus className="h-4 w-4 stroke-[3]" />
+          <span>Criar Nova OS</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('os')}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-wr-elevated border border-wr-border text-xs font-semibold text-wr-text hover:border-wr-orange hover:text-wr-orange shrink-0 transition-all"
+        >
+          <Wrench className="h-3.5 w-3.5 text-wr-orange" />
+          <span>Ordens ({orders.length})</span>
+          {metrics.inProgress > 0 && (
+            <span className="px-1.5 py-0.5 rounded-md bg-wr-orange/20 text-wr-orange text-[10px] font-bold">
+              {metrics.inProgress} ativas
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('atendimentos')}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-wr-elevated border border-wr-border text-xs font-semibold text-wr-text hover:border-wr-orange hover:text-wr-orange shrink-0 transition-all"
+        >
+          <Clock className="h-3.5 w-3.5 text-wr-orange" />
+          <span>Agendamentos ({appointments.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('caixa')}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-wr-elevated border border-wr-border text-xs font-semibold text-wr-text hover:border-emerald-500 hover:text-emerald-500 shrink-0 transition-all"
+        >
+          <Wallet className="h-3.5 w-3.5 text-emerald-500" />
+          <span>Caixa Diário</span>
+          <span
+            className={`h-2 w-2 rounded-full ${
+              activeShift ? 'bg-emerald-500' : 'bg-wr-muted'
+            }`}
+          />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('clientes')}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-wr-elevated border border-wr-border text-xs font-semibold text-wr-text hover:border-wr-orange hover:text-wr-orange shrink-0 transition-all"
+        >
+          <Users className="h-3.5 w-3.5 text-wr-orange" />
+          <span>Clientes ({clients.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('estoque')}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-wr-elevated border border-wr-border text-xs font-semibold text-wr-text hover:border-wr-orange hover:text-wr-orange shrink-0 transition-all"
+        >
+          <Package className="h-3.5 w-3.5 text-wr-orange" />
+          <span>Estoque</span>
+          {metrics.lowStock > 0 && (
+            <span className="px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-500 text-[10px] font-bold">
+              {metrics.lowStock} baixo
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('relatorios')}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-wr-elevated border border-wr-border text-xs font-semibold text-wr-text hover:border-wr-orange hover:text-wr-orange shrink-0 transition-all"
+        >
+          <BarChart3 className="h-3.5 w-3.5 text-wr-orange" />
+          <span>Relatórios</span>
+        </button>
+      </div>
+
+      {/* 📊 5 CARDS DE MÉTRICAS (KPIs) FINANCEIRAS & OPERACIONAIS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Card 1: Faturamento Pago */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('financeiro')}
+          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-emerald-500 hover:shadow-card flex flex-col justify-between overflow-hidden"
+        >
+          <div className="flex items-center justify-between w-full">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-wr-muted">
+              Faturamento (Receita)
+            </span>
+            <div className="h-10 w-10 rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center transition-transform group-hover:scale-110">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col w-full">
+            <span className="text-2xl font-extrabold font-mono tracking-tight text-emerald-600 dark:text-emerald-400 truncate">
+              {formatCurrency(metrics.paidRevenue)}
+            </span>
+            <span className="text-[11px] font-semibold text-wr-muted mt-0.5">
+              {metrics.completed} ordens liquidadas
+            </span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
+            <span>Fluxo de receitas</span>
+            <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </div>
+        </button>
+
+        {/* Card 2: Despesas Pagas */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('financeiro')}
+          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-rose-500 hover:shadow-card flex flex-col justify-between overflow-hidden"
+        >
+          <div className="flex items-center justify-between w-full">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-wr-muted">
+              Despesas Pagas
+            </span>
+            <div className="h-10 w-10 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center transition-transform group-hover:scale-110">
+              <TrendingDown className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col w-full">
+            <span className="text-2xl font-extrabold font-mono tracking-tight text-rose-500 truncate">
+              {formatCurrency(metrics.paidExpenses)}
+            </span>
+            <span className="text-[11px] font-semibold text-wr-muted mt-0.5">
+              Custos &amp; fornecedores
+            </span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
+            <span>Ver despesas</span>
+            <ArrowUpRight className="h-3.5 w-3.5 text-rose-500 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </div>
+        </button>
+
+        {/* Card 3: Saldo Líquido */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('financeiro')}
+          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-wr-orange hover:shadow-card flex flex-col justify-between overflow-hidden"
+        >
+          <div className="flex items-center justify-between w-full">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-wr-muted">
+              Saldo Líquido
+            </span>
+            <div className="h-10 w-10 rounded-2xl bg-wr-orange/15 text-wr-orange flex items-center justify-center transition-transform group-hover:scale-110">
+              <DollarSign className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col w-full">
+            <span
+              className={`text-2xl font-extrabold font-mono tracking-tight truncate ${
+                metrics.netBalance >= 0 ? 'text-emerald-500' : 'text-rose-500'
+              }`}
+            >
+              {formatCurrency(metrics.netBalance)}
+            </span>
+            <span className="text-[11px] font-semibold text-wr-muted mt-0.5">
+              Margem operacional líquida
+            </span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
+            <span>DRE da oficina</span>
+            <ArrowUpRight className="h-3.5 w-3.5 text-wr-orange transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </div>
+        </button>
+
+        {/* Card 4: OS em Andamento / No Pátio */}
         <button
           type="button"
           onClick={() => setActiveTab('os')}
           className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-wr-orange hover:shadow-card flex flex-col justify-between overflow-hidden"
         >
           <div className="flex items-center justify-between w-full">
-            <span className="text-xs font-bold uppercase tracking-wider text-wr-muted">
-              OS em Andamento
+            <span className="text-[11px] font-bold uppercase tracking-wider text-wr-muted">
+              OS em Execução
             </span>
-            <div className="h-11 w-11 rounded-2xl bg-wr-orange/15 text-wr-orange flex items-center justify-center transition-transform group-hover:scale-110">
+            <div className="h-10 w-10 rounded-2xl bg-wr-orange/15 text-wr-orange flex items-center justify-center transition-transform group-hover:scale-110">
               <Wrench className="h-5 w-5" />
             </div>
           </div>
 
-          <div className="mt-5 flex items-baseline justify-between w-full">
-            <span className="text-4xl font-extrabold font-mono tracking-tight text-wr-text">
+          <div className="mt-4 flex items-baseline justify-between w-full">
+            <span className="text-3xl font-extrabold font-mono tracking-tight text-wr-text">
               {metrics.inProgress}
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-              {metrics.completed} finalizadas
+            <span className="inline-flex items-center gap-1 rounded-full bg-wr-orange/15 px-2.5 py-0.5 text-xs font-bold text-wr-orange">
+              {metrics.readyOrders} prontos
             </span>
           </div>
 
           <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
-            <span>Acompanhar oficina</span>
+            <span>Quadro Kanban</span>
             <ArrowUpRight className="h-3.5 w-3.5 text-wr-orange transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </div>
         </button>
 
-        {/* Card 2: Pagar Depois (Fiado a Receber) */}
+        {/* Card 5: Pagar Depois (Fiado a Receber) */}
         <button
           type="button"
           onClick={() => setActiveTab('fiado')}
           className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-wr-orange hover:shadow-card flex flex-col justify-between overflow-hidden"
         >
           <div className="flex items-center justify-between w-full">
-            <span className="text-xs font-bold uppercase tracking-wider text-wr-muted">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-wr-muted">
               Pagar Depois (A Prazo)
             </span>
-            <div className="h-11 w-11 rounded-2xl bg-wr-orange/15 text-wr-orange flex items-center justify-center transition-transform group-hover:scale-110">
+            <div className="h-10 w-10 rounded-2xl bg-wr-orange/15 text-wr-orange flex items-center justify-center transition-transform group-hover:scale-110">
               <Wallet className="h-5 w-5" />
             </div>
           </div>
 
-          <div className="mt-5 flex items-baseline justify-between w-full gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-wr-text truncate">
+          <div className="mt-4 flex flex-col w-full">
+            <span className="text-2xl font-extrabold font-mono tracking-tight text-wr-text truncate">
               {formatCurrency(metrics.deferredOpen)}
             </span>
-            {metrics.deferredOverdueCount > 0 ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-[11px] font-bold text-rose-500 shrink-0">
-                <AlertTriangle className="h-3 w-3" /> {metrics.deferredOverdueCount} atrasado
-              </span>
-            ) : (
-              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold text-emerald-500 shrink-0">
-                Em dia
-              </span>
-            )}
+            <div className="mt-0.5 flex items-center gap-1.5">
+              {metrics.deferredOverdueCount > 0 ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-500">
+                  <AlertTriangle className="h-3 w-3" /> {metrics.deferredOverdueCount} atrasado(s)
+                </span>
+              ) : (
+                <span className="text-[11px] font-bold text-emerald-500">
+                  Todas parcelas em dia
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
@@ -268,67 +500,9 @@ export const DashboardView: React.FC = () => {
             <ArrowUpRight className="h-3.5 w-3.5 text-wr-orange transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </div>
         </button>
-
-        {/* Card 3: Receita em Caixa */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('financeiro')}
-          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-emerald-500 hover:shadow-card flex flex-col justify-between overflow-hidden"
-        >
-          <div className="flex items-center justify-between w-full">
-            <span className="text-xs font-bold uppercase tracking-wider text-wr-muted">
-              Receita em Caixa
-            </span>
-            <div className="h-11 w-11 rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center transition-transform group-hover:scale-110">
-              <DollarSign className="h-5 w-5" />
-            </div>
-          </div>
-
-          <div className="mt-5 flex items-baseline justify-between w-full">
-            <span className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-emerald-600 dark:text-emerald-400 truncate">
-              {formatCurrency(metrics.paidRevenue)}
-            </span>
-            <span className="text-xs font-semibold text-wr-muted">Líquido</span>
-          </div>
-
-          <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
-            <span>Ver fluxo financeiro</span>
-            <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </div>
-        </button>
-
-        {/* Card 4: Clientes & Veículos Vinculados */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('clientes')}
-          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-wr-orange hover:shadow-card flex flex-col justify-between overflow-hidden"
-        >
-          <div className="flex items-center justify-between w-full">
-            <span className="text-xs font-bold uppercase tracking-wider text-wr-muted">
-              Clientes &amp; Frotas
-            </span>
-            <div className="h-11 w-11 rounded-2xl bg-wr-orange/15 text-wr-orange flex items-center justify-center transition-transform group-hover:scale-110">
-              <Users className="h-5 w-5" />
-            </div>
-          </div>
-
-          <div className="mt-5 flex items-baseline justify-between w-full">
-            <span className="text-4xl font-extrabold font-mono tracking-tight text-wr-text">
-              {clients.length}
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-wr-muted">
-              <Car className="h-3.5 w-3.5 text-wr-orange" /> {vehicles.length} veículos
-            </span>
-          </div>
-
-          <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
-            <span>Gerenciar cadastros</span>
-            <ArrowUpRight className="h-3.5 w-3.5 text-wr-orange transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </div>
-        </button>
       </div>
 
-      {/* 📈 SEÇÃO PRINCIPAL: Gráfico Semanal + Agenda de Atendimentos */}
+      {/* 📈 SEÇÃO PRINCIPAL: Gráfico Semanal + Agenda dos Boxes */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Gráfico Semanal Dinâmico (8 cols) */}
         <div className="lg:col-span-8 rounded-3xl border border-wr-border bg-wr-surface p-6 shadow-card flex flex-col justify-between">
@@ -401,7 +575,7 @@ export const DashboardView: React.FC = () => {
                       <span
                         className={`mb-2 text-[11px] font-mono font-bold px-2.5 py-1 rounded-xl border transition-all ${
                           isSelected
-                            ? 'bg-wr-orange text-white dark:text-[#0B0C10] border-wr-orange shadow-sm scale-105'
+                            ? 'bg-wr-orange text-white dark:text-[#0C1017] border-wr-orange shadow-sm scale-105'
                             : 'bg-wr-elevated text-wr-muted border-wr-border group-hover:text-wr-text group-hover:border-wr-borderHover'
                         }`}
                       >
@@ -453,7 +627,7 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* Agenda do Dia & Agendamentos (4 cols) */}
+        {/* Agenda do Dia & Boxes (4 cols) */}
         <div className="lg:col-span-4 rounded-3xl border border-wr-border bg-wr-surface p-6 shadow-card flex flex-col justify-between gap-5">
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-4 border-b border-wr-border">
@@ -528,7 +702,161 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* 🚗 ORDENS DE SERVIÇO RECENTES & STATUS OPERACIONAL */}
+      {/* 🛠️ SEÇÃO SECUNDÁRIA: Veículos em Manutenção no Pátio + Ranking de Serviços */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Veículos em Manutenção no Pátio (7 cols) */}
+        <div className="lg:col-span-7 rounded-3xl border border-wr-border bg-wr-surface p-6 shadow-card space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-4 border-b border-wr-border">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-wr-orange/15 text-wr-orange">
+                  <Car className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-wr-text">Veículos em Manutenção no Pátio</h3>
+                  <p className="text-[11px] text-wr-muted">Ordens ativas atualmente em execução ou diagnóstico</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveTab('os')}
+                className="text-xs font-bold text-wr-orange hover:underline flex items-center gap-1"
+              >
+                Ver todas <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {vehiclesInShop.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-dashed border-wr-border bg-wr-elevated/40 p-8 text-center text-xs text-wr-muted space-y-2">
+                <Car className="h-8 w-8 mx-auto text-wr-muted opacity-50" />
+                <p className="font-semibold text-wr-text">Nenhum veículo em manutenção no momento</p>
+                <p className="text-[11px] max-w-sm mx-auto">
+                  Todos os veículos em atendimento foram concluídos ou entregues aos clientes.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {vehiclesInShop.map(o => (
+                  <div
+                    key={o.id}
+                    className="rounded-2xl border border-wr-border bg-wr-elevated p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-wr-orange/40 transition-all"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="px-2.5 py-1.5 rounded-xl bg-wr-surface border border-wr-border text-center shrink-0">
+                        <span className="font-mono text-xs font-black text-wr-orange block">
+                          {o.vehiclePlate}
+                        </span>
+                        <span className="text-[9px] uppercase tracking-wider text-wr-muted block">
+                          {o.vehicleModel.split(' ')[0] || 'Auto'}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-wr-text truncate">{o.clientName}</p>
+                        <p className="text-[11px] text-wr-muted truncate">
+                          {o.vehicleModel} &bull; <span className="text-wr-orange font-medium">Mecânico: {o.mechanicAssigned || 'Geral'}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-wr-border">
+                      <span className="text-xs font-mono font-bold text-wr-text">
+                        {formatCurrency(o.totalAmount)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedOrderForModal(o)
+                          setActiveTab('os')
+                        }}
+                        className="px-2.5 py-1 rounded-xl bg-wr-surface border border-wr-border hover:border-wr-orange text-[11px] font-bold text-wr-orange transition-colors shrink-0"
+                      >
+                        Abrir OS
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="pt-3 border-t border-wr-border flex items-center justify-between text-xs text-wr-muted">
+            <span>Pátio com capacidade para múltiplos boxes simultâneos</span>
+            <button
+              onClick={() => setActiveTab('os')}
+              className="text-wr-orange font-bold hover:underline"
+            >
+              Abrir Quadro da Oficina
+            </button>
+          </div>
+        </div>
+
+        {/* Serviços Mais Realizados (5 cols) */}
+        <div className="lg:col-span-5 rounded-3xl border border-wr-border bg-wr-surface p-6 shadow-card space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-4 border-b border-wr-border">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-wr-orange/15 text-wr-orange">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-wr-text">Serviços Mais Realizados</h3>
+                  <p className="text-[11px] text-wr-muted">Ranking de demandas na oficina</p>
+                </div>
+              </div>
+            </div>
+
+            {topServices.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-dashed border-wr-border bg-wr-elevated/40 p-8 text-center text-xs text-wr-muted">
+                Nenhum serviço computado ainda
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3.5">
+                {topServices.map((srv, idx) => {
+                  const maxCount = topServices[0]?.count || 1
+                  const pct = Math.round((srv.count / maxCount) * 100)
+
+                  return (
+                    <div key={srv.name} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-wr-text truncate pr-2 flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono font-bold text-wr-orange w-4">
+                            #{idx + 1}
+                          </span>
+                          <span className="truncate">{srv.name}</span>
+                        </span>
+                        <div className="flex items-center gap-2 shrink-0 font-mono text-[11px]">
+                          <span className="text-wr-muted font-bold">{srv.count}x</span>
+                          <span className="text-emerald-500 font-bold">
+                            {formatCurrency(srv.totalValue)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="h-2 w-full bg-wr-elevated rounded-full overflow-hidden border border-wr-border">
+                        <div
+                          style={{ width: `${pct}%` }}
+                          className="h-full bg-gradient-to-r from-wr-orangeDark to-wr-orange rounded-full transition-all duration-500"
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="pt-3 border-t border-wr-border flex items-center justify-between text-xs text-wr-muted">
+            <span>Baseado no histórico de ordens cadastradas</span>
+            <button
+              onClick={() => setActiveTab('estoque')}
+              className="text-wr-orange font-bold hover:underline"
+            >
+              Predefinições
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 🚗 ORDENS DE SERVIÇO RECENTES */}
       <div className="rounded-3xl border border-wr-border bg-wr-surface p-6 shadow-card space-y-4">
         <div className="flex items-center justify-between pb-4 border-b border-wr-border">
           <div className="flex items-center gap-2.5">
@@ -575,7 +903,10 @@ export const DashboardView: React.FC = () => {
                 <button
                   key={order.id}
                   type="button"
-                  onClick={() => setActiveTab('os')}
+                  onClick={() => {
+                    setSelectedOrderForModal(order)
+                    setActiveTab('os')
+                  }}
                   className="rounded-2xl border border-wr-border bg-wr-elevated p-4 text-left flex flex-col justify-between gap-3 hover:border-wr-orange/50 transition-all group"
                 >
                   <div className="flex items-center justify-between">

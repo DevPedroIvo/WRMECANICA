@@ -57,33 +57,43 @@ export const Sidebar: React.FC = () => {
     }[]
   }[] = [
     {
-      label: 'Operação',
+      label: 'Visão Geral',
       items: [
-        { id: 'inicio', label: 'Visão Geral', icon: LayoutDashboard },
+        { id: 'inicio', label: 'Painel Geral', icon: LayoutDashboard },
+      ],
+    },
+    {
+      label: 'Operação da Oficina',
+      items: [
+        { id: 'os', label: 'Ordens de Serviço', icon: ClipboardList, badge: pendingOrdersCount },
+        { id: 'atendimentos', label: 'Agendamentos & Boxes', icon: CalendarDays, badge: todayAppointmentsCount },
         {
           id: 'caixa',
           label: 'Caixa Diário',
           icon: Receipt,
           customBadge: activeShift ? 'Aberto' : undefined,
         },
-        { id: 'os', label: 'Ordens de Serviço', icon: ClipboardList, badge: pendingOrdersCount },
-        { id: 'atendimentos', label: 'Agendamentos', icon: CalendarDays, badge: todayAppointmentsCount },
-        { id: 'clientes', label: 'Clientes', icon: Users },
       ],
     },
     {
-      label: 'Gestão & Caixa',
+      label: 'Relacionamento',
       items: [
+        { id: 'clientes', label: 'Clientes & Veículos', icon: Users },
         {
           id: 'fiado',
-          label: 'Pagar Depois',
+          label: 'Pagar Depois (A Prazo)',
           icon: Wallet,
           badge: openDeferredCount,
           badgeDanger: overdueDeferredCount > 0,
         },
+      ],
+    },
+    {
+      label: 'Gestão & Financeiro',
+      items: [
         { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
-        { id: 'estoque', label: 'Estoque', icon: Package },
-        { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
+        { id: 'estoque', label: 'Estoque de Peças', icon: Package },
+        { id: 'relatorios', label: 'Relatórios Gerenciais', icon: BarChart3 },
       ],
     },
     {
