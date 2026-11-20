@@ -201,7 +201,7 @@ export const Sidebar: React.FC = () => {
               />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-wr-text uppercase tracking-wider truncate">
-                  {currentUserRole === 'dono' ? 'Dono (Samilly)' : 'Equipe (Wr_mecanica)'}
+                  {currentUserRole === 'dono' ? 'Dono (Administrador)' : 'Equipe (Wr_mecanica)'}
                 </p>
                 <p className="text-[10px] text-wr-muted truncate">
                   {activeShift ? 'Caixa Aberto' : 'Caixa Fechado'}

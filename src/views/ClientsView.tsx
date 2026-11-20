@@ -38,6 +38,7 @@ export const ClientsView: React.FC = () => {
     reminders,
     addClient,
     updateClient,
+    deleteClient,
     addVehicle,
     updateVehicle,
     deleteVehicle,
@@ -237,6 +238,20 @@ export const ClientsView: React.FC = () => {
     }
 
     setIsClientModalOpen(false)
+  }
+
+  const handleDeleteClient = (client: Client) => {
+    if (
+      window.confirm(
+        `Deseja realmente apagar o cliente "${client.name}"?\nEsta ação não poderá ser desfeita.`
+      )
+    ) {
+      deleteClient(client.id)
+      const remaining = clients.filter(c => c.id !== client.id)
+      setSelectedId(remaining[0]?.id || '')
+      setMobileShowDetail(false)
+      setIsClientModalOpen(false)
+    }
   }
 
   const openNewVehicleModal = () => {
@@ -558,13 +573,21 @@ export const ClientsView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => openEditClientModal(selectedClient)}
                     className="wr-btn-secondary px-3 py-2"
                   >
                     <Edit2 className="h-3.5 w-3.5" />
                     Editar
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClient(selectedClient)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 px-3 py-2 text-xs font-bold transition-colors"
+                    title="Apagar este cliente cadastrado"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Excluir</span>
                   </button>
                   <button
                     onClick={() =>
@@ -1231,6 +1254,16 @@ export const ClientsView: React.FC = () => {
               )}
 
               <div className="flex items-center gap-2.5 pt-2">
+                {editingClient && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteClient(editingClient)}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold text-xs transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir
+                  </button>
+                )}
                 <button type="submit" className="wr-btn-primary flex-1 py-3">
                   {editingClient ? 'Salvar Alterações' : 'Cadastrar Cliente'}
                 </button>

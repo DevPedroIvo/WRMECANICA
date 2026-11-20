@@ -322,7 +322,7 @@ export const Header: React.FC = () => {
                 }`}
               />
               <span className="font-bold text-wr-text uppercase tracking-wider text-[11px]">
-                {currentUserRole === 'dono' ? 'Dono (Samilly)' : 'Funcionário'}
+                {currentUserRole === 'dono' ? 'Dono (Administrador)' : 'Funcionário'}
               </span>
             </div>
             <button

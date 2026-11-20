@@ -202,7 +202,13 @@ export const OrdersView: React.FC = () => {
     setServiceDescription(editingOrder.serviceDescription || '')
     setMechanicAssigned(editingOrder.mechanicAssigned || mechanics?.[0] || 'Roberto Silva')
     setObservations(editingOrder.observations || '')
-    setItems(editingOrder.items || [])
+    const cleanItems = (editingOrder.items || []).filter(
+      it =>
+        it.serviceDescription !== 'Serviço a Avaliar / Orçamento' ||
+        (it.partsCost || 0) > 0 ||
+        (it.laborCost || 0) > 0
+    )
+    setItems(cleanItems)
     setItemDesc('')
     setItemPartsCost('')
     setItemLaborCost('')
@@ -281,8 +287,8 @@ export const OrdersView: React.FC = () => {
       showToast('Digite a descrição do serviço ou peça.', 'warning')
       return
     }
-    const pCost = parseFloat(itemPartsCost) || 0
-    const lCost = parseFloat(itemLaborCost) || 0
+    const pCost = parseFloat(String(itemPartsCost).replace(',', '.')) || 0
+    const lCost = parseFloat(String(itemLaborCost).replace(',', '.')) || 0
     const newItem: OrderItem = {
       id: `it-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       serviceDescription: itemDesc.trim(),
@@ -330,21 +336,7 @@ export const OrdersView: React.FC = () => {
 
     // Se estiver em modo de edição
     if (editingOrder) {
-      const finalItems: OrderItem[] =
-        items.length > 0
-          ? items
-          : [
-              {
-                id: `it-${Date.now()}`,
-                serviceDescription: serviceDescription.trim() || 'Serviço a Avaliar / Orçamento',
-                partsCost: 0,
-                laborCost: 0,
-                total: 0,
-                serviceCode: '14.01',
-                cnae: '4520-0/01',
-              },
-            ]
-
+      const finalItems: OrderItem[] = items
       const partsTotal = finalItems.reduce((acc, i) => acc + (Number(i.partsCost) || 0), 0)
       const laborTotal = finalItems.reduce((acc, i) => acc + (Number(i.laborCost) || 0), 0)
       const discount = editingOrder.discount || 0
@@ -359,7 +351,7 @@ export const OrdersView: React.FC = () => {
         vehiclePlate: vehiclePlate.toUpperCase().trim() || 'SEM PLACA',
         mileage: Number(mileage) || 0,
         fuelLevel,
-        serviceDescription: serviceDescription.trim() || finalItems[0].serviceDescription,
+        serviceDescription: serviceDescription.trim() || (finalItems[0]?.serviceDescription || 'Serviço Geral'),
         mechanicAssigned,
         observations: observations.trim(),
         items: finalItems,
@@ -402,21 +394,7 @@ export const OrdersView: React.FC = () => {
       effectiveVehicleId = newVeh.id
     }
 
-    const finalItems: OrderItem[] =
-      items.length > 0
-        ? items
-        : [
-            {
-              id: `it-${Date.now()}`,
-              serviceDescription: serviceDescription.trim() || 'Serviço a Avaliar / Orçamento',
-              partsCost: 0,
-              laborCost: 0,
-              total: 0,
-              serviceCode: '14.01',
-              cnae: '4520-0/01',
-            },
-          ]
-
+    const finalItems: OrderItem[] = items
     const partsTotal = finalItems.reduce((acc, i) => acc + (Number(i.partsCost) || 0), 0)
     const laborTotal = finalItems.reduce((acc, i) => acc + (Number(i.laborCost) || 0), 0)
 
@@ -431,7 +409,7 @@ export const OrdersView: React.FC = () => {
       mileage: Number(mileage) || 0,
       fuelLevel,
       mechanicAssigned,
-      serviceDescription: serviceDescription.trim() || finalItems[0].serviceDescription,
+      serviceDescription: serviceDescription.trim() || (finalItems[0]?.serviceDescription || 'Serviço Geral'),
       items: finalItems,
       observations: observations.trim(),
       date: new Date().toLocaleDateString('pt-BR'),
@@ -1964,23 +1942,31 @@ export const OrdersView: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 text-slate-800">
-                      {(pdfModalOrder.items || []).map((it, idx) => (
-                        <tr key={it.id || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
-                          <td className="py-2.5 px-3 font-semibold text-slate-900">
-                            <span className="text-slate-400 font-mono text-[10px] mr-2">#{String(idx + 1).padStart(2, '0')}</span>
-                            {it.serviceDescription}
-                          </td>
-                          <td className="py-2.5 px-3 font-mono text-right text-slate-700">
-                            {formatCurrency(it.partsCost || 0)}
-                          </td>
-                          <td className="py-2.5 px-3 font-mono text-right text-slate-700">
-                            {formatCurrency(it.laborCost || 0)}
-                          </td>
-                          <td className="py-2.5 px-3 font-mono text-right font-black text-slate-900">
-                            {formatCurrency(it.total || 0)}
+                      {pdfModalOrder.items && pdfModalOrder.items.length > 0 ? (
+                        pdfModalOrder.items.map((it, idx) => (
+                          <tr key={it.id || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
+                            <td className="py-2.5 px-3 font-semibold text-slate-900">
+                              <span className="text-slate-400 font-mono text-[10px] mr-2">#{String(idx + 1).padStart(2, '0')}</span>
+                              {it.serviceDescription}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-right text-slate-700">
+                              {formatCurrency(it.partsCost || 0)}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-right text-slate-700">
+                              {formatCurrency(it.laborCost || 0)}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-right font-black text-slate-900">
+                              {formatCurrency(it.total || 0)}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="py-5 px-3 text-center text-slate-500 italic text-xs">
+                            Nenhum item ou peça lançado individualmente até o momento (Orçamento / Diagnóstico inicial).
                           </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>

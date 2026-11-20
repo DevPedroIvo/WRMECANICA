@@ -12,9 +12,9 @@ export const LoginModal: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
-  const targetUsername = selectedRole === 'dono' ? 'Samilly Martins' : 'Wr_mecanica'
-  const roleTitle = selectedRole === 'dono' ? 'Dono (Proprietário)' : 'Funcionário (Equipe)'
-  const roleSubtitle = selectedRole === 'dono' ? 'Samilly Martins' : 'Wr_mecanica'
+  const targetUsername = selectedRole === 'dono' ? 'Dono' : 'Wr_mecanica'
+  const roleTitle = selectedRole === 'dono' ? 'Dono (Administrador)' : 'Funcionário (Equipe)'
+  const roleSubtitle = selectedRole === 'dono' ? 'Acesso Total / Gestão' : 'Wr_mecanica'
 
   const handleRoleSelect = (role: 'dono' | 'funcionario') => {
     setSelectedRole(role)
@@ -97,7 +97,7 @@ export const LoginModal: React.FC = () => {
                   Dono
                 </span>
                 <span className="text-[11px] font-medium text-neutral-400 block truncate">
-                  Samilly Martins
+                  Administrador
                 </span>
                 <span className={`inline-block mt-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
                   selectedRole === 'dono' ? 'bg-wr-orange/20 text-orange-300' : 'bg-white/5 text-neutral-500'

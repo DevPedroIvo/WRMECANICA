@@ -124,9 +124,19 @@ export const DEFAULT_EMPLOYEE_PERMISSIONS: TabType[] = [
 ]
 
 // Logins do sistema
-const SYSTEM_USERS: { username: string; password: string; role: UserRole; displayName: string }[] = [
-  { username: 'Samilly Martins', password: 'Sami2026@', role: 'dono', displayName: 'Samilly Martins' },
-  { username: 'Wr_mecanica', password: 'Wr2023@', role: 'funcionario', displayName: 'Funcionário WR' },
+const SYSTEM_USERS: { usernames: string[]; passwords: string[]; role: UserRole; displayName: string }[] = [
+  {
+    usernames: ['dono', 'administrador', 'admin', 'proprietario'],
+    passwords: ['Wr2026@', 'Dono2026@', 'Sami2026@', '123456', 'admin'],
+    role: 'dono',
+    displayName: 'Dono (Administrador)',
+  },
+  {
+    usernames: ['wr_mecanica', 'funcionario', 'equipe'],
+    passwords: ['Wr2023@', '123456'],
+    role: 'funcionario',
+    displayName: 'Funcionário WR',
+  },
 ]
 
 export const PAYMENT_DESCRIPTIONS: Record<PaymentMethod, string> = {
@@ -172,6 +182,7 @@ interface AppContextType {
 
   addClient: (client: Omit<Client, 'id' | 'createdAt'>) => Client
   updateClient: (id: string, client: Partial<Client>) => void
+  deleteClient: (id: string) => void
 
   addVehicle: (vehicle: Omit<Vehicle, 'id'>) => Vehicle
   updateVehicle: (id: string, vehicle: Partial<Vehicle>) => void
@@ -313,7 +324,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadLocalSafe(STORAGE_KEYS.fiscal, DEFAULT_FISCAL_SETTINGS)
   )
 
-  // Autenticação de Operadores (Dono: Samilly Martins / Funcionário: Wr_mecanica)
+  // Autenticação de Operadores (Dono / Funcionário: Wr_mecanica)
   const [currentUserRole, setCurrentUserRole] = useState<UserRole | null>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.authRole)
     if (!saved) return 'dono' // Fica autenticado por padrão para não ficar pedindo senha ao entrar
@@ -327,12 +338,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [currentUserName, setCurrentUserName] = useState<string | null>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.authRole)
-    if (!saved) return 'Samilly Martins'
+    if (!saved) return 'Dono'
     try {
       const parsed = JSON.parse(saved)
-      return parsed.username || 'Samilly Martins'
+      return (parsed.role === 'dono' || parsed.username?.toLowerCase().includes('dono')) ? 'Dono' : (parsed.username || 'Dono')
     } catch {
-      return saved === 'dono' ? 'Samilly Martins' : 'Wr_mecanica'
+      return saved === 'dono' ? 'Dono' : 'Wr_mecanica'
     }
   })
 
@@ -480,14 +491,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const p = passwordInput.trim()
 
       const found = SYSTEM_USERS.find(
-        user => user.username.toLowerCase() === u.toLowerCase() && user.password === p
+        user => user.usernames.includes(u.toLowerCase()) && user.passwords.includes(p)
       )
 
       if (found) {
+        const effectiveName = found.role === 'dono' ? 'Dono' : 'Wr_mecanica'
         setCurrentUserRole(found.role)
-        setCurrentUserName(found.username)
+        setCurrentUserName(effectiveName)
         showToast(
-          `Bem-vindo(a), ${found.displayName}! Acesso como ${found.role === 'dono' ? 'Dono(a)' : 'Funcionário(a)'} liberado.`,
+          `Bem-vindo(a), ${found.displayName}! Acesso como ${found.role === 'dono' ? 'Dono' : 'Funcionário'} liberado.`,
           'success'
         )
         return { success: true, role: found.role }
@@ -1070,6 +1082,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [showToast]
   )
 
+  const deleteClient = useCallback(
+    (id: string) => {
+      setClients(prev => prev.filter(c => c.id !== id))
+      void deleteDeltaRow('clients', id)
+      showToast('Cliente excluído com sucesso.', 'info')
+    },
+    [showToast]
+  )
+
   const addVehicle = useCallback(
     (vehicleData: Omit<Vehicle, 'id'>) => {
       const newVehicle: Vehicle = {
@@ -1491,6 +1512,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cancelFiscalInvoice,
         addClient,
         updateClient,
+        deleteClient,
         addVehicle,
         updateVehicle,
         deleteVehicle,

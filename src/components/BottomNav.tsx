@@ -86,7 +86,7 @@ export const BottomNav: React.FC = () => {
           {currentUserRole && (
             <div className="pt-2.5 mt-2.5 border-t border-wr-border flex items-center justify-between px-1">
               <span className="text-[11px] text-wr-muted font-medium truncate max-w-[150px]">
-                {currentUserRole === 'dono' ? 'Dono (Samilly)' : 'Wr_mecanica'}
+                {currentUserRole === 'dono' ? 'Dono (Administrador)' : 'Wr_mecanica'}
               </span>
               <button
                 type="button"
