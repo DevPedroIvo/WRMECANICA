@@ -228,44 +228,44 @@ export const CaixaView: React.FC = () => {
 
           {/* Cards de Métricas do Caixa */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="wr-surface p-3.5 rounded-2xl border border-wr-border">
-              <span className="text-[10px] text-wr-muted font-bold uppercase tracking-wider flex items-center gap-1">
-                <Banknote className="h-3.5 w-3.5 text-emerald-500" /> Dinheiro em Gaveta
+            <div className="bg-wr-surface p-4 rounded-2xl border border-wr-border shadow-xs">
+              <span className="text-[10px] text-wr-muted font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Banknote className="h-4 w-4 text-emerald-500" /> Dinheiro em Gaveta
               </span>
-              <span className="font-mono text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-1">
+              <span className="font-mono text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-1.5">
                 {formatCurrency(currentCashInDrawer)}
               </span>
-              <span className="text-[9px] text-wr-muted block mt-0.5">Fundo + Dinheiro físico</span>
+              <span className="text-[10px] text-wr-muted block mt-0.5">Fundo + Dinheiro físico</span>
             </div>
 
-            <div className="wr-surface p-3.5 rounded-2xl border border-wr-border">
-              <span className="text-[10px] text-wr-muted font-bold uppercase tracking-wider flex items-center gap-1">
-                <QrCode className="h-3.5 w-3.5 text-teal-500" /> Total em PIX
+            <div className="bg-wr-surface p-4 rounded-2xl border border-wr-border shadow-xs">
+              <span className="text-[10px] text-wr-muted font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <QrCode className="h-4 w-4 text-teal-500" /> Total em PIX
               </span>
-              <span className="font-mono text-base sm:text-lg font-black text-teal-500 block mt-1">
+              <span className="font-mono text-base sm:text-lg font-black text-teal-500 block mt-1.5">
                 {formatCurrency(pixTotal)}
               </span>
-              <span className="text-[9px] text-wr-muted block mt-0.5">Conta bancária</span>
+              <span className="text-[10px] text-wr-muted block mt-0.5">Conta bancária</span>
             </div>
 
-            <div className="wr-surface p-3.5 rounded-2xl border border-wr-border">
-              <span className="text-[10px] text-wr-muted font-bold uppercase tracking-wider flex items-center gap-1">
-                <CreditCard className="h-3.5 w-3.5 text-sky-500" /> Cartões (Déb./Créd.)
+            <div className="bg-wr-surface p-4 rounded-2xl border border-wr-border shadow-xs">
+              <span className="text-[10px] text-wr-muted font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <CreditCard className="h-4 w-4 text-sky-500" /> Cartões (Déb./Créd.)
               </span>
-              <span className="font-mono text-base sm:text-lg font-black text-sky-500 block mt-1">
+              <span className="font-mono text-base sm:text-lg font-black text-sky-500 block mt-1.5">
                 {formatCurrency(cardDebitTotal + cardCreditTotal)}
               </span>
-              <span className="text-[9px] text-wr-muted block mt-0.5">Máquina de cartão</span>
+              <span className="text-[10px] text-wr-muted block mt-0.5">Máquina de cartão</span>
             </div>
 
-            <div className="wr-surface p-3.5 rounded-2xl border border-wr-border">
-              <span className="text-[10px] text-wr-muted font-bold uppercase tracking-wider flex items-center gap-1">
-                <ArrowDownRight className="h-3.5 w-3.5 text-rose-500" /> Sangrias / Saídas
+            <div className="bg-wr-surface p-4 rounded-2xl border border-wr-border shadow-xs">
+              <span className="text-[10px] text-wr-muted font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <ArrowDownRight className="h-4 w-4 text-rose-500" /> Sangrias / Saídas
               </span>
-              <span className="font-mono text-base sm:text-lg font-black text-rose-500 block mt-1">
+              <span className="font-mono text-base sm:text-lg font-black text-rose-500 block mt-1.5">
                 {formatCurrency(totalExits)}
               </span>
-              <span className="text-[9px] text-wr-muted block mt-0.5">Retiradas do dia</span>
+              <span className="text-[10px] text-wr-muted block mt-0.5">Retiradas do dia</span>
             </div>
           </div>
         </div>

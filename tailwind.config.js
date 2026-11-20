@@ -11,6 +11,7 @@ export default {
         wr: {
           bg: 'rgb(var(--wr-bg) / <alpha-value>)',
           surface: 'rgb(var(--wr-surface) / <alpha-value>)',
+          surfaceDark: 'rgb(var(--wr-surface-dark) / <alpha-value>)',
           elevated: 'rgb(var(--wr-elevated) / <alpha-value>)',
           sidebar: 'rgb(var(--wr-sidebar) / <alpha-value>)',
           border: 'rgb(var(--wr-border) / <alpha-value>)',
@@ -19,7 +20,11 @@ export default {
           muted: 'rgb(var(--wr-muted) / <alpha-value>)',
           orange: 'rgb(var(--wr-orange) / <alpha-value>)',
           orangeDark: 'rgb(var(--wr-orange-dark) / <alpha-value>)',
+          orangeLight: 'rgb(var(--wr-orange-light) / <alpha-value>)',
           orangeSoft: 'rgb(var(--wr-orange-soft) / <alpha-value>)',
+          success: 'rgb(var(--wr-success) / <alpha-value>)',
+          error: 'rgb(var(--wr-error) / <alpha-value>)',
+          alert: 'rgb(var(--wr-alert) / <alpha-value>)',
           gold: 'rgb(var(--wr-gold) / <alpha-value>)',
         }
       },

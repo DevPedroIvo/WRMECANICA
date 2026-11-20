@@ -120,8 +120,15 @@ export const Header: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-30 flex h-18 min-h-[72px] items-center justify-between gap-4 border-b border-wr-border bg-wr-surface/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 select-none">
-      {/* Left: Page title */}
+      {/* Left: Page title & mobile toggle */}
       <div className="flex items-center gap-3 min-w-0">
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="lg:hidden rounded-xl border border-wr-border bg-wr-elevated p-2 text-wr-text hover:border-wr-orange/50 transition-colors"
+          aria-label="Abrir Menu"
+        >
+          <Menu className="h-4 w-4 text-wr-orange" />
+        </button>
         <div className="min-w-0">
           <h1 className="text-sm sm:text-base font-bold text-wr-text tracking-tight truncate">
             {pageMeta.title}

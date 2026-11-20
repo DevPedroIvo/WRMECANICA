@@ -125,7 +125,7 @@ export const Sidebar: React.FC = () => {
         </div>
 
         {/* Navigation Groups */}
-        <nav className="flex-1 space-y-5 px-3 py-5 overflow-y-auto">
+        <nav className="flex-1 space-y-6 px-3 py-5 overflow-y-auto">
           {menuGroups
             .map(group => ({
               ...group,
@@ -133,11 +133,11 @@ export const Sidebar: React.FC = () => {
             }))
             .filter(group => group.items.length > 0)
             .map(group => (
-              <div key={group.label} className="space-y-1">
-                <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400/90">
+              <div key={group.label} className="space-y-1.5">
+                <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400/80">
                   {group.label}
                 </span>
-                <div className="space-y-1 pt-1">
+                <div className="space-y-1 pt-0.5">
                   {group.items.map(item => {
                     const Icon = item.icon
                     const isActive = activeTab === item.id
@@ -145,10 +145,10 @@ export const Sidebar: React.FC = () => {
                       <button
                         key={item.id}
                         onClick={() => handleNavClick(item.id)}
-                        className={`group flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
+                        className={`group relative flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
                           isActive
-                            ? 'bg-[#F97316] hover:bg-[#EA580C] text-white font-bold shadow-md'
-                            : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                            ? 'bg-[#F97316] text-white font-bold shadow-sm shadow-[#F97316]/25'
+                            : 'text-slate-300 hover:bg-[#1B2738] hover:text-white'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -167,7 +167,7 @@ export const Sidebar: React.FC = () => {
                           <span
                             className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                               isActive
-                                ? 'bg-black/25 text-white'
+                                ? 'bg-black/20 text-white'
                                 : item.badgeDanger
                                 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                                 : 'bg-[#F97316]/20 text-[#F97316] border border-[#F97316]/30'
@@ -192,27 +192,39 @@ export const Sidebar: React.FC = () => {
 
         {/* Operador Ativo */}
         {currentUserRole && (
-          <div className="p-3 mx-3 mb-2 rounded-2xl bg-[#162238] border border-[#1F2E47]">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span
-                className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                  currentUserRole === 'dono' ? 'bg-[#F97316] animate-pulse' : 'bg-emerald-500'
-                }`}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-white uppercase tracking-wider truncate">
-                  {currentUserRole === 'dono' ? 'Dono (Administrador)' : 'Equipe (Wr_mecanica)'}
-                </p>
-                <p className="text-[10px] text-slate-400 truncate">
-                  {activeShift ? 'Caixa Aberto' : 'Caixa Fechado'}
-                </p>
+          <div className="p-3 mx-3 mb-2 rounded-2xl bg-[#1B2738] border border-[#212E43]">
+            <div className="flex items-center justify-between gap-2.5 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#F97316]/20 border border-[#F97316]/30 text-white font-bold text-xs">
+                  {currentUserRole === 'dono' ? 'AD' : 'EQ'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-white uppercase tracking-wider truncate">
+                    {currentUserRole === 'dono' ? 'Administrador' : 'Equipe WR'}
+                  </p>
+                  <p className="text-[10px] text-slate-400 flex items-center gap-1.5 truncate">
+                    <span
+                      className={`inline-block h-1.5 w-1.5 rounded-full ${
+                        activeShift ? 'bg-emerald-400' : 'bg-slate-500'
+                      }`}
+                    />
+                    {activeShift ? 'Caixa Aberto' : 'Caixa Fechado'}
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={logout}
+                title="Sair / Trocar de Usuário"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
           </div>
         )}
 
         {/* Rodapé institucional limpo */}
-        <div className="p-4 border-t border-[#1F2E47] text-center">
+        <div className="p-3.5 border-t border-[#1F2E47] text-center">
           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
             WR Mecânica &amp; Cia
           </p>

@@ -539,42 +539,42 @@ export const OrdersView: React.FC = () => {
     switch (status) {
       case 'aguardando':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-500/15 text-orange-500 border border-orange-500/30">
-            <Clock className="h-3.5 w-3.5" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-800/70 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60">
+            <Clock className="h-3.5 w-3.5 text-slate-500" />
             Aguardando
           </span>
         )
       case 'andamento':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-500/15 text-orange-400 border border-orange-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800/40">
             <span className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
             Em Andamento
           </span>
         )
       case 'pronto':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
-            <CheckCircle2 className="h-3.5 w-3.5" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40">
+            <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
             Pronto p/ Retirada
           </span>
         )
       case 'pago':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-            <DollarSign className="h-3.5 w-3.5" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40">
+            <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
             Pago
           </span>
         )
       case 'cancelado':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
-            <XCircle className="h-3.5 w-3.5" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40">
+            <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
             Cancelada
           </span>
         )
       default:
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-white/5 text-neutral-400 border border-white/10">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
             {status}
           </span>
         )
