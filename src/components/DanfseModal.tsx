@@ -6,12 +6,10 @@ import {
   Download,
   X,
   CheckCircle2,
-  ShieldCheck,
-  ExternalLink,
   Copy,
   Check,
-  Share2,
   MessageCircle,
+  ExternalLink,
 } from 'lucide-react'
 
 interface DanfseModalProps {
@@ -21,35 +19,34 @@ interface DanfseModalProps {
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
-  pix: 'PAGO VIA PIX',
-  dinheiro: 'PAGO EM DINHEIRO',
-  cartao_debito: 'PAGO NO CARTÃO DE DÉBITO',
-  cartao_credito: 'PAGO NO CARTÃO DE CRÉDITO',
-  pagar_depois: 'FATURADO / A PRAZO (FIADO)',
-  boleto: 'PAGO VIA BOLETO BANCÁRIO',
-  pendente: 'PENDENTE / A COMBINAR',
+  pix: 'PIX',
+  dinheiro: 'Dinheiro à Vista',
+  cartao_debito: 'Cartão de Débito',
+  cartao_credito: 'Cartão de Crédito',
+  pagar_depois: 'Faturado / A Prazo',
+  boleto: 'Boleto Bancário',
+  pendente: 'Pendente',
 }
 
 export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClose }) => {
   const [copiedKey, setCopiedKey] = useState(false)
-  const [copiedCode, setCopiedCode] = useState(false)
 
   const installmentsSuffix =
     order.paymentInstallments && order.paymentInstallments > 1
-      ? ` (${order.paymentInstallments}X)`
+      ? ` (${order.paymentInstallments}x)`
       : ''
 
-  const computedPaymentDesc =
+  const paymentDesc =
     order.paymentMethod && order.paymentMethod !== 'pendente'
-      ? `${PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod.replace('_', ' ').toUpperCase()}${installmentsSuffix}`
-      : ''
+      ? `${PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod.replace('_', ' ')}${installmentsSuffix}`
+      : 'PIX'
 
   const defaultInvoice = {
     invoiceNumber: `${new Date().getFullYear()}${String(order.number.replace(/\D/g, '') || '1001').padStart(7, '0')}`,
     series: '1',
     rpsNumber: String(order.number.replace(/\D/g, '') || '1001'),
     rpsSeries: '1',
-    issuedAt: `${order.date} 10:00:00`,
+    issuedAt: `${order.date || new Date().toLocaleDateString('pt-BR')} às 10:00`,
     verificationCode: `PRTO-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
     accessKey: `1718204${new Date().getFullYear().toString().slice(-2)}0000000000010000000011987654321`,
     status: 'autorizada' as const,
@@ -60,7 +57,6 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
     taxRegime: settings?.taxRegime || 'Simples Nacional',
     protocolNumber: `2026.${Math.floor(100000 + Math.random() * 900000)}`,
     xmlData: '',
-    paymentMethodDescription: computedPaymentDesc || 'PAGO VIA PIX',
   }
 
   const invoice = {
@@ -68,43 +64,37 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
     ...(order.fiscalInvoice || {}),
   }
 
+  const companyName = settings?.companyName || 'WR MECÂNICA E AUTOPEÇAS LTDA'
+  const tradeName = settings?.tradeName || 'WR Mecânica & Cia'
+  const cnpj = settings?.cnpj || '34.892.124/0001-90'
+  const cityRegistration = settings?.cityRegistration || '048.910-2'
+  const address = settings?.address || 'Rodovia TO-080, KM 12 - Distrito de Luzimangues'
+  const cityState = 'Porto Nacional - TO'
+  const postalCode = 'CEP 77500-000'
+  const workshopPhone = '(63) 99245-8102'
+
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 
-  const copyToClipboard = (text: string, type: 'key' | 'code') => {
-    navigator.clipboard.writeText(text)
-    if (type === 'key') {
-      setCopiedKey(true)
-      setTimeout(() => setCopiedKey(false), 2000)
+  const copyKeyToClipboard = () => {
+    navigator.clipboard.writeText(invoice.accessKey || '')
+    setCopiedKey(true)
+    setTimeout(() => setCopiedKey(false), 2000)
+  }
+
+  const handleShareWhatsApp = () => {
+    const rawPhone = (order.clientPhone || '').replace(/\D/g, '')
+    const fullPhone = rawPhone.startsWith('55') ? rawPhone : `55${rawPhone}`
+
+    const message = `Olá *${order.clientName}*, segue a sua *Nota Fiscal de Serviços Eletrônica (NFS-e nº ${invoice.invoiceNumber})* emitida pela *WR Mecânica & Cia*.\n\n🚗 *Veículo:* ${order.vehicleModel} (Placa ${order.vehiclePlate})\n📄 *Valor Total:* ${formatCurrency(order.totalAmount)}\n💳 *Forma de Pagamento:* ${paymentDesc}\n🔑 *Chave de Acesso:* ${invoice.accessKey}\n🔗 *Consulta Oficial:* https://www.nfse.gov.br/emissornacional/ConsultaPublica\n\n_Documento fiscal oficial emitido em Porto Nacional / Luzimangues - TO._`
+
+    if (rawPhone) {
+      window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`, '_blank')
     } else {
-      setCopiedCode(true)
-      setTimeout(() => setCopiedCode(false), 2000)
+      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank')
     }
   }
 
-  const paymentDesc =
-    computedPaymentDesc ||
-    invoice.paymentMethodDescription ||
-    (order.paymentMethod ? `${PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod}${installmentsSuffix}` : 'PAGO VIA PIX')
-
-  const handleShareInvoice = async () => {
-    const cleanNumber = (order.clientPhone || '').replace(/\D/g, '')
-    const fullNumber = cleanNumber.startsWith('55') ? cleanNumber : `55${cleanNumber}`
-
-    const message = `Olá *${order.clientName}*, segue a sua *Nota Fiscal de Serviços (NFS-e nº ${invoice.invoiceNumber})* emitida pela *WR Mecânica & Cia* referente ao serviço no veículo *${order.vehicleModel}* (${order.vehiclePlate}).\n\n📄 *Valor Total:* ${formatCurrency(order.totalAmount)}\n💳 *Forma de Pagamento:* ${paymentDesc}\n🔑 *Chave de Acesso:* ${invoice.accessKey}\n🔗 *Consulta Pública:* https://www.nfse.gov.br/emissornacional/ConsultaPublica\n\n_Documento fiscal oficial emitido em Porto Nacional / Luzimangues - TO._`
-
-    // Abre o WhatsApp direto no número cadastrado do cliente
-    if (cleanNumber) {
-      window.open(`https://wa.me/${fullNumber}?text=${encodeURIComponent(message)}`, '_blank')
-    }
-
-    // Abre a janela de impressão / Salvar em PDF oficial
-    setTimeout(() => {
-      window.print()
-    }, 350)
-  }
-
-  // Download do XML com validade jurídica (ABRASF 2.04 / Padrão Nacional)
   const handleDownloadXml = () => {
     const xmlContent =
       invoice.xmlData ||
@@ -116,25 +106,13 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
       <CodigoVerificacao>${invoice.verificationCode}</CodigoVerificacao>
       <DataEmissao>${invoice.issuedAt}</DataEmissao>
       <ChaveAcesso>${invoice.accessKey}</ChaveAcesso>
-      <IdentificacaoRps>
-        <Numero>${invoice.rpsNumber}</Numero>
-        <Serie>${invoice.rpsSeries}</Serie>
-        <Tipo>1</Tipo>
-      </IdentificacaoRps>
       <PrestadorServico>
         <IdentificacaoPrestador>
-          <CpfCnpj><Cnpj>${settings.cnpj.replace(/\D/g, '')}</Cnpj></CpfCnpj>
-          <InscricaoMunicipal>${settings.cityRegistration}</InscricaoMunicipal>
+          <CpfCnpj><Cnpj>${cnpj.replace(/\D/g, '')}</Cnpj></CpfCnpj>
+          <InscricaoMunicipal>${cityRegistration}</InscricaoMunicipal>
         </IdentificacaoPrestador>
-        <RazaoSocial>${settings.companyName}</RazaoSocial>
-        <NomeFantasia>${settings.tradeName}</NomeFantasia>
-        <Endereco>
-          <Endereco>${settings.address || 'Rodovia TO-080, KM 12'}</Endereco>
-          <Bairro>${settings.district || 'Luzimangues'}</Bairro>
-          <CodigoMunicipio>${settings.cityCodeIBGE || '1718204'}</CodigoMunicipio>
-          <Uf>${settings.state || 'TO'}</Uf>
-          <Cep>${settings.cep || '77500000'}</Cep>
-        </Endereco>
+        <RazaoSocial>${companyName}</RazaoSocial>
+        <NomeFantasia>${tradeName}</NomeFantasia>
       </PrestadorServico>
       <TomadorServico>
         <IdentificacaoTomador>
@@ -146,19 +124,9 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
         <Valores>
           <ValorServicos>${order.laborTotal.toFixed(2)}</ValorServicos>
           <ValorPecas>${(order.partsTotal || 0).toFixed(2)}</ValorPecas>
-          <BaseCalculo>${order.laborTotal.toFixed(2)}</BaseCalculo>
-          <Aliquota>${(settings.issRate / 100).toFixed(4)}</Aliquota>
-          <ValorIss>${invoice.issValue.toFixed(2)}</ValorIss>
-          <ValorLiquidoNfse>${order.laborTotal.toFixed(2)}</ValorLiquidoNfse>
+          <ValorLiquidoNfse>${order.totalAmount.toFixed(2)}</ValorLiquidoNfse>
         </Valores>
         <ItemListaServico>${invoice.serviceCode}</ItemListaServico>
-        <CodigoCnae>${invoice.cnae.replace(/\D/g, '')}</CodigoCnae>
-        <CodigoTributacaoMunicipio>14.01.01</CodigoTributacaoMunicipio>
-        <Discriminacao>${order.items
-          .map(it => `${it.serviceDescription} (M.O: R$ ${it.laborCost.toFixed(2)})`)
-          .join(' | ')} - Veículo: ${order.vehicleModel} Placa: ${order.vehiclePlate} KM: ${order.mileage} - Forma de Pagamento: ${paymentDesc}</Discriminacao>
-        <CodigoMunicipio>${settings.cityCodeIBGE || '1718204'}</CodigoMunicipio>
-        <MunicipioIncidencia>${settings.cityCodeIBGE || '1718204'}</MunicipioIncidencia>
       </Servico>
     </InfNfse>
   </Nfse>
@@ -168,347 +136,370 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `NFS-e_${invoice.invoiceNumber}_PortoNacional.xml`
+    link.download = `NFS-e_${invoice.invoiceNumber}_WR_Mecanica.xml`
     link.click()
     URL.revokeObjectURL(url)
   }
 
+  // Chave formatada em blocos de 4 para leitura humana limpa
+  const formattedKey = (invoice.accessKey || '').replace(/(\d{4})/g, '$1 ').trim()
+
   return (
     <div className="wr-modal-backdrop select-none">
-      <div className="wr-modal-panel max-w-3xl space-y-4 text-xs animate-fadeIn max-h-[96vh] overflow-y-auto p-4 sm:p-6">
-        {/* Top Action Bar (hidden when printing) */}
+      <div className="wr-modal-panel max-w-4xl space-y-4 text-xs animate-fadeIn max-h-[96vh] overflow-y-auto p-4 sm:p-6">
+        {/* Top Control Bar (Clean, uncluttered, no-print) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-wr-border no-print">
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-emerald-500/15 text-emerald-500 shrink-0">
-              <ShieldCheck className="h-5 w-5" />
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
             <div>
-              <h3 className="font-bold text-wr-text text-sm flex flex-wrap items-center gap-2">
-                NFS-e (DANFSE Oficial)
-                <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">
-                  AUTORIZADA &bull; VALIDADE FISCAL
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-wr-text text-sm sm:text-base">
+                  Nota Fiscal de Serviços Eletrônica (NFS-e)
+                </h3>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                  Autorizada
                 </span>
-              </h3>
+              </div>
               <p className="text-[11px] text-wr-muted">
-                Porto Nacional / Luzimangues - TO &bull; LC 116/2003 (Item 14.01)
+                Documento Auxiliar da NFS-e (DANFSE) &bull; Prefeitura de Porto Nacional - TO
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
-              onClick={handleShareInvoice}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-xs font-bold text-white transition-colors shadow-xs"
-              title="Compartilhar via WhatsApp"
+              onClick={handleShareWhatsApp}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-bold text-white transition-all shadow-xs"
+              title="Compartilhar via WhatsApp com o cliente"
             >
               <MessageCircle className="h-4 w-4" />
-              <span>Compartilhar</span>
+              <span>WhatsApp</span>
             </button>
+
             <button
               type="button"
               onClick={() => window.print()}
-              className="wr-btn-secondary px-3 py-2"
-              title="Imprimir Nota Fiscal"
+              className="wr-btn-secondary px-3.5 py-2"
+              title="Imprimir ou Salvar em PDF"
             >
               <Printer className="h-4 w-4 text-wr-orange" />
-              <span className="hidden sm:inline">Imprimir</span>
+              <span>Imprimir / PDF</span>
             </button>
+
             <button
               type="button"
               onClick={handleDownloadXml}
               className="wr-btn-secondary px-3 py-2"
-              title="Baixar arquivo XML"
+              title="Baixar arquivo XML fiscal"
             >
               <Download className="h-4 w-4 text-wr-orange" />
               <span className="hidden sm:inline">XML</span>
             </button>
+
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl p-2 text-wr-muted hover:text-wr-text hover:bg-wr-elevated"
+              className="rounded-xl p-2 text-wr-muted hover:text-wr-text hover:bg-wr-elevated transition-colors ml-1"
+              title="Fechar"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {/* Informações de Autenticidade e Consulta Pública */}
-        <div className="no-print rounded-2xl bg-blue-500/10 border border-blue-500/30 p-3 sm:p-4 text-[11px] space-y-2.5">
-          <div className="flex flex-wrap items-center justify-between gap-1">
-            <span className="font-bold text-blue-500 flex items-center gap-1.5">
-              <ShieldCheck className="h-4 w-4" /> Autenticidade &amp; Consulta Pública
-            </span>
-            <span className="text-[10px] text-wr-muted font-mono">Padrão Nacional NFS-e / SEFAZ-TO</span>
-          </div>
-          <p className="text-wr-text leading-relaxed">
-            Esta NFS-e segue a Lei Complementar nº 116/2003 e o Convênio Nacional de NFS-e. Você pode consultar diretamente com a chave ou código de verificação:
-          </p>
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <a
-              href="https://www.nfse.gov.br/emissornacional/ConsultaPublica"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] transition-colors"
-            >
-              <ExternalLink className="h-3 w-3" /> Portal Nacional gov.br/nfse
-            </a>
-            <button
-              type="button"
-              onClick={() => copyToClipboard(invoice.accessKey || '', 'key')}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-wr-border bg-wr-surface text-wr-text hover:border-wr-orange font-bold text-[10px] transition-colors"
-            >
-              {copiedKey ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
-              {copiedKey ? 'Chave Copiada!' : 'Copiar Chave'}
-            </button>
-            <button
-              type="button"
-              onClick={() => copyToClipboard(invoice.verificationCode || '', 'code')}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-wr-border bg-wr-surface text-wr-text hover:border-wr-orange font-bold text-[10px] transition-colors"
-            >
-              {copiedCode ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
-              {copiedCode ? 'Código Copiado!' : 'Copiar Código'}
-            </button>
-          </div>
-        </div>
-
-        {/* Printable Document (DANFSE - Otimizado e Responsivo para Celular e A4) */}
+        {/* ============================================================== */}
+        {/* DOCUMENTO FISCAL LIMPO, PROFISSIONAL E EXECUTIVO (A4 / TELA) */}
+        {/* ============================================================== */}
         <div
           id="danfse-printable-doc"
-          className="danfse-print-container rounded-2xl border border-wr-border bg-white text-black p-3.5 sm:p-5 space-y-3 font-sans text-xs shadow-xs"
+          className="danfse-document-sheet bg-white text-slate-800 rounded-2xl border border-slate-200 p-6 sm:p-8 space-y-5 font-sans shadow-sm"
         >
-          {/* Header Municipal Oficial com Logotipo WR */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-3 border-b-2 border-black pb-3">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <WrLogo size="lg" variant="light" showSubtitle={true} className="shrink-0" />
-              <div className="space-y-0.5 border-l-2 border-neutral-300 pl-3">
-                <span className="text-[9px] font-mono tracking-wider text-neutral-600 uppercase font-bold block">
-                  REPÚBLICA FEDERATIVA DO BRASIL &bull; ESTADO DO TOCANTINS
-                </span>
-                <h2 className="text-sm sm:text-base font-black text-black uppercase tracking-tight leading-tight">
-                  PREFEITURA MUNICIPAL DE PORTO NACIONAL
-                </h2>
-                <p className="text-[10px] font-bold text-neutral-800">
-                  SECRETARIA MUNICIPAL DA FAZENDA &bull; DISTRITO DE LUZIMANGUES
+          {/* 1. CABEÇALHO OFICIAL: LOGO WR MECÂNICA + IDENTIFICAÇÃO NFS-E */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+            <div className="flex items-center gap-4">
+              <WrLogo size="lg" variant="light" showSubtitle={true} className="shrink-0 h-14" />
+              <div className="space-y-0.5 border-l border-slate-200 pl-4 text-[11px] leading-tight">
+                <p className="font-black text-slate-900 text-xs uppercase tracking-wide">
+                  {companyName}
                 </p>
-                <p className="text-[9px] text-neutral-600 font-mono">
-                  CÓD. IBGE: {settings.cityCodeIBGE || '1718204'} &bull; NOTA FISCAL DE SERVIÇOS ELETRÔNICA (NFS-e)
+                <p className="font-semibold text-slate-600">
+                  CNPJ: <span className="font-mono">{cnpj}</span> &bull; IM: <span className="font-mono">{cityRegistration}</span>
+                </p>
+                <p className="text-slate-500">
+                  {address} &bull; {cityState}
+                </p>
+                <p className="text-slate-500">
+                  Tel: {workshopPhone} &bull; {postalCode}
                 </p>
               </div>
             </div>
 
-            <div className="text-left sm:text-right space-y-0.5 bg-neutral-100 p-2 sm:p-2.5 rounded-xl border border-neutral-300 w-full sm:w-auto sm:min-w-[160px] shrink-0">
-              <span className="text-[9px] font-bold text-neutral-600 uppercase block">Número da NFS-e</span>
-              <span className="text-base font-black text-black font-mono block">
-                {invoice.invoiceNumber}
+            <div className="w-full sm:w-auto text-left sm:text-right bg-slate-50 border border-slate-200 rounded-xl p-3 sm:min-w-[190px] shrink-0">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                DANFSE &bull; NFS-e
               </span>
-              <span className="text-[9px] font-mono text-neutral-600 block">{invoice.issuedAt}</span>
-              <span className="text-[9px] font-mono font-bold text-emerald-700 block">
-                Cód: {invoice.verificationCode}
+              <span className="text-lg font-black text-slate-900 font-mono block leading-none py-1">
+                Nº {invoice.invoiceNumber}
+              </span>
+              <div className="text-[10px] text-slate-500 space-y-0.5 pt-1 border-t border-slate-200">
+                <p>Emissão: <strong className="text-slate-700">{invoice.issuedAt}</strong></p>
+                <p>Cód. Verificação: <strong className="font-mono text-slate-800 font-bold">{invoice.verificationCode}</strong></p>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. DADOS DO CLIENTE E DO VEÍCULO (2 COLUNAS LIMPAS) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="rounded-xl border border-slate-200 p-3.5 space-y-2 bg-slate-50/50">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Tomador / Cliente
+                </span>
+                <span className="text-[10px] font-mono text-slate-400">
+                  Ref: OS #{order.number}
+                </span>
+              </div>
+              <div className="space-y-1 leading-snug">
+                <p className="font-bold text-slate-900 text-sm">{order.clientName}</p>
+                <p className="text-slate-600">
+                  CPF/CNPJ: <span className="font-mono font-medium">{order.clientCpfCnpj || 'Não informado'}</span>
+                </p>
+                <p className="text-slate-600">
+                  Telefone: <span className="font-medium">{order.clientPhone || 'Não informado'}</span>
+                </p>
+                <p className="text-slate-500 text-[11px]">
+                  {order.clientAddress || 'Distrito de Luzimangues, Porto Nacional - TO'}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 p-3.5 space-y-2 bg-slate-50/50">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Dados do Veículo Atendido
+                </span>
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  Quitada
+                </span>
+              </div>
+              <div className="space-y-1 leading-snug">
+                <p className="font-bold text-slate-900 text-sm">{order.vehicleModel}</p>
+                <div className="flex items-center gap-3 pt-0.5">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-200 text-slate-900 font-mono font-bold text-xs tracking-wider">
+                    {order.vehiclePlate}
+                  </span>
+                  <span className="text-slate-600 text-xs">
+                    KM: <strong className="font-mono text-slate-800">{order.mileage ? Number(order.mileage).toLocaleString('pt-BR') : '0'}</strong>
+                  </span>
+                </div>
+                <p className="text-slate-500 text-[11px] pt-1">
+                  Ordem de Serviço vinculada: <strong className="font-mono text-slate-700">#{order.number}</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. DISCRIMINAÇÃO DOS SERVIÇOS & PEÇAS (TABELA EXECUTIVA E CLARA) */}
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 flex items-center justify-between text-[11px] font-bold text-slate-700">
+              <span>DISCRIMINAÇÃO DOS SERVIÇOS PRESTADOS E PEÇAS</span>
+              <span className="text-slate-500 font-normal hidden sm:inline">
+                Item LC 116/2003: 14.01 &bull; Manutenção Automotiva
               </span>
             </div>
+
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold border-b border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-4">Descrição</th>
+                  <th className="py-2.5 px-4 text-right">Mão de Obra</th>
+                  <th className="py-2.5 px-4 text-right">Peças</th>
+                  <th className="py-2.5 px-4 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-800">
+                {order.items && order.items.length > 0 ? (
+                  order.items.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-2 px-4 font-medium text-slate-900">
+                        {item.serviceDescription}
+                      </td>
+                      <td className="py-2 px-4 text-right font-mono text-slate-600">
+                        {formatCurrency(item.laborCost)}
+                      </td>
+                      <td className="py-2 px-4 text-right font-mono text-slate-600">
+                        {formatCurrency(item.partsCost)}
+                      </td>
+                      <td className="py-2 px-4 text-right font-mono font-bold text-slate-900">
+                        {formatCurrency(item.total || item.laborCost + item.partsCost)}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td className="py-3 px-4 font-medium text-slate-900">
+                      {order.serviceDescription || 'Serviços de Manutenção e Reparação Mecânica Automotiva'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-600">
+                      {formatCurrency(order.laborTotal)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-600">
+                      {formatCurrency(order.partsTotal || 0)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                      {formatCurrency(order.totalAmount)}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
 
-          {/* Prestador e Tomador (Adaptado para 1 col no celular e 2 cols no desktop) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 text-[10px]">
-            <div className="rounded-xl bg-neutral-50 p-2.5 border border-neutral-300 space-y-1">
-              <div className="flex items-center justify-between border-b border-neutral-200 pb-1">
-                <span className="text-[9px] font-bold text-neutral-700 uppercase">
-                  Prestador de Serviços (Oficina)
-                </span>
-                <WrLogo size="sm" variant="light" showSubtitle={false} className="h-4" />
-              </div>
-              <p className="font-black text-black text-[12px]">{settings.companyName}</p>
-              <p className="text-neutral-800 font-bold">{settings.tradeName}</p>
-              <p className="font-mono text-neutral-700">
-                CNPJ: {settings.cnpj} &bull; IM: {settings.cityRegistration} &bull; IE: {settings.stateRegistration}
-              </p>
-              <p className="text-neutral-600">
-                {settings.address || 'Rodovia TO-080, KM 12 - Luzimangues, Porto Nacional/TO, CEP 77500-000'}
-              </p>
-              <p className="font-bold text-neutral-800">
-                Regime: {invoice.taxRegime} &bull; CNAE: {invoice.cnae}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-neutral-50 p-2.5 border border-neutral-300 space-y-1">
-              <div className="flex items-center justify-between border-b border-neutral-200 pb-1">
-                <span className="text-[9px] font-bold text-neutral-700 uppercase">
-                  Tomador de Serviços (Cliente)
-                </span>
-                <span className="text-[9px] font-black text-emerald-800 uppercase bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-                  {paymentDesc}
-                </span>
-              </div>
-              <p className="font-black text-black text-[12px]">{order.clientName}</p>
-              <p className="font-mono text-neutral-700">CPF/CNPJ: {order.clientCpfCnpj || 'Não informado'}</p>
-              <p className="text-neutral-600">{order.clientAddress || 'Luzimangues, Porto Nacional/TO'}</p>
-              <p className="text-neutral-600">Telefone: {order.clientPhone || 'Não informado'}</p>
-              <p className="font-bold text-neutral-800">
-                Condição: <strong className="text-emerald-700 font-black">{paymentDesc}</strong>
-              </p>
-            </div>
-          </div>
-
-          {/* Dados do Veículo, RPS e Forma de Pagamento */}
-          <div className="rounded-xl bg-neutral-100 p-2.5 border border-neutral-300 flex flex-wrap items-center justify-between gap-2 text-[10px]">
-            <span>
-              Veículo: <strong className="text-black">{order.vehicleModel}</strong>
-            </span>
-            <span>
-              Placa: <strong className="font-mono text-black font-bold">{order.vehiclePlate}</strong>
-            </span>
-            <span>
-              KM: <strong className="font-mono">{Number(order.mileage).toLocaleString('pt-BR')}</strong>
-            </span>
-            <span>
-              RPS: <strong className="font-mono text-neutral-800">{invoice.rpsNumber} (Série {invoice.rpsSeries})</strong>
-            </span>
-            <span className="rounded-lg bg-emerald-600 text-white px-2.5 py-1 text-[10px] font-black tracking-wide shadow-xs">
-              {paymentDesc}
-            </span>
-          </div>
-
-          {/* Discriminação de Serviços e Peças */}
-          <div className="rounded-xl bg-neutral-50 p-2.5 border border-neutral-300 space-y-1.5 text-[10px]">
-            <span className="text-[9px] font-bold text-neutral-700 uppercase block border-b border-neutral-200 pb-0.5">
-              Discriminação dos Serviços Prestados &bull; Item LC 116: {invoice.serviceCode} (CNAE: {invoice.cnae})
-            </span>
-            <p className="text-black font-medium leading-tight">
-              {order.serviceDescription}
-            </p>
-            {order.items && order.items.length > 0 && (
-              <div className="pt-1.5 border-t border-neutral-200 space-y-1 text-[9px] text-neutral-700">
-                {order.items.map((it, idx) => (
-                  <div
-                    key={idx}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between py-0.5 border-b border-neutral-100 last:border-0 gap-0.5"
-                  >
-                    <span>&bull; {it.serviceDescription}</span>
-                    <span className="font-mono text-black font-semibold">
-                      Mão de Obra: {formatCurrency(it.laborCost)} | Peças: {formatCurrency(it.partsCost)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Destaque de Desconto se concedido */}
-            {(order.discount || 0) > 0 && (
-              <div className="pt-1 border-t border-neutral-200 flex justify-between items-center text-[10px] font-bold text-rose-700">
-                <span>Desconto Concedido:</span>
-                <span className="font-mono">- {formatCurrency(order.discount || 0)}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Resumo de Valores e Forma de Pagamento */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-            <div className="rounded-xl bg-neutral-100 p-3 border border-neutral-300 flex flex-col justify-center space-y-1">
-              <span className="text-[9px] font-bold text-neutral-600 uppercase tracking-wider block">
-                Forma de Pagamento Registrada:
+          {/* 4. FORMA DE PAGAMENTO E TOTALIZADORES (DISPOSIÇÃO EQUILIBRADA) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+            {/* Box da Forma de Pagamento */}
+            <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/60 space-y-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                Forma de Pagamento Registrada
               </span>
               <div className="flex items-center gap-2">
-                <span className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-black text-xs sm:text-sm tracking-wide font-mono inline-block shadow-xs">
+                <span className="text-sm font-black text-slate-900 tracking-wide">
                   {paymentDesc}
                 </span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  Quitado
+                </span>
               </div>
-              <p className="text-[9px] text-neutral-600 pt-0.5">
-                Status da Transação: <strong className="text-emerald-700 font-bold">PAGAMENTO CONFIRMADO E QUITADO</strong>
+              <p className="text-[11px] text-slate-500">
+                Transação liquidada e confirmada no caixa da oficina.
               </p>
             </div>
 
-            <div className="rounded-xl bg-neutral-900 text-white p-3 border border-neutral-800 flex flex-col justify-center text-left sm:text-right space-y-0.5">
-              <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">
-                Valor Total Líquido da NFS-e
-              </span>
-              <span className="font-mono text-xl sm:text-2xl font-black text-emerald-400 block">
-                {formatCurrency(order.totalAmount || (order.laborTotal + (order.partsTotal || 0)))}
-              </span>
-              <span className="text-[9px] text-neutral-400 font-mono block">
-                Serviços: {formatCurrency(order.laborTotal)} | Peças: {formatCurrency(order.partsTotal || 0)}
-                {(order.discount || 0) > 0 && ` | Desc: -${formatCurrency(order.discount || 0)}`}
-              </span>
-            </div>
-          </div>
-
-          {/* Tabela de Cálculo do ISS Municipal (Com scroll horizontal suave no celular) */}
-          <div className="overflow-x-auto rounded-xl border border-neutral-300">
-            <div className="min-w-[420px]">
-              <div className="grid grid-cols-5 bg-neutral-200 text-neutral-800 p-1.5 font-bold text-center border-b border-neutral-300 text-[9px]">
-                <div>Total Serviços</div>
-                <div>Total Peças</div>
-                <div>Base Cálculo ISS</div>
-                <div>Alíquota ISS</div>
-                <div>Valor do ISS</div>
+            {/* Box dos Valores Finais */}
+            <div className="rounded-xl border border-slate-200 p-4 bg-slate-50 space-y-1.5 text-xs">
+              <div className="flex justify-between text-slate-600 text-[11px]">
+                <span>Total de Serviços:</span>
+                <span className="font-mono">{formatCurrency(order.laborTotal)}</span>
               </div>
-              <div className="grid grid-cols-5 p-2 text-center font-mono font-bold text-[10px] bg-white">
-                <div>{formatCurrency(order.laborTotal)}</div>
-                <div className="text-neutral-600">{formatCurrency(order.partsTotal)}</div>
-                <div>{formatCurrency(order.laborTotal)}</div>
-                <div>{invoice.issRate.toFixed(2)}%</div>
-                <div className="text-emerald-700">{formatCurrency(invoice.issValue)}</div>
+              <div className="flex justify-between text-slate-600 text-[11px]">
+                <span>Total de Peças / Insumos:</span>
+                <span className="font-mono">{formatCurrency(order.partsTotal || 0)}</span>
+              </div>
+              {(order.discount || 0) > 0 && (
+                <div className="flex justify-between text-rose-600 font-semibold text-[11px]">
+                  <span>Desconto Aplicado:</span>
+                  <span className="font-mono">- {formatCurrency(order.discount || 0)}</span>
+                </div>
+              )}
+              <div className="pt-2 border-t border-slate-200 flex justify-between items-baseline">
+                <span className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                  Valor Total Líquido
+                </span>
+                <span className="text-xl font-black text-slate-900 font-mono">
+                  {formatCurrency(order.totalAmount || order.laborTotal + (order.partsTotal || 0))}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Chave de Acesso e Protocolo */}
-          <div className="rounded-xl bg-neutral-50 p-2.5 border border-neutral-300 space-y-1.5 text-[9px] text-neutral-700">
+          {/* 5. TRIBUTAÇÃO MUNICIPAL (ISSQN) - SÓBRIA E DIRETA */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-3 text-[11px] text-slate-600 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Regime Tributário</span>
+              <span className="font-semibold text-slate-800">{invoice.taxRegime}</span>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Base de Cálculo ISS</span>
+              <span className="font-mono font-semibold text-slate-800">{formatCurrency(order.laborTotal)}</span>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Alíquota</span>
+              <span className="font-mono font-semibold text-slate-800">{Number(invoice.issRate).toFixed(2)}%</span>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Valor do ISS</span>
+              <span className="font-mono font-semibold text-slate-800">{formatCurrency(invoice.issValue)}</span>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Município de Incidência</span>
+              <span className="font-semibold text-slate-800">Porto Nacional / TO</span>
+            </div>
+          </div>
+
+          {/* 6. VALIDAÇÃO FISCAL, CHAVE DE ACESSO E AUTENTICIDADE */}
+          <div className="rounded-xl border border-slate-200 p-3.5 space-y-2 bg-slate-50/50 text-[11px]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="min-w-0">
-                <span className="block font-bold text-black uppercase text-[8px]">
-                  CHAVE DE ACESSO NACIONAL DA NFS-e (50 DÍGITOS):
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Chave de Acesso Nacional da NFS-e
                 </span>
-                <span className="font-mono text-[9px] text-neutral-900 tracking-wider break-all font-bold block">
-                  {invoice.accessKey}
+                <span className="font-mono text-xs text-slate-900 font-bold tracking-wider break-all block py-0.5">
+                  {formattedKey}
                 </span>
               </div>
-              <div className="sm:text-right shrink-0">
-                <span className="font-bold text-emerald-800 inline-flex items-center gap-1 text-[9px]">
-                  <CheckCircle2 className="h-3 w-3" /> Protocolo: {invoice.protocolNumber}
-                </span>
+              <div className="flex items-center gap-2 no-print shrink-0">
+                <button
+                  type="button"
+                  onClick={copyKeyToClipboard}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 hover:border-slate-400 bg-white text-slate-700 text-xs font-semibold transition-colors"
+                >
+                  {copiedKey ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-slate-500" />}
+                  <span>{copiedKey ? 'Copiada!' : 'Copiar Chave'}</span>
+                </button>
+                <a
+                  href="https://www.nfse.gov.br/emissornacional/ConsultaPublica"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-semibold transition-colors"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span>Consultar no Portal gov.br</span>
+                </a>
               </div>
             </div>
 
-            <div className="pt-1.5 border-t border-neutral-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 text-[8px] text-neutral-600">
-              <span>
-                Consulte em <strong>www.nfse.gov.br</strong> ou na Prefeitura de Porto Nacional/TO informando o Código: <strong>{invoice.verificationCode}</strong>.
-              </span>
-              <span className="font-mono font-bold text-black">
-                Página 1 / 1
-              </span>
+            <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 text-[10px] text-slate-500">
+              <p>
+                Documento emitido por ME ou EPP optante pelo Simples Nacional. Protocolo: <strong className="font-mono text-slate-700">{invoice.protocolNumber}</strong>
+              </p>
+              <p className="font-semibold text-slate-600">
+                Página 1 de 1
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Global Print Style for 1 Page A4 */}
+        {/* Global Print Styling - Folha A4 Impecável */}
         <style>{`
           @media print {
+            @page {
+              size: A4 portrait;
+              margin: 8mm;
+            }
             body * {
-              visibility: hidden;
+              visibility: hidden !important;
             }
             #danfse-printable-doc, #danfse-printable-doc * {
-              visibility: visible;
+              visibility: visible !important;
             }
             #danfse-printable-doc {
-              position: fixed;
-              left: 0;
-              top: 0;
-              width: 100vw;
-              margin: 0;
-              padding: 6mm !important;
-              border: 1px solid #000 !important;
+              position: fixed !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100vw !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              border: none !important;
               border-radius: 0 !important;
-              background: #fff !important;
-              color: #000 !important;
+              background: #ffffff !important;
+              color: #1e293b !important;
               box-shadow: none !important;
             }
             .no-print {
               display: none !important;
-            }
-            @page {
-              size: A4 portrait;
-              margin: 6mm;
             }
           }
         `}</style>
