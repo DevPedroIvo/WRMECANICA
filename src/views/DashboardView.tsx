@@ -15,19 +15,16 @@ import {
   ArrowRight,
   Plus,
   MapPin,
-  Calendar,
   Sparkles,
   TrendingUp,
   TrendingDown,
   Package,
-  Bell,
   ArrowUpRight,
   ChevronRight,
-  ShieldCheck,
-  Fuel,
   Gauge,
-  Layers,
-  FileText,
+  Fuel,
+  Activity,
+  Calendar,
 } from 'lucide-react'
 
 export const DashboardView: React.FC = () => {
@@ -140,7 +137,7 @@ export const DashboardView: React.FC = () => {
   // Veículos atualmente no pátio / em manutenção
   const vehiclesInShop = useMemo(() => {
     return orders
-      .filter(o => o.status === 'andamento' || o.status === 'aguardando')
+      .filter(o => o.status === 'andamento' || o.status === 'aguardando' || o.status === 'pronto')
       .slice(0, 4)
   }, [orders])
 
@@ -198,9 +195,9 @@ export const DashboardView: React.FC = () => {
       : 0
 
   return (
-    <div className="space-y-6 select-none animate-fadeIn pb-10">
+    <div className="space-y-6 select-none animate-fadeIn pb-12">
       {/* 🌟 HERO BANNER PREMIUM: Design Dark Automotive de Alto Impacto */}
-      <div className="relative rounded-3xl border border-wr-border bg-gradient-to-br from-wr-surface via-wr-elevated/90 to-wr-surface p-6 sm:p-7 shadow-elevated overflow-hidden">
+      <div className="relative rounded-3xl border border-wr-border bg-gradient-to-br from-wr-surface via-wr-elevated/80 to-wr-surface p-6 sm:p-7 shadow-card overflow-hidden">
         {/* Glow de fundo automotivo */}
         <div className="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-wr-orange/10 blur-3xl pointer-events-none" />
         <div className="absolute -left-16 -bottom-16 w-80 h-80 rounded-full bg-wr-orangeDark/5 blur-3xl pointer-events-none" />
@@ -208,7 +205,7 @@ export const DashboardView: React.FC = () => {
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           {/* Logo Oficial + Dados da Oficina */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start lg:items-center gap-5 text-center sm:text-left">
-            <div className="p-3.5 rounded-2xl bg-wr-surface/90 border border-wr-border shadow-md backdrop-blur-sm shrink-0">
+            <div className="p-3.5 rounded-2xl bg-wr-surface/90 border border-wr-border shadow-sm backdrop-blur-sm shrink-0">
               <WrLogo size="lg" showSubtitle={true} />
             </div>
 
@@ -256,98 +253,18 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* 🚀 BARRA DE ATALHOS OPERACIONAIS RÁPIDOS */}
-      <div className="rounded-2xl border border-wr-border bg-wr-surface p-3 shadow-card flex items-center justify-between gap-2 overflow-x-auto scrollbar-none">
-        <button
-          type="button"
-          onClick={() => openNewOrderModal()}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-wr-orange text-white dark:text-[#0C1017] text-xs font-bold shadow-sm hover:brightness-110 shrink-0 transition-all"
-        >
-          <Plus className="h-4 w-4 stroke-[3]" />
-          <span>Criar Nova OS</span>
-        </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('os')}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-wr-elevated border border-wr-border text-xs font-semibold text-wr-text hover:border-wr-orange hover:text-wr-orange shrink-0 transition-all"
-        >
-          <Wrench className="h-3.5 w-3.5 text-wr-orange" />
-          <span>Ordens ({orders.length})</span>
-          {metrics.inProgress > 0 && (
-            <span className="px-1.5 py-0.5 rounded-md bg-wr-orange/20 text-wr-orange text-[10px] font-bold">
-              {metrics.inProgress} ativas
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('atendimentos')}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-wr-elevated border border-wr-border text-xs font-semibold text-wr-text hover:border-wr-orange hover:text-wr-orange shrink-0 transition-all"
-        >
-          <Clock className="h-3.5 w-3.5 text-wr-orange" />
-          <span>Agendamentos ({appointments.length})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('caixa')}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-wr-elevated border border-wr-border text-xs font-semibold text-wr-text hover:border-emerald-500 hover:text-emerald-500 shrink-0 transition-all"
-        >
-          <Wallet className="h-3.5 w-3.5 text-emerald-500" />
-          <span>Caixa Diário</span>
-          <span
-            className={`h-2 w-2 rounded-full ${
-              activeShift ? 'bg-emerald-500' : 'bg-wr-muted'
-            }`}
-          />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('clientes')}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-wr-elevated border border-wr-border text-xs font-semibold text-wr-text hover:border-wr-orange hover:text-wr-orange shrink-0 transition-all"
-        >
-          <Users className="h-3.5 w-3.5 text-wr-orange" />
-          <span>Clientes ({clients.length})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('estoque')}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-wr-elevated border border-wr-border text-xs font-semibold text-wr-text hover:border-wr-orange hover:text-wr-orange shrink-0 transition-all"
-        >
-          <Package className="h-3.5 w-3.5 text-wr-orange" />
-          <span>Estoque</span>
-          {metrics.lowStock > 0 && (
-            <span className="px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-500 text-[10px] font-bold">
-              {metrics.lowStock} baixo
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('relatorios')}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-wr-elevated border border-wr-border text-xs font-semibold text-wr-text hover:border-wr-orange hover:text-wr-orange shrink-0 transition-all"
-        >
-          <BarChart3 className="h-3.5 w-3.5 text-wr-orange" />
-          <span>Relatórios</span>
-        </button>
-      </div>
-
-      {/* 📊 5 CARDS DE MÉTRICAS (KPIs) FINANCEIRAS & OPERACIONAIS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* 📊 5 CARDS EXECUTIVOS DE MÉTRICAS (KPIs) FINANCEIRAS & OPERACIONAIS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* Card 1: Faturamento Pago */}
         <button
           type="button"
           onClick={() => setActiveTab('financeiro')}
-          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-emerald-500 hover:shadow-card flex flex-col justify-between overflow-hidden"
+          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-emerald-500/60 hover:shadow-card hover:-translate-y-0.5 flex flex-col justify-between overflow-hidden"
         >
           <div className="flex items-center justify-between w-full">
             <span className="text-[11px] font-bold uppercase tracking-wider text-wr-muted">
-              Faturamento (Receita)
+              Faturamento Pago
             </span>
             <div className="h-10 w-10 rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center transition-transform group-hover:scale-110">
               <TrendingUp className="h-5 w-5" />
@@ -355,15 +272,16 @@ export const DashboardView: React.FC = () => {
           </div>
 
           <div className="mt-4 flex flex-col w-full">
-            <span className="text-2xl font-extrabold font-mono tracking-tight text-emerald-600 dark:text-emerald-400 truncate">
+            <span className="text-2xl font-black font-mono tracking-tight text-emerald-600 dark:text-emerald-400">
               {formatCurrency(metrics.paidRevenue)}
             </span>
-            <span className="text-[11px] font-semibold text-wr-muted mt-0.5">
+            <span className="text-[11px] font-semibold text-wr-muted mt-1 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
               {metrics.completed} ordens liquidadas
             </span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
+          <div className="mt-4 pt-3 border-t border-wr-border/70 flex items-center justify-between text-[11px] text-wr-muted font-medium">
             <span>Fluxo de receitas</span>
             <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </div>
@@ -373,7 +291,7 @@ export const DashboardView: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('financeiro')}
-          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-rose-500 hover:shadow-card flex flex-col justify-between overflow-hidden"
+          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-rose-500/60 hover:shadow-card hover:-translate-y-0.5 flex flex-col justify-between overflow-hidden"
         >
           <div className="flex items-center justify-between w-full">
             <span className="text-[11px] font-bold uppercase tracking-wider text-wr-muted">
@@ -385,15 +303,16 @@ export const DashboardView: React.FC = () => {
           </div>
 
           <div className="mt-4 flex flex-col w-full">
-            <span className="text-2xl font-extrabold font-mono tracking-tight text-rose-500 truncate">
+            <span className="text-2xl font-black font-mono tracking-tight text-rose-500">
               {formatCurrency(metrics.paidExpenses)}
             </span>
-            <span className="text-[11px] font-semibold text-wr-muted mt-0.5">
+            <span className="text-[11px] font-semibold text-wr-muted mt-1 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500 inline-block" />
               Custos &amp; fornecedores
             </span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
+          <div className="mt-4 pt-3 border-t border-wr-border/70 flex items-center justify-between text-[11px] text-wr-muted font-medium">
             <span>Ver despesas</span>
             <ArrowUpRight className="h-3.5 w-3.5 text-rose-500 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </div>
@@ -403,7 +322,7 @@ export const DashboardView: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('financeiro')}
-          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-wr-orange hover:shadow-card flex flex-col justify-between overflow-hidden"
+          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-wr-orange/60 hover:shadow-card hover:-translate-y-0.5 flex flex-col justify-between overflow-hidden"
         >
           <div className="flex items-center justify-between w-full">
             <span className="text-[11px] font-bold uppercase tracking-wider text-wr-muted">
@@ -416,28 +335,33 @@ export const DashboardView: React.FC = () => {
 
           <div className="mt-4 flex flex-col w-full">
             <span
-              className={`text-2xl font-extrabold font-mono tracking-tight truncate ${
+              className={`text-2xl font-black font-mono tracking-tight ${
                 metrics.netBalance >= 0 ? 'text-emerald-500' : 'text-rose-500'
               }`}
             >
               {formatCurrency(metrics.netBalance)}
             </span>
-            <span className="text-[11px] font-semibold text-wr-muted mt-0.5">
+            <span className="text-[11px] font-semibold text-wr-muted mt-1 flex items-center gap-1.5">
+              <span
+                className={`h-1.5 w-1.5 rounded-full inline-block ${
+                  metrics.netBalance >= 0 ? 'bg-emerald-500' : 'bg-rose-500'
+                }`}
+              />
               Margem operacional líquida
             </span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
+          <div className="mt-4 pt-3 border-t border-wr-border/70 flex items-center justify-between text-[11px] text-wr-muted font-medium">
             <span>DRE da oficina</span>
             <ArrowUpRight className="h-3.5 w-3.5 text-wr-orange transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </div>
         </button>
 
-        {/* Card 4: OS em Andamento / No Pátio */}
+        {/* Card 4: OS em Execução / No Pátio */}
         <button
           type="button"
           onClick={() => setActiveTab('os')}
-          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-wr-orange hover:shadow-card flex flex-col justify-between overflow-hidden"
+          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-wr-orange/60 hover:shadow-card hover:-translate-y-0.5 flex flex-col justify-between overflow-hidden"
         >
           <div className="flex items-center justify-between w-full">
             <span className="text-[11px] font-bold uppercase tracking-wider text-wr-muted">
@@ -449,16 +373,16 @@ export const DashboardView: React.FC = () => {
           </div>
 
           <div className="mt-4 flex items-baseline justify-between w-full">
-            <span className="text-3xl font-extrabold font-mono tracking-tight text-wr-text">
+            <span className="text-3xl font-black font-mono tracking-tight text-wr-text">
               {metrics.inProgress}
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-wr-orange/15 px-2.5 py-0.5 text-xs font-bold text-wr-orange">
+            <span className="inline-flex items-center gap-1 rounded-full bg-wr-orange/15 px-2.5 py-0.5 text-xs font-bold text-wr-orange border border-wr-orange/30">
               {metrics.readyOrders} prontos
             </span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
-            <span>Quadro Kanban</span>
+          <div className="mt-4 pt-3 border-t border-wr-border/70 flex items-center justify-between text-[11px] text-wr-muted font-medium">
+            <span>Painel da Oficina</span>
             <ArrowUpRight className="h-3.5 w-3.5 text-wr-orange transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </div>
         </button>
@@ -467,7 +391,7 @@ export const DashboardView: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('fiado')}
-          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-wr-orange hover:shadow-card flex flex-col justify-between overflow-hidden"
+          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-wr-orange/60 hover:shadow-card hover:-translate-y-0.5 flex flex-col justify-between overflow-hidden"
         >
           <div className="flex items-center justify-between w-full">
             <span className="text-[11px] font-bold uppercase tracking-wider text-wr-muted">
@@ -479,23 +403,24 @@ export const DashboardView: React.FC = () => {
           </div>
 
           <div className="mt-4 flex flex-col w-full">
-            <span className="text-2xl font-extrabold font-mono tracking-tight text-wr-text truncate">
+            <span className="text-2xl font-black font-mono tracking-tight text-wr-text">
               {formatCurrency(metrics.deferredOpen)}
             </span>
-            <div className="mt-0.5 flex items-center gap-1.5">
+            <div className="mt-1 flex items-center gap-1.5">
               {metrics.deferredOverdueCount > 0 ? (
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-500">
                   <AlertTriangle className="h-3 w-3" /> {metrics.deferredOverdueCount} atrasado(s)
                 </span>
               ) : (
-                <span className="text-[11px] font-bold text-emerald-500">
+                <span className="text-[11px] font-semibold text-emerald-500 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
                   Todas parcelas em dia
                 </span>
               )}
             </div>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
+          <div className="mt-4 pt-3 border-t border-wr-border/70 flex items-center justify-between text-[11px] text-wr-muted font-medium">
             <span>Cobranças &amp; Extrato</span>
             <ArrowUpRight className="h-3.5 w-3.5 text-wr-orange transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </div>
@@ -505,7 +430,7 @@ export const DashboardView: React.FC = () => {
       {/* 📈 SEÇÃO PRINCIPAL: Gráfico Semanal + Agenda dos Boxes */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Gráfico Semanal Dinâmico (8 cols) */}
-        <div className="lg:col-span-8 rounded-3xl border border-wr-border bg-wr-surface p-6 shadow-card flex flex-col justify-between">
+        <div className="lg:col-span-8 rounded-3xl border border-wr-border bg-wr-surface p-6 sm:p-7 shadow-card flex flex-col justify-between space-y-6">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-wr-border">
               <div className="flex items-center gap-3">
@@ -513,7 +438,7 @@ export const DashboardView: React.FC = () => {
                   <BarChart3 className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-wr-text flex items-center gap-2">
+                  <h3 className="text-sm sm:text-base font-bold text-wr-text flex items-center gap-2">
                     Movimentação Semanal da Oficina
                   </h3>
                   <p className="text-[11px] text-wr-muted">
@@ -552,6 +477,7 @@ export const DashboardView: React.FC = () => {
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => openNewOrderModal()}
                   className="wr-btn-primary px-4 py-2 text-xs font-bold"
                 >
@@ -559,7 +485,7 @@ export const DashboardView: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="mt-8 h-60 w-full flex items-end justify-between gap-3 px-2">
+              <div className="mt-8 h-64 w-full flex items-end justify-between gap-2.5 sm:gap-4 px-2">
                 {dailyServiceData.map((d, idx) => {
                   const isSelected = selectedDayIdx === idx
                   const barHeightPercent = Math.max(16, Math.round((d.services / maxVal) * 100))
@@ -583,7 +509,7 @@ export const DashboardView: React.FC = () => {
                       </span>
 
                       {/* Barra Estilizada */}
-                      <div className="w-full max-w-[48px] h-40 bg-wr-elevated rounded-2xl flex items-end p-1 border border-wr-border/80 group-hover:border-wr-orange/40 transition-colors">
+                      <div className="w-full max-w-[52px] h-44 bg-wr-elevated rounded-2xl flex items-end p-1 border border-wr-border/80 group-hover:border-wr-orange/40 transition-colors">
                         <div
                           style={{ height: `${barHeightPercent}%` }}
                           className={`w-full rounded-xl transition-all duration-300 ${
@@ -596,7 +522,7 @@ export const DashboardView: React.FC = () => {
 
                       {/* Nome do Dia */}
                       <span
-                        className={`mt-2 text-xs font-semibold flex items-center gap-1 ${
+                        className={`mt-2.5 text-xs font-semibold flex items-center gap-1 ${
                           isSelected
                             ? 'text-wr-orange font-bold'
                             : 'text-wr-muted group-hover:text-wr-text'
@@ -614,11 +540,12 @@ export const DashboardView: React.FC = () => {
             )}
           </div>
 
-          <div className="mt-5 pt-4 border-t border-wr-border flex flex-wrap items-center justify-between gap-3 text-xs text-wr-muted">
+          <div className="pt-4 border-t border-wr-border flex flex-wrap items-center justify-between gap-3 text-xs text-wr-muted">
             <span className="font-medium">
-              Média semanal: <strong className="text-wr-text font-mono font-bold">{otherDaysAvg} serviços/dia</strong>
+              Média semanal: <strong className="text-wr-text font-mono font-bold">{otherDaysAvg} serviços/dia</strong> &bull; Total: <strong className="text-wr-orange font-mono font-bold">{totalWeeklyServices} atendimentos</strong>
             </span>
             <button
+              type="button"
               onClick={() => openNewOrderModal()}
               className="inline-flex items-center gap-1.5 font-bold text-wr-orange hover:underline text-xs"
             >
@@ -628,7 +555,7 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* Agenda do Dia & Boxes (4 cols) */}
-        <div className="lg:col-span-4 rounded-3xl border border-wr-border bg-wr-surface p-6 shadow-card flex flex-col justify-between gap-5">
+        <div className="lg:col-span-4 rounded-3xl border border-wr-border bg-wr-surface p-6 sm:p-7 shadow-card flex flex-col justify-between gap-5">
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-4 border-b border-wr-border">
               <div className="flex items-center gap-2.5">
@@ -640,7 +567,7 @@ export const DashboardView: React.FC = () => {
                   <p className="text-[11px] text-wr-muted">Atendimentos programados nos boxes</p>
                 </div>
               </div>
-              <span className="text-xs font-mono font-bold text-wr-orange bg-wr-orange/10 px-2 py-0.5 rounded-lg border border-wr-orange/20">
+              <span className="text-xs font-mono font-bold text-wr-orange bg-wr-orange/10 px-2.5 py-1 rounded-lg border border-wr-orange/20">
                 {appointments.length}
               </span>
             </div>
@@ -658,18 +585,25 @@ export const DashboardView: React.FC = () => {
                 appointments.slice(0, 4).map(apt => (
                   <div
                     key={apt.id}
-                    className="rounded-2xl border border-wr-border bg-wr-elevated p-3.5 flex items-center justify-between gap-3 hover:border-wr-borderHover transition-all"
+                    className="rounded-2xl border border-wr-border bg-wr-elevated p-3.5 flex items-center justify-between gap-3 hover:border-wr-orange/40 transition-all group"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="font-mono text-xs font-extrabold text-wr-orange bg-wr-surface px-2.5 py-1.5 rounded-xl border border-wr-border shrink-0">
+                      <span className="font-mono text-xs font-black text-wr-orange bg-wr-surface px-2.5 py-1.5 rounded-xl border border-wr-border shrink-0 shadow-2xs">
                         {apt.time}
                       </span>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-wr-text truncate">{apt.clientName}</p>
-                        <p className="text-[11px] text-wr-muted truncate flex items-center gap-1 mt-0.5">
-                          <Car className="h-3 w-3 text-wr-orange shrink-0" />
-                          {apt.vehicleModel} &bull; <span className="font-mono">{apt.vehiclePlate}</span>
-                        </p>
+                        <div className="flex items-center gap-1.5 text-[11px] text-wr-muted truncate mt-0.5">
+                          <span className="truncate">{apt.vehicleModel}</span>
+                          <span className="inline-flex flex-col border border-neutral-700/40 rounded bg-white overflow-hidden shadow-2xs shrink-0 select-none">
+                            <span className="bg-[#003399] text-white text-[6px] font-black px-1 text-center uppercase leading-tight">
+                              BRASIL
+                            </span>
+                            <span className="px-1 py-0.2 text-center font-mono font-black text-[9px] text-neutral-900 tracking-wider leading-none">
+                              {apt.vehiclePlate}
+                            </span>
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -678,7 +612,7 @@ export const DashboardView: React.FC = () => {
                       onClick={() =>
                         sendWhatsApp(
                           apt.clientPhone,
-                          `Olá ${apt.clientName}! Confirmamos seu atendimento às ${apt.time} na WR Mecânica & Cia.`
+                          `Olá ${apt.clientName}! Confirmamos o seu atendimento agendado para às ${apt.time} na WR Mecânica & Cia referente ao ${apt.vehicleModel}.`
                         )
                       }
                       className="rounded-xl p-2 text-emerald-500 hover:bg-emerald-500/15 border border-emerald-500/25 shrink-0 transition-colors"
@@ -693,6 +627,7 @@ export const DashboardView: React.FC = () => {
           </div>
 
           <button
+            type="button"
             onClick={() => setActiveTab('atendimentos')}
             className="wr-btn-secondary w-full justify-between py-2.5 text-xs font-bold"
           >
@@ -705,7 +640,7 @@ export const DashboardView: React.FC = () => {
       {/* 🛠️ SEÇÃO SECUNDÁRIA: Veículos em Manutenção no Pátio + Ranking de Serviços */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Veículos em Manutenção no Pátio (7 cols) */}
-        <div className="lg:col-span-7 rounded-3xl border border-wr-border bg-wr-surface p-6 shadow-card space-y-4 flex flex-col justify-between">
+        <div className="lg:col-span-7 rounded-3xl border border-wr-border bg-wr-surface p-6 sm:p-7 shadow-card space-y-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-wr-border">
               <div className="flex items-center gap-2.5">
@@ -713,11 +648,12 @@ export const DashboardView: React.FC = () => {
                   <Car className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-wr-text">Veículos em Manutenção no Pátio</h3>
+                  <h3 className="text-sm sm:text-base font-bold text-wr-text">Veículos em Manutenção no Pátio</h3>
                   <p className="text-[11px] text-wr-muted">Ordens ativas atualmente em execução ou diagnóstico</p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setActiveTab('os')}
                 className="text-xs font-bold text-wr-orange hover:underline flex items-center gap-1"
               >
@@ -735,45 +671,77 @@ export const DashboardView: React.FC = () => {
               </div>
             ) : (
               <div className="mt-4 space-y-3">
-                {vehiclesInShop.map(o => (
-                  <div
-                    key={o.id}
-                    className="rounded-2xl border border-wr-border bg-wr-elevated p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-wr-orange/40 transition-all"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="px-2.5 py-1.5 rounded-xl bg-wr-surface border border-wr-border text-center shrink-0">
-                        <span className="font-mono text-xs font-black text-wr-orange block">
-                          {o.vehiclePlate}
-                        </span>
-                        <span className="text-[9px] uppercase tracking-wider text-wr-muted block">
-                          {o.vehicleModel.split(' ')[0] || 'Auto'}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-wr-text truncate">{o.clientName}</p>
-                        <p className="text-[11px] text-wr-muted truncate">
-                          {o.vehicleModel} &bull; <span className="text-wr-orange font-medium">Mecânico: {o.mechanicAssigned || 'Geral'}</span>
-                        </p>
-                      </div>
-                    </div>
+                {vehiclesInShop.map(o => {
+                  const statusLabel =
+                    o.status === 'pronto'
+                      ? 'Pronto para Retirada'
+                      : o.status === 'andamento'
+                      ? 'Em Manutenção'
+                      : 'Aguardando Início'
 
-                    <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-wr-border">
-                      <span className="text-xs font-mono font-bold text-wr-text">
-                        {formatCurrency(o.totalAmount)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedOrderForModal(o)
-                          setActiveTab('os')
-                        }}
-                        className="px-2.5 py-1 rounded-xl bg-wr-surface border border-wr-border hover:border-wr-orange text-[11px] font-bold text-wr-orange transition-colors shrink-0"
-                      >
-                        Abrir OS
-                      </button>
+                  const statusColor =
+                    o.status === 'pronto'
+                      ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30'
+                      : o.status === 'andamento'
+                      ? 'bg-wr-orange/15 text-wr-orange border-wr-orange/30'
+                      : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+
+                  return (
+                    <div
+                      key={o.id}
+                      className="rounded-2xl border border-wr-border bg-wr-elevated p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-wr-orange/40 hover:shadow-sm transition-all group"
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        {/* Placa Mercosul Autêntica */}
+                        <div className="inline-flex flex-col border border-neutral-700/40 rounded-lg bg-white overflow-hidden shadow-2xs shrink-0 select-none">
+                          <div className="bg-[#003399] text-white text-[7px] font-black tracking-widest px-2 py-0.2 text-center uppercase leading-tight">
+                            BRASIL
+                          </div>
+                          <div className="px-2 py-0.5 text-center font-mono font-black text-xs text-neutral-900 tracking-wider leading-none">
+                            {o.vehiclePlate}
+                          </div>
+                        </div>
+
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs sm:text-sm font-bold text-wr-text truncate group-hover:text-wr-orange transition-colors">
+                              {o.vehicleModel}
+                            </p>
+                            <span className="font-mono text-[10px] text-wr-muted font-bold">
+                              #{o.number}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-wr-muted truncate flex items-center gap-2">
+                            <span>Cliente: <strong className="text-wr-text">{o.clientName}</strong></span>
+                            <span>&bull;</span>
+                            <span className="text-wr-orange font-medium">Mecânico: {o.mechanicAssigned || 'Geral'}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-wr-border shrink-0">
+                        <div className="text-left sm:text-right">
+                          <span className={`inline-block text-[9px] uppercase font-extrabold px-2 py-0.5 rounded-full border mb-0.5 ${statusColor}`}>
+                            {statusLabel}
+                          </span>
+                          <span className="text-xs sm:text-sm font-mono font-black text-wr-text block">
+                            {formatCurrency(o.totalAmount)}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedOrderForModal(o)
+                            setActiveTab('os')
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-wr-surface border border-wr-border hover:border-wr-orange text-xs font-bold text-wr-orange transition-colors shrink-0 shadow-2xs"
+                        >
+                          Abrir OS
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -781,6 +749,7 @@ export const DashboardView: React.FC = () => {
           <div className="pt-3 border-t border-wr-border flex items-center justify-between text-xs text-wr-muted">
             <span>Pátio com capacidade para múltiplos boxes simultâneos</span>
             <button
+              type="button"
               onClick={() => setActiveTab('os')}
               className="text-wr-orange font-bold hover:underline"
             >
@@ -790,7 +759,7 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* Serviços Mais Realizados (5 cols) */}
-        <div className="lg:col-span-5 rounded-3xl border border-wr-border bg-wr-surface p-6 shadow-card space-y-4 flex flex-col justify-between">
+        <div className="lg:col-span-5 rounded-3xl border border-wr-border bg-wr-surface p-6 sm:p-7 shadow-card space-y-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-wr-border">
               <div className="flex items-center gap-2.5">
@@ -798,7 +767,7 @@ export const DashboardView: React.FC = () => {
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-wr-text">Serviços Mais Realizados</h3>
+                  <h3 className="text-sm sm:text-base font-bold text-wr-text">Serviços Mais Realizados</h3>
                   <p className="text-[11px] text-wr-muted">Ranking de demandas na oficina</p>
                 </div>
               </div>
@@ -809,7 +778,7 @@ export const DashboardView: React.FC = () => {
                 Nenhum serviço computado ainda
               </div>
             ) : (
-              <div className="mt-4 space-y-3.5">
+              <div className="mt-4 space-y-4">
                 {topServices.map((srv, idx) => {
                   const maxCount = topServices[0]?.count || 1
                   const pct = Math.round((srv.count / maxCount) * 100)
@@ -818,7 +787,7 @@ export const DashboardView: React.FC = () => {
                     <div key={srv.name} className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-bold text-wr-text truncate pr-2 flex items-center gap-1.5">
-                          <span className="text-[10px] font-mono font-bold text-wr-orange w-4">
+                          <span className="text-[10px] font-mono font-bold text-wr-orange w-5 text-center px-1 py-0.5 rounded bg-wr-orange/10 border border-wr-orange/20">
                             #{idx + 1}
                           </span>
                           <span className="truncate">{srv.name}</span>
@@ -847,6 +816,7 @@ export const DashboardView: React.FC = () => {
           <div className="pt-3 border-t border-wr-border flex items-center justify-between text-xs text-wr-muted">
             <span>Baseado no histórico de ordens cadastradas</span>
             <button
+              type="button"
               onClick={() => setActiveTab('estoque')}
               className="text-wr-orange font-bold hover:underline"
             >
@@ -856,19 +826,20 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* 🚗 ORDENS DE SERVIÇO RECENTES */}
-      <div className="rounded-3xl border border-wr-border bg-wr-surface p-6 shadow-card space-y-4">
+      {/* 🚗 ORDENS DE SERVIÇO RECENTES (CARDS VISUAIS DE ALTA QUALIDADE) */}
+      <div className="rounded-3xl border border-wr-border bg-wr-surface p-6 sm:p-7 shadow-card space-y-5">
         <div className="flex items-center justify-between pb-4 border-b border-wr-border">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-500">
               <CheckCircle2 className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-wr-text">Ordens de Serviço Recentes</h3>
-              <p className="text-[11px] text-wr-muted">Últimos veículos atendidos na oficina</p>
+              <h3 className="text-sm sm:text-base font-bold text-wr-text">Ordens de Serviço Recentes</h3>
+              <p className="text-[11px] text-wr-muted">Últimos veículos e ordens cadastradas no sistema</p>
             </div>
           </div>
           <button
+            type="button"
             onClick={() => setActiveTab('os')}
             className="text-xs font-bold text-wr-orange hover:underline flex items-center gap-1"
           >
@@ -881,23 +852,36 @@ export const DashboardView: React.FC = () => {
             <Wrench className="h-8 w-8 mx-auto text-wr-muted opacity-50" />
             <p className="font-semibold text-wr-text">Nenhuma ordem de serviço cadastrada</p>
             <p className="text-[11px] max-w-sm mx-auto">
-              Abra uma nova ordem para lançar peças, mão de obra e comprovante para o cliente.
+              Abra uma nova ordem para lançar peças, mão de obra e emitir notas para os clientes.
             </p>
-            <button onClick={() => openNewOrderModal()} className="wr-btn-primary mx-auto">
+            <button
+              type="button"
+              onClick={() => openNewOrderModal()}
+              className="wr-btn-primary mx-auto"
+            >
               <Plus className="h-4 w-4" /> Abrir Primeira OS
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {orders.slice(0, 4).map(order => {
               const statusColor =
                 order.status === 'pago'
-                  ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30'
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                   : order.status === 'pronto'
-                  ? 'bg-blue-500/15 text-blue-500 border-blue-500/30'
+                  ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30'
                   : order.status === 'andamento'
                   ? 'bg-wr-orange/15 text-wr-orange border-wr-orange/30'
-                  : 'bg-wr-orange/15 text-wr-orange border-wr-orange/30'
+                  : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+
+              const statusText =
+                order.status === 'pago'
+                  ? 'Quitada'
+                  : order.status === 'pronto'
+                  ? 'Pronta'
+                  : order.status === 'andamento'
+                  ? 'Em Andamento'
+                  : 'Aguardando'
 
               return (
                 <button
@@ -907,34 +891,47 @@ export const DashboardView: React.FC = () => {
                     setSelectedOrderForModal(order)
                     setActiveTab('os')
                   }}
-                  className="rounded-2xl border border-wr-border bg-wr-elevated p-4 text-left flex flex-col justify-between gap-3 hover:border-wr-orange/50 transition-all group"
+                  className="rounded-2xl border border-wr-border bg-wr-elevated p-4 text-left flex flex-col justify-between gap-3.5 hover:border-wr-orange/50 hover:shadow-card hover:-translate-y-0.5 transition-all group"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-extrabold text-wr-orange">
+                  {/* Cabeçalho do Card */}
+                  <div className="flex items-center justify-between w-full">
+                    <span className="font-mono text-xs font-black text-wr-orange bg-wr-surface px-2 py-0.5 rounded-lg border border-wr-border">
                       {order.number}
                     </span>
-                    <span className="text-[10px] font-mono text-wr-muted">{order.date}</span>
+                    <span className="text-[10px] font-mono text-wr-muted font-medium">
+                      {order.date}
+                    </span>
                   </div>
 
-                  <div>
-                    <p className="text-xs font-bold text-wr-text truncate group-hover:text-wr-orange transition-colors">
-                      {order.clientName}
-                    </p>
-                    <div className="flex items-center gap-1.5 text-[11px] text-wr-muted truncate mt-0.5">
-                      <span className="font-semibold">{order.vehicleModel}</span>
-                      <span className="rounded bg-wr-surface border border-wr-border px-1 py-0.2 font-mono text-[10px] font-bold text-wr-text">
-                        {order.vehiclePlate}
-                      </span>
+                  {/* Informações do Veículo com Placa Mercosul */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="inline-flex flex-col border border-neutral-700/40 rounded bg-white overflow-hidden shadow-2xs shrink-0 select-none">
+                        <div className="bg-[#003399] text-white text-[6px] font-black px-1.5 text-center uppercase leading-tight">
+                          BRASIL
+                        </div>
+                        <div className="px-1.5 py-0.2 text-center font-mono font-black text-[10px] text-neutral-900 tracking-wider leading-none">
+                          {order.vehiclePlate}
+                        </div>
+                      </div>
+                      <p className="text-xs font-bold text-wr-text truncate group-hover:text-wr-orange transition-colors">
+                        {order.vehicleModel}
+                      </p>
                     </div>
+
+                    <p className="text-[11px] text-wr-muted truncate">
+                      Cliente: <span className="font-semibold text-wr-text">{order.clientName}</span>
+                    </p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2.5 border-t border-wr-border text-xs">
+                  {/* Rodapé do Card com Status e Valor */}
+                  <div className="flex items-center justify-between pt-2.5 border-t border-wr-border/70 text-xs w-full">
                     <span
                       className={`text-[9px] uppercase font-extrabold px-2 py-0.5 rounded-full border ${statusColor}`}
                     >
-                      {order.status}
+                      {statusText}
                     </span>
-                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="font-mono font-black text-sm text-wr-text group-hover:text-wr-orange transition-colors">
                       {formatCurrency(order.totalAmount)}
                     </span>
                   </div>
