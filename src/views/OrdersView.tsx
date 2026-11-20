@@ -2034,18 +2034,6 @@ export const OrdersView: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              {/* 6. CAMPOS DE ASSINATURA */}
-              <div className="pt-10 grid grid-cols-2 gap-8 text-center text-xs">
-                <div className="border-t border-slate-400 pt-2">
-                  <p className="font-bold text-slate-900 uppercase">{fiscalSettings.tradeName || 'WR Mecânica & Cia'}</p>
-                  <p className="text-[10px] text-slate-500">Responsável Técnico / Mecânico</p>
-                </div>
-                <div className="border-t border-slate-400 pt-2">
-                  <p className="font-bold text-slate-900 uppercase">{pdfModalOrder.clientName}</p>
-                  <p className="text-[10px] text-slate-500">Assinatura do Cliente / Proprietário</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
