@@ -19,6 +19,7 @@ export default {
           muted: 'rgb(var(--wr-muted) / <alpha-value>)',
           orange: 'rgb(var(--wr-orange) / <alpha-value>)',
           orangeDark: 'rgb(var(--wr-orange-dark) / <alpha-value>)',
+          orangeSoft: 'rgb(var(--wr-orange-soft) / <alpha-value>)',
           gold: 'rgb(var(--wr-gold) / <alpha-value>)',
         }
       },

@@ -144,7 +144,7 @@ export const ReportsView: React.FC = () => {
 
             <div className="wr-surface-muted p-4">
               <span className="text-[11px] text-wr-muted block">Ticket Médio (OS)</span>
-              <span className="text-xl font-extrabold text-wr-gold font-mono mt-1 block">
+              <span className="text-xl font-extrabold text-wr-orange font-mono mt-1 block">
                 {formatCurrency(summary.ticketMedio)}
               </span>
               <span className="text-[10px] text-wr-muted mt-1 inline-block">

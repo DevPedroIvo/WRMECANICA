@@ -23,18 +23,18 @@ export function buildWrLogoSvg({
   const vbHeight = showSubtitle ? 124 : 92
   const sizeAttrs = `${width ? ` width="${width}"` : ''}${height ? ` height="${height}"` : ''}`
 
-  const gold =
+  const wrMonogram =
     variant === 'dark'
-      ? ['#FFF1C1', '#F7CD5E', '#E5A51B', '#B87A0C']
-      : ['#E9B53A', '#D49516', '#B47A0A', '#7E5300']
+      ? ['#FFFFFF', '#FFEDD5', '#F97316', '#EA580C']
+      : ['#1E293B', '#EA580C', '#F97316', '#C2410C']
   const orange =
-    variant === 'dark' ? ['#FF8A00', '#FFA63D', '#E86F00'] : ['#F07800', '#FF8C1A', '#D45F00']
-  const highlight = variant === 'dark' ? '#FFF7DC' : '#FFE7A3'
+    variant === 'dark' ? ['#FB923C', '#F97316', '#EA580C'] : ['#F97316', '#EA580C', '#C2410C']
+  const highlight = variant === 'dark' ? '#FFF7ED' : '#FFEDD5'
 
   const ray =
     variant === 'dark'
-      ? `<path d="M6 54 Q160 44 314 54" stroke="url(#${p}-gold)" stroke-width="1.2" stroke-opacity="0.55" fill="none"/>
-         <ellipse cx="250" cy="50" rx="34" ry="1.6" fill="#FFD27A" opacity="0.55"/>`
+      ? `<path d="M6 54 Q160 44 314 54" stroke="url(#${p}-brand)" stroke-width="1.2" stroke-opacity="0.55" fill="none"/>
+         <ellipse cx="250" cy="50" rx="34" ry="1.6" fill="#F97316" opacity="0.45"/>`
       : ''
 
   const subtitle = showSubtitle
@@ -45,11 +45,11 @@ export function buildWrLogoSvg({
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 ${vbHeight}"${sizeAttrs} role="img" aria-label="WR Mecânica &amp; Cia">
   <defs>
-    <linearGradient id="${p}-gold" gradientUnits="userSpaceOnUse" x1="0" y1="12" x2="0" y2="84">
-      <stop offset="0" stop-color="${gold[0]}"/>
-      <stop offset="0.35" stop-color="${gold[1]}"/>
-      <stop offset="0.7" stop-color="${gold[2]}"/>
-      <stop offset="1" stop-color="${gold[3]}"/>
+    <linearGradient id="${p}-brand" gradientUnits="userSpaceOnUse" x1="0" y1="12" x2="0" y2="84">
+      <stop offset="0" stop-color="${wrMonogram[0]}"/>
+      <stop offset="0.35" stop-color="${wrMonogram[1]}"/>
+      <stop offset="0.7" stop-color="${wrMonogram[2]}"/>
+      <stop offset="1" stop-color="${wrMonogram[3]}"/>
     </linearGradient>
     <linearGradient id="${p}-orange" gradientUnits="userSpaceOnUse" x1="40" y1="0" x2="280" y2="0">
       <stop offset="0" stop-color="${orange[0]}"/>
@@ -58,7 +58,7 @@ export function buildWrLogoSvg({
     </linearGradient>
   </defs>
   ${ray}
-  <g fill="url(#${p}-gold)">
+  <g fill="url(#${p}-brand)">
     <!-- W (dois "V" serifados sobrepostos: traço grosso + traço fino) -->
     <polygon points="24,14 40,14 70,82 60,82"/>
     <polygon points="64,82 70,82 97,14 92,14"/>

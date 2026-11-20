@@ -71,8 +71,8 @@ export const BottomNav: React.FC = () => {
                   }}
                   className={`flex flex-col items-center gap-1 rounded-xl p-2.5 text-[11px] font-semibold transition-colors ${
                     active
-                      ? 'bg-wr-orange text-white dark:text-[#0B0C10]'
-                      : 'bg-wr-elevated text-wr-muted hover:text-wr-text'
+                      ? 'bg-[#F97316] text-white font-bold shadow-md'
+                      : 'bg-[#162238] border border-[#1F2E47] text-slate-300 hover:text-white'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -104,7 +104,7 @@ export const BottomNav: React.FC = () => {
         </div>
       )}
 
-      <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-wr-border bg-wr-surface/95 backdrop-blur-md py-2 px-1 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden shadow-lg">
+      <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-[#1F2E47] bg-[#111B2B]/95 backdrop-blur-md py-2 px-1 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden shadow-lg">
         {accessibleMain.map(tab => {
           const Icon = tab.icon
           const active = activeTab === tab.id
@@ -116,7 +116,7 @@ export const BottomNav: React.FC = () => {
                 setMoreOpen(false)
               }}
               className={`flex flex-col items-center justify-center gap-1 rounded-xl py-1.5 px-3 min-w-[56px] text-[11px] font-bold transition-all active:scale-95 ${
-                active ? 'text-wr-orange bg-wr-orange/15 shadow-xs' : 'text-wr-muted hover:text-wr-text'
+                active ? 'text-[#F97316] bg-[#F97316]/15 shadow-xs font-black' : 'text-slate-400 hover:text-white'
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -128,7 +128,7 @@ export const BottomNav: React.FC = () => {
         <button
           onClick={() => setMoreOpen(prev => !prev)}
           className={`flex flex-col items-center justify-center gap-1 rounded-xl py-1.5 px-3 min-w-[56px] text-[11px] font-bold transition-all active:scale-95 ${
-            isExtraActive || moreOpen ? 'text-wr-orange bg-wr-orange/15 shadow-xs' : 'text-wr-muted hover:text-wr-text'
+            isExtraActive || moreOpen ? 'text-[#F97316] bg-[#F97316]/15 shadow-xs font-black' : 'text-slate-400 hover:text-white'
           }`}
         >
           <MoreHorizontal className="h-4 w-4" />

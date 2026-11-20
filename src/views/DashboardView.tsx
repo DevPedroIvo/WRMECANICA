@@ -237,13 +237,13 @@ export const DashboardView: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('fiado')}
-          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-amber-500 hover:shadow-card flex flex-col justify-between overflow-hidden"
+          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-wr-orange hover:shadow-card flex flex-col justify-between overflow-hidden"
         >
           <div className="flex items-center justify-between w-full">
             <span className="text-xs font-bold uppercase tracking-wider text-wr-muted">
               Pagar Depois (A Prazo)
             </span>
-            <div className="h-11 w-11 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center transition-transform group-hover:scale-110">
+            <div className="h-11 w-11 rounded-2xl bg-wr-orange/15 text-wr-orange flex items-center justify-center transition-transform group-hover:scale-110">
               <Wallet className="h-5 w-5" />
             </div>
           </div>
@@ -265,7 +265,7 @@ export const DashboardView: React.FC = () => {
 
           <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
             <span>Cobranças &amp; Extrato</span>
-            <ArrowUpRight className="h-3.5 w-3.5 text-amber-500 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            <ArrowUpRight className="h-3.5 w-3.5 text-wr-orange transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </div>
         </button>
 
@@ -301,13 +301,13 @@ export const DashboardView: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('clientes')}
-          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-wr-gold hover:shadow-card flex flex-col justify-between overflow-hidden"
+          className="group relative rounded-3xl border border-wr-border bg-wr-surface p-5 text-left transition-all duration-200 hover:border-wr-orange hover:shadow-card flex flex-col justify-between overflow-hidden"
         >
           <div className="flex items-center justify-between w-full">
             <span className="text-xs font-bold uppercase tracking-wider text-wr-muted">
               Clientes &amp; Frotas
             </span>
-            <div className="h-11 w-11 rounded-2xl bg-wr-gold/15 text-wr-gold flex items-center justify-center transition-transform group-hover:scale-110">
+            <div className="h-11 w-11 rounded-2xl bg-wr-orange/15 text-wr-orange flex items-center justify-center transition-transform group-hover:scale-110">
               <Users className="h-5 w-5" />
             </div>
           </div>
@@ -323,7 +323,7 @@ export const DashboardView: React.FC = () => {
 
           <div className="mt-3 pt-3 border-t border-wr-border/60 flex items-center justify-between text-[11px] text-wr-muted">
             <span>Gerenciar cadastros</span>
-            <ArrowUpRight className="h-3.5 w-3.5 text-wr-gold transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            <ArrowUpRight className="h-3.5 w-3.5 text-wr-orange transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </div>
         </button>
       </div>
@@ -414,7 +414,7 @@ export const DashboardView: React.FC = () => {
                           style={{ height: `${barHeightPercent}%` }}
                           className={`w-full rounded-xl transition-all duration-300 ${
                             isSelected
-                              ? 'bg-gradient-to-t from-wr-orangeDark via-wr-orange to-amber-400 shadow-md'
+                              ? 'bg-gradient-to-t from-wr-orangeDark to-wr-orange shadow-md'
                               : 'bg-wr-borderHover/70 group-hover:bg-wr-orange/60'
                           }`}
                         />
@@ -569,7 +569,7 @@ export const DashboardView: React.FC = () => {
                   ? 'bg-blue-500/15 text-blue-500 border-blue-500/30'
                   : order.status === 'andamento'
                   ? 'bg-wr-orange/15 text-wr-orange border-wr-orange/30'
-                  : 'bg-amber-500/15 text-amber-500 border-amber-500/30'
+                  : 'bg-wr-orange/15 text-wr-orange border-wr-orange/30'
 
               return (
                 <button

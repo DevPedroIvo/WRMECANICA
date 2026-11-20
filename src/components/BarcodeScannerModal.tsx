@@ -161,7 +161,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             </>
           ) : (
             <div className="p-4 text-center space-y-2">
-              <AlertCircle className="h-8 w-8 text-amber-500 mx-auto" />
+              <AlertCircle className="h-8 w-8 text-orange-500 mx-auto" />
               <p className="text-xs text-wr-muted">{errorMessage}</p>
               <button
                 type="button"

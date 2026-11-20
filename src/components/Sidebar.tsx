@@ -108,16 +108,16 @@ export const Sidebar: React.FC = () => {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-wr-border bg-wr-sidebar select-none transition-transform duration-200 ease-out lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-[#1F2E47] bg-[#111B2B] text-slate-100 select-none transition-transform duration-200 ease-out lg:translate-x-0 ${
           mobileMenuOpen ? 'translate-x-0 shadow-elevated' : '-translate-x-full'
         }`}
       >
         {/* Logo */}
-        <div className="relative flex flex-col items-center justify-center border-b border-wr-border py-5 px-4">
-          <WrLogo size="md" showSubtitle={true} />
+        <div className="relative flex flex-col items-center justify-center border-b border-[#1F2E47] py-5 px-4">
+          <WrLogo size="md" variant="dark" showSubtitle={true} />
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="absolute right-3 top-3 rounded-lg p-1.5 text-wr-muted hover:bg-wr-elevated hover:text-wr-text lg:hidden"
+            className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white lg:hidden"
             aria-label="Fechar menu"
           >
             <X className="h-4 w-4" />
@@ -134,7 +134,7 @@ export const Sidebar: React.FC = () => {
             .filter(group => group.items.length > 0)
             .map(group => (
               <div key={group.label} className="space-y-1">
-                <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-wr-muted/80">
+                <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400/90">
                   {group.label}
                 </span>
                 <div className="space-y-1 pt-1">
@@ -147,16 +147,16 @@ export const Sidebar: React.FC = () => {
                         onClick={() => handleNavClick(item.id)}
                         className={`group flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
                           isActive
-                            ? 'bg-wr-orange text-white dark:text-[#0B0C10] font-bold shadow-sm'
-                            : 'text-wr-muted hover:bg-wr-elevated hover:text-wr-text'
+                            ? 'bg-[#F97316] hover:bg-[#EA580C] text-white font-bold shadow-md'
+                            : 'text-slate-300 hover:bg-white/5 hover:text-white'
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <Icon
                             className={`h-4 w-4 transition-colors ${
                               isActive
-                                ? 'text-white dark:text-[#0B0C10]'
-                                : 'text-wr-muted group-hover:text-wr-orange'
+                                ? 'text-white'
+                                : 'text-slate-400 group-hover:text-[#F97316]'
                             }`}
                             strokeWidth={isActive ? 2.25 : 1.75}
                           />
@@ -167,10 +167,10 @@ export const Sidebar: React.FC = () => {
                           <span
                             className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                               isActive
-                                ? 'bg-black/20 text-white dark:bg-[#0B0C10]/85 dark:text-wr-orange'
+                                ? 'bg-black/25 text-white'
                                 : item.badgeDanger
-                                ? 'bg-rose-500/15 text-rose-500 dark:text-rose-400'
-                                : 'bg-wr-elevated text-wr-muted border border-wr-border'
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                : 'bg-[#F97316]/20 text-[#F97316] border border-[#F97316]/30'
                             }`}
                           >
                             {item.badge}
@@ -178,7 +178,7 @@ export const Sidebar: React.FC = () => {
                         )}
 
                         {item.customBadge && (
-                          <span className="rounded-full bg-emerald-500/20 text-emerald-500 text-[10px] font-bold px-2 py-0.5 border border-emerald-500/30">
+                          <span className="rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 border border-emerald-500/30">
                             {item.customBadge}
                           </span>
                         )}
@@ -192,18 +192,18 @@ export const Sidebar: React.FC = () => {
 
         {/* Operador Ativo */}
         {currentUserRole && (
-          <div className="p-3 mx-3 mb-2 rounded-2xl bg-wr-elevated border border-wr-border">
+          <div className="p-3 mx-3 mb-2 rounded-2xl bg-[#162238] border border-[#1F2E47]">
             <div className="flex items-center gap-2.5 min-w-0">
               <span
                 className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                  currentUserRole === 'dono' ? 'bg-wr-orange animate-pulse' : 'bg-emerald-500'
+                  currentUserRole === 'dono' ? 'bg-[#F97316] animate-pulse' : 'bg-emerald-500'
                 }`}
               />
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-wr-text uppercase tracking-wider truncate">
+                <p className="text-xs font-bold text-white uppercase tracking-wider truncate">
                   {currentUserRole === 'dono' ? 'Dono (Administrador)' : 'Equipe (Wr_mecanica)'}
                 </p>
-                <p className="text-[10px] text-wr-muted truncate">
+                <p className="text-[10px] text-slate-400 truncate">
                   {activeShift ? 'Caixa Aberto' : 'Caixa Fechado'}
                 </p>
               </div>
@@ -212,11 +212,11 @@ export const Sidebar: React.FC = () => {
         )}
 
         {/* Rodapé institucional limpo */}
-        <div className="p-4 border-t border-wr-border text-center">
-          <p className="text-[10px] font-semibold text-wr-muted uppercase tracking-wider">
+        <div className="p-4 border-t border-[#1F2E47] text-center">
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
             WR Mecânica &amp; Cia
           </p>
-          <p className="text-[9px] text-wr-muted/70">
+          <p className="text-[9px] text-slate-500">
             Luzimangues • Porto Nacional/TO
           </p>
         </div>

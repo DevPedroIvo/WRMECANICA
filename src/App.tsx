@@ -79,7 +79,7 @@ const MainAppContent: React.FC = () => {
                   <Info className="h-4 w-4 text-wr-orange shrink-0" />
                 )}
                 {toast.type === 'warning' && (
-                  <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                  <AlertTriangle className="h-4 w-4 text-orange-500 shrink-0" />
                 )}
                 <span>{toast.message}</span>
               </div>

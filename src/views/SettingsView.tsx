@@ -559,7 +559,7 @@ export const SettingsView: React.FC = () => {
 
           {/* Endereço e Localização em Luzimangues */}
           <div className="p-3.5 rounded-xl bg-wr-surface border border-wr-border space-y-3">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-wr-gold flex items-center gap-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5" /> Localização: Distrito de Luzimangues / Porto Nacional - TO
             </span>
             
@@ -683,7 +683,7 @@ export const SettingsView: React.FC = () => {
 
         {/* Card 3: Parâmetros Fiscais (NFS-e Porto Nacional / Luzimangues) */}
         <div className="wr-card p-5 space-y-4 text-xs">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-wr-gold flex items-center justify-between border-b border-wr-border pb-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-wr-orange flex items-center justify-between border-b border-wr-border pb-3">
             <span className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4" /> Validade Fiscal (NFS-e Municipal / Nacional)
             </span>

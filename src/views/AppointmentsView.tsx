@@ -242,7 +242,7 @@ export const AppointmentsView: React.FC = () => {
                   {getStatusBadge(apt.status)}
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-wr-muted">
-                  <span className="inline-flex items-center gap-1 font-mono font-semibold text-wr-gold">
+                  <span className="inline-flex items-center gap-1 font-mono font-semibold text-wr-orange">
                     <Car className="h-3.5 w-3.5" />
                     {apt.vehicleModel} ({apt.vehiclePlate})
                   </span>

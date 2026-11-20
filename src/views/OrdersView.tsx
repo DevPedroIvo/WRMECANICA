@@ -539,7 +539,7 @@ export const OrdersView: React.FC = () => {
     switch (status) {
       case 'aguardando':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-500/15 text-orange-500 border border-orange-500/30">
             <Clock className="h-3.5 w-3.5" />
             Aguardando
           </span>
@@ -640,7 +640,7 @@ export const OrdersView: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsNewOrderModalOpen(true)}
-          className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-neutral-950 font-black text-xs uppercase tracking-wider px-5 py-3.5 rounded-2xl shadow-[0_10px_25px_-5px_rgba(249,115,22,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(249,115,22,0.6)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 self-start sm:self-center shrink-0"
+          className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-black text-xs uppercase tracking-wider px-5 py-3.5 rounded-2xl shadow-[0_10px_25px_-5px_rgba(249,115,22,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(249,115,22,0.6)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 self-start sm:self-center shrink-0"
         >
           <Plus className="h-4 w-4 stroke-[3]" />
           <span>Nova Ordem de Serviço</span>
@@ -770,7 +770,7 @@ export const OrdersView: React.FC = () => {
                   {/* Linha 2: Veículo, Placa, KM e Nível */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                     <div className="p-2.5 rounded-xl bg-wr-elevated border border-wr-border flex items-center gap-2 col-span-2">
-                      <Car className="h-4 w-4 text-amber-500 shrink-0" />
+                      <Car className="h-4 w-4 text-orange-500 shrink-0" />
                       <div className="min-w-0">
                         <span className="text-[9px] uppercase font-bold text-wr-muted block">Veículo</span>
                         <span className="font-bold text-wr-text block truncate">{order.vehicleModel}</span>
@@ -824,9 +824,9 @@ export const OrdersView: React.FC = () => {
                         setEditingOrder(order)
                         setFormStatus('andamento')
                       }}
-                      className="w-full py-2.5 px-4 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-700 dark:text-amber-400 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-sm"
+                      className="w-full py-2.5 px-4 rounded-2xl bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/30 text-orange-600 dark:text-orange-400 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-sm"
                     >
-                      <DollarSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      <DollarSign className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                       <span>Adicionar Valores na OS (Peças &amp; Serviços)</span>
                     </button>
                   )}
@@ -892,7 +892,7 @@ export const OrdersView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setEditingOrder(order)}
-                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25 transition-all text-[11px] font-bold"
+                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-500/25 transition-all text-[11px] font-bold"
                       title="Alterar dados, serviços e peças da OS"
                     >
                       <Edit2 className="h-4 w-4 shrink-0" />
@@ -971,7 +971,7 @@ export const OrdersView: React.FC = () => {
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { id: 'aguardando', label: 'Aguardando', color: 'border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400' },
+                    { id: 'aguardando', label: 'Aguardando', color: 'border-orange-400 bg-orange-400/15 text-orange-600 dark:text-orange-400' },
                     { id: 'andamento', label: 'Em Andamento', color: 'border-orange-500 bg-orange-500/15 text-orange-600 dark:text-orange-400' },
                     { id: 'pronto', label: 'Pronto', color: 'border-blue-500 bg-blue-500/15 text-blue-600 dark:text-blue-400' },
                   ].map(st => (
@@ -1188,7 +1188,7 @@ export const OrdersView: React.FC = () => {
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { id: 'reserva', label: 'Reserva', color: 'border-rose-500 bg-rose-500/15 text-rose-600 dark:text-rose-400' },
-                      { id: 'medio', label: 'Médio (~1/2)', color: 'border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400' },
+                      { id: 'medio', label: 'Médio (~1/2)', color: 'border-orange-500 bg-orange-500/15 text-orange-600 dark:text-orange-400' },
                       { id: 'cheio', label: 'Cheio', color: 'border-emerald-500 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
                     ].map(f => (
                       <button
@@ -1416,7 +1416,7 @@ export const OrdersView: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSaveOrder}
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-neutral-950 font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-lg hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+                  className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-lg hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
                 >
                   <Save className="h-4 w-4" />
                   <span>{editingOrder ? 'Salvar Alterações da OS' : 'Salvar Ordem de Serviço'}</span>
@@ -1580,8 +1580,8 @@ export const OrdersView: React.FC = () => {
             )}
 
             {checkoutPaymentMethod === 'pagar_depois' && (
-              <div className="p-3.5 rounded-2xl bg-wr-elevated border border-amber-500/30 space-y-1.5 animate-fadeIn">
-                <label className="block text-xs font-bold text-amber-600 dark:text-amber-400">
+              <div className="p-3.5 rounded-2xl bg-wr-elevated border border-orange-500/30 space-y-1.5 animate-fadeIn">
+                <label className="block text-xs font-bold text-orange-600 dark:text-orange-400">
                   Data combinada para pagamento (Vencimento):
                 </label>
                 <input
@@ -1778,7 +1778,7 @@ export const OrdersView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-neutral-950 font-black text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-black text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
                 >
                   <Printer className="h-4 w-4" />
                   <span>Imprimir / PDF</span>
@@ -1811,7 +1811,7 @@ export const OrdersView: React.FC = () => {
                     <p className="text-[11px] text-slate-500">
                       {fiscalSettings.address || 'Rodovia TO-080, KM 12'} &bull; {fiscalSettings.district || 'Luzimangues'}, {fiscalSettings.city || 'Porto Nacional'} - {fiscalSettings.state || 'TO'}
                     </p>
-                    <p className="text-[11px] font-bold text-amber-700">
+                    <p className="text-[11px] font-bold text-orange-600">
                       Telefone / WhatsApp: {fiscalSettings.phone || '(63) 99208-8283'} &bull; Atendimento Especializado Multimarcas
                     </p>
                   </div>
@@ -1821,7 +1821,7 @@ export const OrdersView: React.FC = () => {
                   <span className="text-[10px] font-black tracking-widest uppercase text-slate-500 block">
                     ORDEM DE SERVIÇO Nº
                   </span>
-                  <span className="font-mono text-2xl font-black text-amber-700 block">
+                  <span className="font-mono text-2xl font-black text-orange-600 block">
                     {pdfModalOrder.number}
                   </span>
                   <div className="mt-1 space-y-0.5 text-xs text-slate-600">
@@ -1851,8 +1851,8 @@ export const OrdersView: React.FC = () => {
                 {/* Cartão Cliente */}
                 <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2">
                   <div className="flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
-                    <User className="h-4 w-4 text-amber-700" />
-                    <span className="text-xs font-black uppercase tracking-wider text-amber-800">
+                    <User className="h-4 w-4 text-orange-600" />
+                    <span className="text-xs font-black uppercase tracking-wider text-orange-700">
                       Dados do Cliente
                     </span>
                   </div>
@@ -1875,8 +1875,8 @@ export const OrdersView: React.FC = () => {
                 {/* Cartão Veículo */}
                 <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2">
                   <div className="flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
-                    <Car className="h-4 w-4 text-amber-700" />
-                    <span className="text-xs font-black uppercase tracking-wider text-amber-800">
+                    <Car className="h-4 w-4 text-orange-600" />
+                    <span className="text-xs font-black uppercase tracking-wider text-orange-700">
                       Dados do Veículo
                     </span>
                   </div>
@@ -1887,7 +1887,7 @@ export const OrdersView: React.FC = () => {
                     </div>
                     <div>
                       <span className="text-[10px] uppercase font-bold text-slate-500 block">Placa</span>
-                      <p className="font-mono font-black text-amber-800">{pdfModalOrder.vehiclePlate}</p>
+                      <p className="font-mono font-black text-orange-600">{pdfModalOrder.vehiclePlate}</p>
                     </div>
                     <div>
                       <span className="text-[10px] uppercase font-bold text-slate-500 block">Quilometragem</span>
@@ -1928,7 +1928,7 @@ export const OrdersView: React.FC = () => {
               {/* 4. DISCRIMINAÇÃO DOS SERVIÇOS E PEÇAS EXECUTADAS */}
               <div className="space-y-2">
                 <span className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                  <Wrench className="h-4 w-4 text-amber-700" /> Discriminação de Serviços e Peças
+                  <Wrench className="h-4 w-4 text-orange-600" /> Discriminação de Serviços e Peças
                 </span>
 
                 <div className="overflow-x-auto rounded-xl border border-slate-300">
@@ -1985,9 +1985,9 @@ export const OrdersView: React.FC = () => {
                   )}
 
                   {/* Garantia Legal Art. 26 CDC */}
-                  <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 space-y-1 text-slate-800">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1">
-                      <ShieldCheck className="h-3.5 w-3.5 text-amber-700" />
+                  <div className="rounded-xl border border-orange-200 bg-orange-50/70 p-3 space-y-1 text-slate-800">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-orange-900 flex items-center gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5 text-orange-600" />
                       Garantia Legal de Serviços &bull; 90 Dias
                     </span>
                     <p className="text-[11px] text-slate-700 leading-tight">
@@ -2022,7 +2022,7 @@ export const OrdersView: React.FC = () => {
 
                   <div className="flex justify-between items-center text-slate-900 pt-2 border-t-2 border-slate-900">
                     <span className="text-sm font-black uppercase">VALOR TOTAL DA OS:</span>
-                    <span className="font-mono text-2xl font-black text-amber-800">
+                    <span className="font-mono text-2xl font-black text-orange-600">
                       {formatCurrency(pdfModalOrder.totalAmount || 0)}
                     </span>
                   </div>

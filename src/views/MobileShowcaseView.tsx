@@ -62,7 +62,7 @@ export const MobileShowcaseView: React.FC = () => {
             <div className="px-4 py-2 flex items-center justify-between border-b border-white/5">
               <Menu className="h-4 w-4 text-slate-400" />
               <div className="text-center">
-                <span className="font-serif text-xs font-bold text-amber-400 block tracking-wider">WR</span>
+                <span className="font-serif text-xs font-bold text-wr-orange block tracking-wider">WR</span>
                 <span className="text-[9px] text-[#f97316] font-semibold">Mecânica &amp; Cia</span>
               </div>
               <Bell className="h-4 w-4 text-slate-400" />
@@ -290,12 +290,12 @@ export const MobileShowcaseView: React.FC = () => {
                 </div>
                 <div className="space-y-1.5">
                   <div className="bg-[#1c1e26] p-2 rounded-lg flex justify-between items-center text-[10px]">
-                    <span className="font-bold text-amber-400">OS #1024</span>
+                    <span className="font-bold text-wr-orange">OS #1024</span>
                     <span className="text-slate-400">15/11/2025</span>
                     <ChevronRight className="h-3 w-3 text-slate-500" />
                   </div>
                   <div className="bg-[#1c1e26] p-2 rounded-lg flex justify-between items-center text-[10px]">
-                    <span className="font-bold text-amber-400">OS #0987</span>
+                    <span className="font-bold text-wr-orange">OS #0987</span>
                     <span className="text-slate-400">02/10/2025</span>
                     <ChevronRight className="h-3 w-3 text-slate-500" />
                   </div>
@@ -404,7 +404,7 @@ export const MobileShowcaseView: React.FC = () => {
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                       item.ok 
                         ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
-                        : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                        : 'bg-orange-500/20 text-orange-400 border border-orange-500/40'
                     }`}>
                       {item.status}
                     </span>
@@ -470,14 +470,14 @@ export const MobileShowcaseView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Saldo Atual (Gold Money Bag) */}
-              <div className="bg-[#1c1e26] p-3 rounded-xl border border-amber-500/30 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400">
+              {/* Saldo Atual (Orange Money Bag) */}
+              <div className="bg-[#1c1e26] p-3 rounded-xl border border-wr-orange/30 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-wr-orange/20 flex items-center justify-center text-wr-orange">
                   <DollarSign className="h-6 w-6" />
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 block">Saldo Atual</span>
-                  <span className="text-base font-black text-amber-400">R$ 8.320,00</span>
+                  <span className="text-base font-black text-wr-orange">R$ 8.320,00</span>
                 </div>
               </div>
 
@@ -547,9 +547,9 @@ export const MobileShowcaseView: React.FC = () => {
               ].map((item, idx) => {
                 const Icon = item.icon
                 return (
-                  <div key={idx} className="bg-[#1c1e26] p-2.5 rounded-xl border border-white/5 flex items-center justify-between cursor-pointer hover:border-amber-500/40">
+                  <div key={idx} className="bg-[#1c1e26] p-2.5 rounded-xl border border-white/5 flex items-center justify-between cursor-pointer hover:border-wr-orange/40">
                     <div className="flex items-center gap-2.5">
-                      <div className="h-7 w-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
+                      <div className="h-7 w-7 rounded-lg bg-wr-orange/10 flex items-center justify-center text-wr-orange">
                         <Icon className="h-4 w-4" />
                       </div>
                       <div>

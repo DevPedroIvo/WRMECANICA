@@ -387,12 +387,12 @@ export const ClientsView: React.FC = () => {
             <strong className="font-mono text-wr-text">{clients.length}</strong>
           </div>
           <div className="inline-flex items-center gap-2 rounded-xl border border-wr-border bg-wr-surface px-3.5 py-2 text-xs">
-            <Car className="h-4 w-4 text-wr-gold" />
+            <Car className="h-4 w-4 text-wr-orange" />
             <span className="text-wr-muted">Veículos:</span>
             <strong className="font-mono text-wr-text">{vehicles.length}</strong>
           </div>
           <div className="inline-flex items-center gap-2 rounded-xl border border-wr-border bg-wr-surface px-3.5 py-2 text-xs">
-            <Bell className="h-4 w-4 text-amber-500" />
+            <Bell className="h-4 w-4 text-wr-orange" />
             <span className="text-wr-muted">Lembretes Ativos:</span>
             <strong className="font-mono text-wr-text">
               {reminders.filter(r => !r.done).length}
@@ -473,7 +473,7 @@ export const ClientsView: React.FC = () => {
                           </h4>
                           {hasDebt && (
                             <span
-                              className="inline-flex items-center rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-600 dark:text-amber-400"
+                              className="inline-flex items-center rounded-full bg-wr-orange/15 px-1.5 py-0.5 text-[9px] font-bold text-wr-orange"
                               title="Possui saldo em Pagar Depois"
                             >
                               A prazo
@@ -633,13 +633,13 @@ export const ClientsView: React.FC = () => {
 
               {/* Alerta se o cliente tiver saldo em Pagar Depois */}
               {clientTotalDebt > 0 && (
-                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 flex flex-wrap items-center justify-between gap-3">
+                <div className="rounded-xl border border-wr-orange/30 bg-wr-orange/10 p-3.5 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 text-xs">
-                    <Wallet className="h-4 w-4 text-amber-500 shrink-0" />
+                    <Wallet className="h-4 w-4 text-wr-orange shrink-0" />
                     <div>
                       <span className="font-bold text-wr-text">
                         Saldo em Pagar Depois:{' '}
-                        <span className="font-mono text-amber-600 dark:text-amber-400">
+                        <span className="font-mono text-wr-orange font-black">
                           {formatCurrency(clientTotalDebt)}
                         </span>
                       </span>
@@ -650,7 +650,7 @@ export const ClientsView: React.FC = () => {
                   </div>
                   <button
                     onClick={() => setActiveTab('fiado')}
-                    className="rounded-lg bg-amber-500 px-3 py-1.5 text-[11px] font-bold text-white dark:text-[#0B0C10] hover:brightness-110 transition"
+                    className="rounded-lg bg-wr-orange px-3 py-1.5 text-[11px] font-bold text-white hover:bg-wr-orangeDark transition"
                   >
                     Ver em Pagar Depois →
                   </button>
@@ -755,7 +755,7 @@ export const ClientsView: React.FC = () => {
                                   <AlertCircle className="h-2.5 w-2.5" /> Vencido
                                 </span>
                               ) : (
-                                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-bold text-amber-500">
+                                <span className="rounded-full bg-wr-orange/15 px-2 py-0.5 text-[9px] font-bold text-wr-orange">
                                   Programado
                                 </span>
                               )}
@@ -768,7 +768,7 @@ export const ClientsView: React.FC = () => {
                               </span>
                               {rem.dueMileage && (
                                 <span className="inline-flex items-center gap-1 font-mono">
-                                  <Gauge className="h-3 w-3 text-wr-gold" />
+                                  <Gauge className="h-3 w-3 text-wr-orange" />
                                   {rem.dueMileage.toLocaleString('pt-BR')} km
                                 </span>
                               )}

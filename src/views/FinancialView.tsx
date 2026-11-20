@@ -206,7 +206,7 @@ export const FinancialView: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => setActiveTab('fiado')} className="wr-btn-secondary">
-            <Wallet className="h-4 w-4 text-amber-500" />
+            <Wallet className="h-4 w-4 text-wr-orange" />
             Pagar Depois ({formatCurrency(totalPagarDepois)})
           </button>
           <button
@@ -322,37 +322,37 @@ export const FinancialView: React.FC = () => {
           </div>
         </div>
 
-        <div className="wr-card p-5 flex items-center justify-between border-wr-gold/40">
+        <div className="wr-card p-5 flex items-center justify-between border-wr-orange/40">
           <div>
             <span className="text-xs font-semibold text-wr-muted block">
               Saldo em Caixa ({margem}% margem)
             </span>
-            <span className="text-2xl font-extrabold font-mono text-wr-gold mt-1 block">
+            <span className="text-2xl font-extrabold font-mono text-wr-orange mt-1 block">
               {formatCurrency(saldoAtual)}
             </span>
             <span className="text-[10px] text-wr-muted mt-0.5 block">
               {saldoAtual >= 0 ? 'Resultado positivo' : 'Déficit no período'}
             </span>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-wr-gold/15 text-wr-gold flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-wr-orange/15 text-wr-orange flex items-center justify-center">
             <DollarSign className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="wr-card p-5 flex items-center justify-between border-amber-500/30">
+        <div className="wr-card p-5 flex items-center justify-between border-wr-orange/30">
           <div>
             <span className="text-xs font-semibold text-wr-muted block">A Prazo (Pagar Depois)</span>
-            <span className="text-2xl font-extrabold font-mono text-amber-500 mt-1 block">
+            <span className="text-2xl font-extrabold font-mono text-wr-orange mt-1 block">
               {formatCurrency(totalPagarDepois)}
             </span>
             <button
               onClick={() => setActiveTab('fiado')}
-              className="text-[10px] text-amber-500 hover:underline mt-0.5 block font-bold"
+              className="text-[10px] text-wr-orange hover:underline mt-0.5 block font-bold"
             >
               Ver contas a receber →
             </button>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-wr-orange/15 text-wr-orange flex items-center justify-center">
             <Wallet className="h-5 w-5" />
           </div>
         </div>
@@ -475,7 +475,7 @@ export const FinancialView: React.FC = () => {
                           {isReceita ? 'Recebido' : 'Pago'}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-500">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-wr-orange/15 px-2 py-0.5 text-[10px] font-bold text-wr-orange">
                           <Clock className="h-3 w-3" />
                           Pendente
                         </span>

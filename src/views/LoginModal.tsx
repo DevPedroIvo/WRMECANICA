@@ -21,8 +21,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md">
-      {/* Phone/Card Styled Login matching Image 2 */}
-      <div className="relative w-full max-w-sm rounded-[40px] border border-amber-500/40 bg-gradient-to-b from-[#141720] to-[#0a0c10] p-7 shadow-[0_0_50px_rgba(245,158,11,0.25)] text-center animate-in fade-in zoom-in-95">
+      {/* Phone/Card Styled Login */}
+      <div className="relative w-full max-w-sm rounded-[40px] border border-orange-500/40 bg-gradient-to-b from-[#141720] to-[#0a0c10] p-7 shadow-[0_0_50px_rgba(249,115,22,0.25)] text-center animate-in fade-in zoom-in-95">
         
         <button
           onClick={onClose}
@@ -33,19 +33,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
 
         {/* Logo */}
         <div className="mt-4 mb-2 flex justify-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-600 to-amber-900 shadow-xl shadow-amber-500/30">
-            <span className="font-brand text-2xl font-black text-black">WR</span>
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 via-orange-600 to-orange-700 shadow-xl shadow-orange-500/30">
+            <span className="font-brand text-2xl font-black text-white">WR</span>
           </div>
         </div>
 
         <h2 className="font-brand text-xl font-black tracking-wide text-white">
-          WR <span className="text-amber-400">Mecânica & Cia</span>
+          WR <span className="text-orange-500">Mecânica & Cia</span>
         </h2>
-        <p className="text-xs text-amber-500/80 uppercase font-semibold tracking-widest mt-0.5">
+        <p className="text-xs text-orange-400/90 uppercase font-semibold tracking-widest mt-0.5">
           Sua oficina sempre conectada!
         </p>
 
-        {/* Car Image (matching phone screen on Image 2) */}
+        {/* Car Image */}
         <div className="my-5 relative h-36 w-full rounded-2xl overflow-hidden border border-white/10 shadow-lg">
           <img
             src="https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?auto=format&fit=crop&w=800&q=80"
@@ -66,7 +66,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-[#161a24] py-2.5 pl-9 pr-3 text-xs text-white focus:border-amber-500 focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-[#161a24] py-2.5 pl-9 pr-3 text-xs text-white focus:border-orange-500 focus:outline-none"
                 required
               />
             </div>
@@ -82,16 +82,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-[#161a24] py-2.5 pl-9 pr-3 text-xs text-white focus:border-amber-500 focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-[#161a24] py-2.5 pl-9 pr-3 text-xs text-white focus:border-orange-500 focus:outline-none"
                 required
               />
             </div>
           </div>
 
-          {/* Entrar Button (Orange button matching image 2) */}
+          {/* Entrar Button */}
           <button
             type="submit"
-            className="w-full mt-4 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 py-3.5 text-sm font-bold text-black shadow-lg shadow-amber-500/30 hover:brightness-110 active:scale-98 transition-all"
+            className="w-full mt-4 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 hover:brightness-110 active:scale-98 transition-all"
           >
             <LogIn className="h-4 w-4 stroke-[2.5]" />
             Entrar

@@ -363,7 +363,7 @@ export const CaixaView: React.FC = () => {
       {/* Histórico de Caixas Fechados */}
       <div className="wr-card p-5 space-y-4 text-xs">
         <h3 className="text-xs font-bold uppercase tracking-wider text-wr-text flex items-center gap-2 border-b border-wr-border pb-3">
-          <Clock className="h-4 w-4 text-wr-gold" /> Histórico de Caixas Fechados ({shiftHistory.length})
+          <Clock className="h-4 w-4 text-wr-orange" /> Histórico de Caixas Fechados ({shiftHistory.length})
         </h3>
 
         {shiftHistory.length > 0 ? (

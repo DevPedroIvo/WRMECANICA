@@ -265,7 +265,7 @@ export const DeferredPaymentsView: React.FC = () => {
               {stats.pendingClientsCount}
             </span>
           </div>
-          <div className="h-11 w-11 rounded-xl bg-wr-elevated border border-wr-border text-wr-gold flex items-center justify-center">
+          <div className="h-11 w-11 rounded-xl bg-wr-elevated border border-wr-border text-wr-orange flex items-center justify-center">
             <Users className="h-5 w-5" />
           </div>
         </div>
@@ -372,7 +372,7 @@ export const DeferredPaymentsView: React.FC = () => {
                       </span>
                     )}
                     {status === 'em_aberto' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 shrink-0">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-wr-orange/15 px-2.5 py-1 text-[10px] font-bold text-wr-orange shrink-0">
                         <Clock className="h-3 w-3" />
                         {daysDiff === 0 ? 'Vence hoje' : `Vence em ${daysDiff}d`}
                       </span>

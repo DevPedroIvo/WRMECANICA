@@ -206,7 +206,7 @@ export const Header: React.FC = () => {
                         className="w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-left text-xs hover:bg-wr-elevated transition-colors"
                       >
                         <div className="flex items-center gap-2.5">
-                          <Car className="h-3.5 w-3.5 text-wr-gold" />
+                          <Car className="h-3.5 w-3.5 text-wr-orange" />
                           <span className="font-semibold text-wr-text">
                             {v.brand} {v.model}
                           </span>
@@ -301,7 +301,7 @@ export const Header: React.FC = () => {
         >
           {theme === 'dark' ? (
             <>
-              <Sun className="h-4 w-4 text-amber-400" strokeWidth={2} />
+              <Sun className="h-4 w-4 text-[#F97316]" strokeWidth={2} />
               <span className="hidden xl:inline">Claro</span>
             </>
           ) : (

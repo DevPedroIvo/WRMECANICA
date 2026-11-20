@@ -222,11 +222,11 @@ export const StockView: React.FC = () => {
             <div className="wr-card p-4 flex items-center justify-between">
               <div>
                 <span className="text-xs text-wr-muted font-semibold">Alerta de Estoque Baixo</span>
-                <span className="text-2xl font-extrabold font-mono text-amber-500 block mt-1">
+                <span className="text-2xl font-extrabold font-mono text-wr-orange block mt-1">
                   {lowCount}
                 </span>
               </div>
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <AlertTriangle className="h-5 w-5 text-wr-orange" />
             </div>
 
             <div className="wr-card p-4 flex items-center justify-between">
@@ -270,7 +270,7 @@ export const StockView: React.FC = () => {
               onClick={() => setOnlyLow(prev => !prev)}
               className={`rounded-xl px-3.5 py-2.5 text-xs font-bold border transition-colors ${
                 onlyLow
-                  ? 'bg-amber-500 text-white dark:text-black border-amber-500'
+                  ? 'bg-wr-orange text-white border-wr-orange'
                   : 'bg-wr-surface text-wr-muted border-wr-border hover:text-wr-text'
               }`}
             >
@@ -294,7 +294,7 @@ export const StockView: React.FC = () => {
                     <div>
                       <h4 className="text-xs font-bold text-wr-text">{item.name}</h4>
                       <div className="flex flex-wrap items-center gap-2 text-[11px] text-wr-muted mt-0.5">
-                        <span className="font-mono text-wr-gold font-semibold">{item.code}</span>
+                        <span className="font-mono text-wr-orange font-semibold">{item.code}</span>
                         <span>•</span>
                         <span>{item.category}</span>
                         <span>•</span>
@@ -309,7 +309,7 @@ export const StockView: React.FC = () => {
                     <span
                       className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
                         isLow
-                          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                          ? 'bg-wr-orange/15 text-wr-orange'
                           : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
                       }`}
                     >
