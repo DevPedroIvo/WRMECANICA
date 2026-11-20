@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { ServiceOrder, FiscalSettings } from '../types'
+import { WrLogo } from './WrLogo'
 import {
   Printer,
   Download,
@@ -19,9 +20,29 @@ interface DanfseModalProps {
   onClose: () => void
 }
 
+const PAYMENT_LABELS: Record<string, string> = {
+  pix: 'PAGO VIA PIX',
+  dinheiro: 'PAGO EM DINHEIRO',
+  cartao_debito: 'PAGO NO CARTÃO DE DÉBITO',
+  cartao_credito: 'PAGO NO CARTÃO DE CRÉDITO',
+  pagar_depois: 'FATURADO / A PRAZO (FIADO)',
+  boleto: 'PAGO VIA BOLETO BANCÁRIO',
+  pendente: 'PENDENTE / A COMBINAR',
+}
+
 export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClose }) => {
   const [copiedKey, setCopiedKey] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
+
+  const installmentsSuffix =
+    order.paymentInstallments && order.paymentInstallments > 1
+      ? ` (${order.paymentInstallments}X)`
+      : ''
+
+  const computedPaymentDesc =
+    order.paymentMethod && order.paymentMethod !== 'pendente'
+      ? `${PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod.replace('_', ' ').toUpperCase()}${installmentsSuffix}`
+      : ''
 
   const defaultInvoice = {
     invoiceNumber: `${new Date().getFullYear()}${String(order.number.replace(/\D/g, '') || '1001').padStart(7, '0')}`,
@@ -39,9 +60,7 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
     taxRegime: settings?.taxRegime || 'Simples Nacional',
     protocolNumber: `2026.${Math.floor(100000 + Math.random() * 900000)}`,
     xmlData: '',
-    paymentMethodDescription: order.paymentMethod
-      ? `PAGO VIA ${order.paymentMethod.replace('_', ' ').toUpperCase()}`
-      : 'À VISTA',
+    paymentMethodDescription: computedPaymentDesc || 'PAGO VIA PIX',
   }
 
   const invoice = {
@@ -64,14 +83,15 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
   }
 
   const paymentDesc =
+    computedPaymentDesc ||
     invoice.paymentMethodDescription ||
-    (order.paymentMethod ? `PAGO VIA ${order.paymentMethod.replace('_', ' ').toUpperCase()}` : 'À VISTA')
+    (order.paymentMethod ? `${PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod}${installmentsSuffix}` : 'PAGO VIA PIX')
 
   const handleShareInvoice = async () => {
     const cleanNumber = (order.clientPhone || '').replace(/\D/g, '')
     const fullNumber = cleanNumber.startsWith('55') ? cleanNumber : `55${cleanNumber}`
 
-    const message = `Olá *${order.clientName}*, segue a sua *Nota Fiscal de Serviços (NFS-e nº ${invoice.invoiceNumber})* emitida pela *WR Mecânica & Cia* referente ao serviço no veículo *${order.vehicleModel}* (${order.vehiclePlate}).\n\n📄 *Valor Total:* ${formatCurrency(order.totalAmount)}\n🔑 *Chave de Acesso:* ${invoice.accessKey}\n🔗 *Consulta Pública:* https://www.nfse.gov.br/emissornacional/ConsultaPublica\n\n_Segue o documento em anexo (PDF / Impressão)._`
+    const message = `Olá *${order.clientName}*, segue a sua *Nota Fiscal de Serviços (NFS-e nº ${invoice.invoiceNumber})* emitida pela *WR Mecânica & Cia* referente ao serviço no veículo *${order.vehicleModel}* (${order.vehiclePlate}).\n\n📄 *Valor Total:* ${formatCurrency(order.totalAmount)}\n💳 *Forma de Pagamento:* ${paymentDesc}\n🔑 *Chave de Acesso:* ${invoice.accessKey}\n🔗 *Consulta Pública:* https://www.nfse.gov.br/emissornacional/ConsultaPublica\n\n_Documento fiscal oficial emitido em Porto Nacional / Luzimangues - TO._`
 
     // Abre o WhatsApp direto no número cadastrado do cliente
     if (cleanNumber) {
@@ -257,24 +277,27 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
           id="danfse-printable-doc"
           className="danfse-print-container rounded-2xl border border-wr-border bg-white text-black p-3.5 sm:p-5 space-y-3 font-sans text-xs shadow-xs"
         >
-          {/* Header Municipal Oficial */}
-          <div className="flex flex-col sm:flex-row items-start justify-between gap-3 border-b-2 border-black pb-3">
-            <div className="space-y-0.5">
-              <span className="text-[9px] font-mono tracking-wider text-neutral-600 uppercase font-bold block">
-                REPÚBLICA FEDERATIVA DO BRASIL &bull; ESTADO DO TOCANTINS
-              </span>
-              <h2 className="text-sm sm:text-base font-black text-black uppercase tracking-tight leading-tight">
-                PREFEITURA MUNICIPAL DE PORTO NACIONAL
-              </h2>
-              <p className="text-[10px] font-bold text-neutral-800">
-                SECRETARIA MUNICIPAL DA FAZENDA &bull; DISTRITO DE LUZIMANGUES
-              </p>
-              <p className="text-[9px] text-neutral-600 font-mono">
-                CÓD. IBGE: {settings.cityCodeIBGE || '1718204'} &bull; NOTA FISCAL DE SERVIÇOS ELETRÔNICA (NFS-e)
-              </p>
+          {/* Header Municipal Oficial com Logotipo WR */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-3 border-b-2 border-black pb-3">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <WrLogo size="lg" variant="light" showSubtitle={true} className="shrink-0" />
+              <div className="space-y-0.5 border-l-2 border-neutral-300 pl-3">
+                <span className="text-[9px] font-mono tracking-wider text-neutral-600 uppercase font-bold block">
+                  REPÚBLICA FEDERATIVA DO BRASIL &bull; ESTADO DO TOCANTINS
+                </span>
+                <h2 className="text-sm sm:text-base font-black text-black uppercase tracking-tight leading-tight">
+                  PREFEITURA MUNICIPAL DE PORTO NACIONAL
+                </h2>
+                <p className="text-[10px] font-bold text-neutral-800">
+                  SECRETARIA MUNICIPAL DA FAZENDA &bull; DISTRITO DE LUZIMANGUES
+                </p>
+                <p className="text-[9px] text-neutral-600 font-mono">
+                  CÓD. IBGE: {settings.cityCodeIBGE || '1718204'} &bull; NOTA FISCAL DE SERVIÇOS ELETRÔNICA (NFS-e)
+                </p>
+              </div>
             </div>
 
-            <div className="text-left sm:text-right space-y-0.5 bg-neutral-100 p-2 sm:p-2.5 rounded-xl border border-neutral-300 w-full sm:w-auto sm:min-w-[150px]">
+            <div className="text-left sm:text-right space-y-0.5 bg-neutral-100 p-2 sm:p-2.5 rounded-xl border border-neutral-300 w-full sm:w-auto sm:min-w-[160px] shrink-0">
               <span className="text-[9px] font-bold text-neutral-600 uppercase block">Número da NFS-e</span>
               <span className="text-base font-black text-black font-mono block">
                 {invoice.invoiceNumber}
@@ -288,12 +311,15 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
 
           {/* Prestador e Tomador (Adaptado para 1 col no celular e 2 cols no desktop) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 text-[10px]">
-            <div className="rounded-xl bg-neutral-50 p-2.5 border border-neutral-300 space-y-0.5">
-              <span className="text-[9px] font-bold text-neutral-700 uppercase block border-b border-neutral-200 pb-0.5">
-                Prestador de Serviços (Oficina)
-              </span>
-              <p className="font-bold text-black text-[11px]">{settings.companyName}</p>
-              <p className="text-neutral-700 font-semibold">{settings.tradeName}</p>
+            <div className="rounded-xl bg-neutral-50 p-2.5 border border-neutral-300 space-y-1">
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-1">
+                <span className="text-[9px] font-bold text-neutral-700 uppercase">
+                  Prestador de Serviços (Oficina)
+                </span>
+                <WrLogo size="sm" variant="light" showSubtitle={false} className="h-4" />
+              </div>
+              <p className="font-black text-black text-[12px]">{settings.companyName}</p>
+              <p className="text-neutral-800 font-bold">{settings.tradeName}</p>
               <p className="font-mono text-neutral-700">
                 CNPJ: {settings.cnpj} &bull; IM: {settings.cityRegistration} &bull; IE: {settings.stateRegistration}
               </p>
@@ -305,16 +331,21 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
               </p>
             </div>
 
-            <div className="rounded-xl bg-neutral-50 p-2.5 border border-neutral-300 space-y-0.5">
-              <span className="text-[9px] font-bold text-neutral-700 uppercase block border-b border-neutral-200 pb-0.5">
-                Tomador de Serviços (Cliente)
-              </span>
-              <p className="font-bold text-black text-[11px]">{order.clientName}</p>
+            <div className="rounded-xl bg-neutral-50 p-2.5 border border-neutral-300 space-y-1">
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-1">
+                <span className="text-[9px] font-bold text-neutral-700 uppercase">
+                  Tomador de Serviços (Cliente)
+                </span>
+                <span className="text-[9px] font-black text-emerald-800 uppercase bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                  {paymentDesc}
+                </span>
+              </div>
+              <p className="font-black text-black text-[12px]">{order.clientName}</p>
               <p className="font-mono text-neutral-700">CPF/CNPJ: {order.clientCpfCnpj || 'Não informado'}</p>
               <p className="text-neutral-600">{order.clientAddress || 'Luzimangues, Porto Nacional/TO'}</p>
-              <p className="text-neutral-600">Telefone: {order.clientPhone}</p>
-              <p className="font-bold text-emerald-800">
-                Condição: {paymentDesc}
+              <p className="text-neutral-600">Telefone: {order.clientPhone || 'Não informado'}</p>
+              <p className="font-bold text-neutral-800">
+                Condição: <strong className="text-emerald-700 font-black">{paymentDesc}</strong>
               </p>
             </div>
           </div>
@@ -333,7 +364,7 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
             <span>
               RPS: <strong className="font-mono text-neutral-800">{invoice.rpsNumber} (Série {invoice.rpsSeries})</strong>
             </span>
-            <span className="rounded-lg bg-emerald-100 border border-emerald-300 px-2.5 py-1 text-[10px] font-black text-emerald-800">
+            <span className="rounded-lg bg-emerald-600 text-white px-2.5 py-1 text-[10px] font-black tracking-wide shadow-xs">
               {paymentDesc}
             </span>
           </div>
@@ -369,6 +400,36 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
                 <span className="font-mono">- {formatCurrency(order.discount || 0)}</span>
               </div>
             )}
+          </div>
+
+          {/* Resumo de Valores e Forma de Pagamento */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+            <div className="rounded-xl bg-neutral-100 p-3 border border-neutral-300 flex flex-col justify-center space-y-1">
+              <span className="text-[9px] font-bold text-neutral-600 uppercase tracking-wider block">
+                Forma de Pagamento Registrada:
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-black text-xs sm:text-sm tracking-wide font-mono inline-block shadow-xs">
+                  {paymentDesc}
+                </span>
+              </div>
+              <p className="text-[9px] text-neutral-600 pt-0.5">
+                Status da Transação: <strong className="text-emerald-700 font-bold">PAGAMENTO CONFIRMADO E QUITADO</strong>
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-neutral-900 text-white p-3 border border-neutral-800 flex flex-col justify-center text-left sm:text-right space-y-0.5">
+              <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">
+                Valor Total Líquido da NFS-e
+              </span>
+              <span className="font-mono text-xl sm:text-2xl font-black text-emerald-400 block">
+                {formatCurrency(order.totalAmount || (order.laborTotal + (order.partsTotal || 0)))}
+              </span>
+              <span className="text-[9px] text-neutral-400 font-mono block">
+                Serviços: {formatCurrency(order.laborTotal)} | Peças: {formatCurrency(order.partsTotal || 0)}
+                {(order.discount || 0) > 0 && ` | Desc: -${formatCurrency(order.discount || 0)}`}
+              </span>
+            </div>
           </div>
 
           {/* Tabela de Cálculo do ISS Municipal (Com scroll horizontal suave no celular) */}

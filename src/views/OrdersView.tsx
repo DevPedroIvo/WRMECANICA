@@ -458,6 +458,7 @@ export const OrdersView: React.FC = () => {
     if (!finalizingOrder) return
     const baseSubtotal = (finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0)
     const discount = Math.min(Math.max(0, checkoutDiscount), baseSubtotal)
+    const finalTotal = Math.max(0, baseSubtotal - discount)
 
     finishOrder(finalizingOrder.id, {
       paymentMethod: checkoutPaymentMethod,
@@ -467,15 +468,29 @@ export const OrdersView: React.FC = () => {
       dueDate: checkoutDueDate,
     })
 
-    const updated = {
+    let updated: ServiceOrder = {
       ...finalizingOrder,
       status: 'pago' as OrderStatus,
       paymentMethod: checkoutPaymentMethod,
+      paymentInstallments: checkoutPaymentMethod === 'cartao_credito' ? checkoutInstallments : 1,
       discount,
-      totalAmount: Math.max(0, baseSubtotal - discount),
+      totalAmount: finalTotal,
+      date: finalizingOrder.date || new Date().toLocaleDateString('pt-BR'),
     }
 
-    setCompletedPaymentOrder(null)
+    // Emite ou associa a nota fiscal oficial imediatamente
+    const issuedInvoice = issueFiscalInvoice(finalizingOrder.id, updated)
+    if (issuedInvoice) {
+      updated.fiscalInvoice = issuedInvoice
+    }
+
+    // Fecha a modal do checkout e qualquer modal de edição aberta
+    setFinalizingOrder(null)
+    setEditingOrder(null)
+    setIsNewOrderModalOpen(false)
+
+    // Abre imediatamente a tela de conclusão com o botão de Nota Fiscal e WhatsApp
+    setCompletedPaymentOrder(updated)
     showToast(`Pagamento da ${finalizingOrder.number} registrado com sucesso!`, 'success')
   }
 
