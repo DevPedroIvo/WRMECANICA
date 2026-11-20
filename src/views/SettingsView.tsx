@@ -32,12 +32,6 @@ import {
   CheckCircle,
   AlertCircle,
   Volume2,
-  Cloud,
-  CloudOff,
-  RefreshCw,
-  Copy,
-  Code,
-  X,
 } from 'lucide-react'
 import { usePwaInstall } from '../hooks/usePwaInstall'
 import {
@@ -46,13 +40,6 @@ import {
   getNotificationPermissionStatus,
   NotificationStatus,
 } from '../utils/notifications'
-import {
-  getSupabaseCredentials,
-  saveSupabaseCredentials,
-  clearSupabaseCredentials,
-  testSupabaseConnection,
-} from '../utils/supabaseClient'
-import { SUPABASE_SCHEMA_SQL } from '../utils/supabaseSchemaSql'
 
 export const SettingsView: React.FC = () => {
   const {
@@ -62,9 +49,6 @@ export const SettingsView: React.FC = () => {
     updateFiscalSettings,
     clearAllData,
     loadDemoData,
-    syncWithSupabase,
-    pullFromSupabase,
-    storageMetrics,
     showToast,
     employeePermissions,
     updateEmployeePermissions,
@@ -77,17 +61,6 @@ export const SettingsView: React.FC = () => {
 
   const [savedSuccess, setSavedSuccess] = useState(false)
   const [newMechanicName, setNewMechanicName] = useState('')
-
-  // Supabase Cloud State
-  const [supabaseUrl, setSupabaseUrl] = useState(() => getSupabaseCredentials().url)
-  const [supabaseKey, setSupabaseKey] = useState(() => getSupabaseCredentials().anonKey)
-  const [isCloudConfigured, setIsCloudConfigured] = useState(() => getSupabaseCredentials().isConfigured)
-  const [testingConnection, setTestingConnection] = useState(false)
-  const [connResult, setConnResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null)
-  const [syncingCloud, setSyncingCloud] = useState(false)
-  const [pullingCloud, setPullingCloud] = useState(false)
-  const [showSchemaModal, setShowSchemaModal] = useState(false)
-  const [copiedSchema, setCopiedSchema] = useState(false)
 
   const { isInstallable, isInstalled, isIOS, installApp } = usePwaInstall()
   const [notifStatus, setNotifStatus] = useState<NotificationStatus>(getNotificationPermissionStatus)
@@ -107,73 +80,6 @@ export const SettingsView: React.FC = () => {
       body: 'Alerta emitido! Você receberá avisos de novas OS e agendamentos mesmo fora do app.',
     })
     showToast('Alerta sonoro e visual de teste emitido!', 'info')
-  }
-
-  const handleTestAndSaveSupabase = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!supabaseUrl.trim() || !supabaseKey.trim()) {
-      showToast('Informe a URL do Projeto e a Chave Anon Key do Supabase.', 'warning')
-      return
-    }
-    setTestingConnection(true)
-    setConnResult(null)
-    try {
-      const res = await testSupabaseConnection(supabaseUrl.trim(), supabaseKey.trim())
-      setConnResult(res)
-      if (res.success) {
-        saveSupabaseCredentials(supabaseUrl.trim(), supabaseKey.trim())
-        setIsCloudConfigured(true)
-        showToast('Conectado e salvo com sucesso ao Supabase!', 'success')
-      } else {
-        showToast(res.message, 'warning')
-      }
-    } catch (err: any) {
-      setConnResult({ success: false, message: err?.message || 'Falha ao testar conexão' })
-    } finally {
-      setTestingConnection(false)
-    }
-  }
-
-  const handleDisconnectSupabase = () => {
-    if (window.confirm('Deseja desconectar o Supabase? O sistema continuará funcionando perfeitamente em modo de armazenamento local no navegador.')) {
-      clearSupabaseCredentials()
-      setSupabaseUrl('')
-      setSupabaseKey('')
-      setIsCloudConfigured(false)
-      setConnResult(null)
-      showToast('Supabase desconectado. Modo Local ativo.', 'info')
-    }
-  }
-
-  const handleSyncToCloud = async () => {
-    setSyncingCloud(true)
-    try {
-      await syncWithSupabase()
-    } finally {
-      setSyncingCloud(false)
-    }
-  }
-
-  const handlePullFromCloud = async () => {
-    if (window.confirm('Baixar dados da nuvem atualizará os registros locais com os do Supabase. Deseja continuar?')) {
-      setPullingCloud(true)
-      try {
-        await pullFromSupabase()
-      } finally {
-        setPullingCloud(false)
-      }
-    }
-  }
-
-  const handleCopySchema = async () => {
-    try {
-      await navigator.clipboard.writeText(SUPABASE_SCHEMA_SQL)
-      setCopiedSchema(true)
-      showToast('SQL do Schema copiado para a área de transferência!', 'success')
-      setTimeout(() => setCopiedSchema(false), 3000)
-    } catch {
-      showToast('Não foi possível copiar automaticamente.', 'warning')
-    }
   }
 
   const handleClearAllConfirm = () => {
@@ -548,171 +454,6 @@ export const SettingsView: React.FC = () => {
               </button>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* SEÇÃO: Conexão Supabase Cloud (Banco de Dados em Nuvem) */}
-      <div className="wr-card p-5 sm:p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-wr-border pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-wr-orange/15 text-wr-orange">
-              <Database className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-wr-text flex items-center gap-2">
-                Banco de Dados &amp; Sincronização Supabase Cloud
-                {isCloudConfigured ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Nuvem Conectada
-                  </span>
-                ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1.5">
-                    <CloudOff className="h-3 w-3" />
-                    Modo Local (Offline)
-                  </span>
-                )}
-              </h3>
-              <p className="text-[11px] text-wr-muted mt-0.5">
-                Conecte seu projeto gratuito no Supabase para sincronização automática em tempo real entre celular e computador
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowSchemaModal(true)}
-              className="wr-btn-secondary px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
-            >
-              <Code className="h-3.5 w-3.5 text-wr-orange" />
-              Ver SQL do Banco
-            </button>
-          </div>
-        </div>
-
-        {/* Informação sobre funcionamento local vs nuvem */}
-        <div className="rounded-xl border border-wr-border bg-wr-elevated/40 p-3.5 text-xs text-wr-muted leading-relaxed space-y-1">
-          <p>
-            <strong className="text-wr-text">Como funciona:</strong> Mesmo sem o Supabase, o sistema armazena 100% dos dados com segurança no navegador. Ao informar sua <strong>URL</strong> e <strong>Chave Anon</strong>, cada Ordem de Serviço, cliente e pagamento é enviado para a nuvem sem custos, permitindo que vários aparelhos trabalhem juntos.
-          </p>
-        </div>
-
-        {/* Formulário de Credenciais do Supabase */}
-        <form onSubmit={handleTestAndSaveSupabase} className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold text-wr-muted mb-1">
-                URL do Projeto Supabase
-              </label>
-              <input
-                type="text"
-                placeholder="https://xyzabcdefg.supabase.co"
-                value={supabaseUrl}
-                onChange={e => setSupabaseUrl(e.target.value)}
-                className="wr-input font-mono text-xs"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-wr-muted mb-1">
-                Chave Pública (Anon Key)
-              </label>
-              <input
-                type="password"
-                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                value={supabaseKey}
-                onChange={e => setSupabaseKey(e.target.value)}
-                className="wr-input font-mono text-xs"
-              />
-            </div>
-          </div>
-
-          {/* Resultado do Teste de Conexão */}
-          {connResult && (
-            <div
-              className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
-                connResult.success
-                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                  : 'border-rose-500/40 bg-rose-500/10 text-rose-300'
-              }`}
-            >
-              {connResult.success ? (
-                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-              ) : (
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              )}
-              <span>{connResult.message}</span>
-            </div>
-          )}
-
-          {/* Botões de Ação do Supabase */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="submit"
-                disabled={testingConnection}
-                className="wr-btn-primary px-4 py-2 text-xs font-bold flex items-center gap-1.5"
-              >
-                {testingConnection ? (
-                  <>
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Testando Conexão...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-3.5 w-3.5" /> Salvar &amp; Testar Conexão
-                  </>
-                )}
-              </button>
-
-              {isCloudConfigured && (
-                <>
-                  <button
-                    type="button"
-                    disabled={syncingCloud}
-                    onClick={handleSyncToCloud}
-                    className="wr-btn-secondary px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5"
-                    title="Envia dados locais para o Supabase"
-                  >
-                    <Cloud className={`h-3.5 w-3.5 ${syncingCloud ? 'animate-bounce text-wr-orange' : 'text-emerald-400'}`} />
-                    {syncingCloud ? 'Sincronizando...' : 'Enviar Dados para Nuvem'}
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={pullingCloud}
-                    onClick={handlePullFromCloud}
-                    className="wr-btn-secondary px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5"
-                    title="Baixa os dados salvos no Supabase para este dispositivo"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${pullingCloud ? 'animate-spin text-wr-orange' : 'text-sky-400'}`} />
-                    {pullingCloud ? 'Baixando...' : 'Baixar Dados da Nuvem'}
-                  </button>
-                </>
-              )}
-            </div>
-
-            {isCloudConfigured && (
-              <button
-                type="button"
-                onClick={handleDisconnectSupabase}
-                className="text-xs text-rose-400 hover:text-rose-300 font-semibold px-2 py-1 transition-colors"
-              >
-                Desconectar Nuvem
-              </button>
-            )}
-          </div>
-        </form>
-
-        {/* Métricas do Banco */}
-        <div className="pt-2 border-t border-wr-border flex flex-wrap items-center justify-between gap-3 text-[11px] text-wr-muted">
-          <div className="flex items-center gap-4">
-            <span>Uso Estimado: <strong className="text-wr-text">{storageMetrics.localPayloadKB} KB</strong></span>
-            <span>Limite Gratuito Supabase: <strong className="text-emerald-400">500 MB (99.9% livre)</strong></span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 inline-block" />
-            <span>Cache de Egress ativo (5 min)</span>
-          </div>
         </div>
       </div>
 
@@ -1139,57 +880,6 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
       </form>
-
-      {/* Modal: SQL Schema do Supabase */}
-      {showSchemaModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="bg-wr-surface border border-wr-border rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-wr-border">
-              <div className="flex items-center gap-2">
-                <Database className="h-5 w-5 text-wr-orange" />
-                <div>
-                  <h3 className="text-sm font-bold text-wr-text">Estrutura do Banco (PostgreSQL / Supabase)</h3>
-                  <p className="text-[10px] text-wr-muted">Execute no SQL Editor do Supabase para criar as tabelas com RLS</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSchemaModal(false)}
-                className="p-1.5 rounded-lg text-wr-muted hover:text-wr-text hover:bg-wr-elevated transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="p-4 flex-1 overflow-y-auto space-y-3">
-              <p className="text-xs text-wr-muted">
-                Acesse o painel do Supabase em <strong>SQL Editor &gt; New Query</strong>, cole o código abaixo e clique em <strong>Run</strong>:
-              </p>
-              <pre className="p-3 rounded-xl bg-black/70 border border-wr-border text-emerald-400 font-mono text-[11px] overflow-x-auto max-h-80 select-text leading-relaxed">
-                {SUPABASE_SCHEMA_SQL}
-              </pre>
-            </div>
-
-            <div className="p-4 border-t border-wr-border flex items-center justify-between gap-3 bg-wr-elevated/40">
-              <button
-                type="button"
-                onClick={handleCopySchema}
-                className="wr-btn-primary px-4 py-2 text-xs font-bold flex items-center gap-2"
-              >
-                {copiedSchema ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                {copiedSchema ? 'Copiado!' : 'Copiar Código SQL'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowSchemaModal(false)}
-                className="wr-btn-secondary px-4 py-2 text-xs font-semibold"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

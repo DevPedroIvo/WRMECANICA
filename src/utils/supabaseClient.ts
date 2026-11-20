@@ -10,6 +10,8 @@
  * - Zero Realtime WebSockets e zero polling automático
  */
 
+import { SUPABASE_INTERNAL_CONFIG } from '../config/supabaseConfig'
+
 export type SyncTable =
   | 'clients'
   | 'vehicles'
@@ -26,16 +28,18 @@ const STORAGE_KEYS = {
 }
 
 /**
- * Retorna as credenciais ativas do Supabase (checa localStorage primeiro, depois import.meta.env)
+ * Retorna as credenciais ativas do Supabase (checa configuração interna, depois import.meta.env, depois localStorage)
  */
 export function getSupabaseCredentials(): { url: string; anonKey: string; isConfigured: boolean } {
-  const localUrl = (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.url) : null) || ''
-  const localKey = (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.anonKey) : null) || ''
+  const internalUrl = (SUPABASE_INTERNAL_CONFIG.url || '').replace(/\/$/, '')
+  const internalKey = SUPABASE_INTERNAL_CONFIG.anonKey || ''
   const envUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+  const localUrl = (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.url) : null) || ''
+  const localKey = (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.anonKey) : null) || ''
 
-  const url = (localUrl || envUrl).replace(/\/$/, '')
-  const anonKey = localKey || envKey
+  const url = (internalUrl || envUrl || localUrl).replace(/\/$/, '')
+  const anonKey = internalKey || envKey || localKey
 
   return {
     url,
