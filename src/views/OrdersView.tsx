@@ -17,6 +17,7 @@ import {
   Plus,
   Car,
   User,
+  Users,
   Gauge,
   Fuel,
   CheckCircle2,
@@ -96,6 +97,8 @@ export const OrdersView: React.FC = () => {
   // ===================== ESTADO DO FORMULÁRIO (NOVA / EDITAR OS) =====================
   const [formStatus, setFormStatus] = useState<OrderStatus>('aguardando')
   const [selectedClientId, setSelectedClientId] = useState('')
+  const [showClientSelector, setShowClientSelector] = useState(false)
+  const [clientSearchQuery, setClientSearchQuery] = useState('')
   const [clientName, setClientName] = useState('')
   const [clientPhone, setClientPhone] = useState('')
   const [clientCpfCnpj, setClientCpfCnpj] = useState('')
@@ -177,6 +180,8 @@ export const OrdersView: React.FC = () => {
     setItemPartsCost('')
     setItemLaborCost('')
     setShowPresetsDropdown(false)
+    setShowClientSelector(false)
+    setClientSearchQuery('')
   }, [isNewOrderModalOpen])
 
   // Trata abertura do modal de EDIÇÃO com a OS selecionada
@@ -202,6 +207,8 @@ export const OrdersView: React.FC = () => {
     setItemPartsCost('')
     setItemLaborCost('')
     setShowPresetsDropdown(false)
+    setShowClientSelector(false)
+    setClientSearchQuery('')
   }, [editingOrder])
 
   // WhatsApp Canvas Generator
@@ -232,6 +239,41 @@ export const OrdersView: React.FC = () => {
     const q = itemDesc.trim().toLowerCase()
     return (servicePresets || []).filter(s => s.name.toLowerCase().includes(q))
   }, [servicePresets, itemDesc])
+
+  // Lista de clientes já cadastrados filtrada para o botão de seleção
+  const filteredClientsList = useMemo(() => {
+    const q = clientSearchQuery.toLowerCase().trim()
+    if (!q) return clients.slice(0, 10)
+    return clients
+      .filter(
+        c =>
+          c.name.toLowerCase().includes(q) ||
+          (c.phone || '').includes(q) ||
+          (c.cpfCnpj || '').includes(q)
+      )
+      .slice(0, 10)
+  }, [clients, clientSearchQuery])
+
+  // Ação ao selecionar um cliente já cadastrado
+  const handleSelectExistingClient = (c: (typeof clients)[0]) => {
+    setSelectedClientId(c.id)
+    setClientName(c.name)
+    setClientPhone(c.phone)
+    setClientCpfCnpj(c.cpfCnpj || '')
+
+    const clientVehicles = vehicles.filter(v => v.clientId === c.id)
+    if (clientVehicles.length > 0) {
+      const firstV = clientVehicles[0]
+      setVehicleModel(`${firstV.brand} ${firstV.model}`.trim())
+      setVehiclePlate(firstV.plate)
+      if (firstV.currentMileage) {
+        setMileage(firstV.currentMileage)
+      }
+    }
+    setShowClientSelector(false)
+    setClientSearchQuery('')
+    showToast(`Cliente "${c.name}" selecionado com sucesso!`, 'info')
+  }
 
   // Adicionar item à tabela
   const handleAddItem = () => {
@@ -587,17 +629,17 @@ export const OrdersView: React.FC = () => {
   return (
     <div className="space-y-6 select-none pb-12">
       {/* ===================== TOPO EXECUTIVO ===================== */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-neutral-900/90 via-neutral-900/60 to-neutral-900/90 border border-white/10 p-5 rounded-3xl shadow-lg backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-wr-surface border border-wr-border p-5 rounded-3xl shadow-card transition-colors">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/25 text-[11px] font-black uppercase tracking-wider text-orange-400">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-wr-orange/10 border border-wr-orange/25 text-[11px] font-black uppercase tracking-wider text-wr-orange">
             <Sparkles className="h-3.5 w-3.5" />
             Painel Oficial de Ordens de Serviço
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <ClipboardList className="h-6 w-6 text-orange-500" />
+          <h1 className="text-xl sm:text-2xl font-black text-wr-text tracking-tight flex items-center gap-2.5">
+            <ClipboardList className="h-6 w-6 text-wr-orange" />
             WR Mecânica &bull; Atendimentos
           </h1>
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-wr-muted">
             Gestão simplificada de serviços, acompanhamento em tempo real e checkout integrado
           </p>
         </div>
@@ -616,18 +658,18 @@ export const OrdersView: React.FC = () => {
       <div className="space-y-3">
         {/* Campo de Busca Universal */}
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 pointer-events-none" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-wr-muted pointer-events-none" />
           <input
             type="text"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder="Buscar por cliente, placa, carro, telefone, OS ou mecânico..."
-            className="w-full bg-neutral-900/80 text-white placeholder-neutral-500 text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-white/10 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all shadow-inner"
+            className="w-full bg-wr-surface text-wr-text placeholder-wr-muted text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-wr-border focus:border-wr-orange focus:ring-2 focus:ring-wr-orange/20 outline-none transition-all shadow-inner"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-neutral-500 hover:text-white"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-wr-muted hover:text-wr-text"
             >
               <X className="h-4 w-4" />
             </button>
@@ -650,14 +692,16 @@ export const OrdersView: React.FC = () => {
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl font-bold transition-all ${
                 activeTab === tab.id
-                  ? 'bg-orange-500 text-neutral-950 shadow-md font-black'
-                  : 'bg-neutral-900/70 border border-white/5 text-neutral-400 hover:text-white hover:bg-neutral-800/80'
+                  ? 'bg-wr-orange text-white dark:text-neutral-950 shadow-md font-black'
+                  : 'bg-wr-surface border border-wr-border text-wr-muted hover:text-wr-text hover:bg-wr-elevated'
               }`}
             >
               <span>{tab.label}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                  activeTab === tab.id ? 'bg-neutral-950/20 text-neutral-950 font-black' : 'bg-white/10 text-neutral-400'
+                  activeTab === tab.id
+                    ? 'bg-black/20 text-white dark:text-neutral-950 font-black'
+                    : 'bg-wr-elevated text-wr-muted border border-wr-border'
                 }`}
               >
                 {tab.count}
@@ -669,10 +713,10 @@ export const OrdersView: React.FC = () => {
 
       {/* ===================== LISTAGEM DE CARDS DE OS ===================== */}
       {filteredOrders.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-white/10 bg-neutral-900/40 p-12 text-center text-neutral-400 space-y-3">
-          <ClipboardList className="h-10 w-10 mx-auto text-neutral-600" />
-          <p className="text-sm font-bold text-neutral-300">Nenhuma ordem de serviço encontrada</p>
-          <p className="text-xs max-w-sm mx-auto text-neutral-500">
+        <div className="rounded-3xl border border-dashed border-wr-border bg-wr-surface/60 p-12 text-center text-wr-muted space-y-3">
+          <ClipboardList className="h-10 w-10 mx-auto text-wr-muted opacity-50" />
+          <p className="text-sm font-bold text-wr-text">Nenhuma ordem de serviço encontrada</p>
+          <p className="text-xs max-w-sm mx-auto text-wr-muted">
             Alterne o filtro das abas ou crie uma nova OS no botão superior.
           </p>
         </div>
@@ -685,17 +729,17 @@ export const OrdersView: React.FC = () => {
             return (
               <div
                 key={order.id}
-                className="rounded-3xl border border-white/10 bg-[#12141c]/95 p-5 shadow-xl hover:border-orange-500/50 transition-all flex flex-col justify-between gap-4 group"
+                className="rounded-3xl border border-wr-border bg-wr-surface p-5 shadow-card hover:border-wr-orange/50 transition-all flex flex-col justify-between gap-4 group"
               >
                 {/* Cabeçalho do Card */}
-                <div className="flex items-center justify-between gap-2 pb-3 border-b border-white/5">
+                <div className="flex items-center justify-between gap-2 pb-3 border-b border-wr-border">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-black text-orange-400 bg-orange-500/10 border border-orange-500/30 px-3 py-1 rounded-xl">
+                    <span className="font-mono text-xs font-black text-wr-orange bg-wr-orange/10 border border-wr-orange/30 px-3 py-1 rounded-xl">
                       {order.number}
                     </span>
-                    <span className="text-xs text-neutral-400 font-medium">{order.date}</span>
+                    <span className="text-xs text-wr-muted font-medium">{order.date}</span>
                     {hasFiscal && (
-                      <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-black text-emerald-400 font-mono">
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 font-mono">
                         <ShieldCheck className="h-3 w-3" /> NFS-e Emitida
                       </span>
                     )}
@@ -709,22 +753,22 @@ export const OrdersView: React.FC = () => {
                   {/* Linha 1: Cliente & Telefone */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="h-9 w-9 rounded-xl bg-orange-500/10 border border-orange-500/25 flex items-center justify-center text-orange-400 shrink-0">
+                      <div className="h-9 w-9 rounded-xl bg-wr-orange/10 border border-wr-orange/25 flex items-center justify-center text-wr-orange shrink-0">
                         <User className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-neutral-500 block">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-wr-muted block">
                           Cliente
                         </span>
-                        <h3 className="text-sm font-bold text-white truncate">{order.clientName}</h3>
+                        <h3 className="text-sm font-bold text-wr-text truncate">{order.clientName}</h3>
                       </div>
                     </div>
                     {order.clientPhone && (
                       <a
                         href={`tel:${order.clientPhone.replace(/\D/g, '')}`}
-                        className="text-xs font-mono text-neutral-400 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5 hover:text-white flex items-center gap-1 shrink-0"
+                        className="text-xs font-mono text-wr-muted bg-wr-elevated px-2.5 py-1 rounded-lg border border-wr-border hover:text-wr-text flex items-center gap-1 shrink-0 transition-colors"
                       >
-                        <Phone className="h-3 w-3 text-orange-400" />
+                        <Phone className="h-3 w-3 text-wr-orange" />
                         {order.clientPhone}
                       </a>
                     )}
@@ -732,53 +776,68 @@ export const OrdersView: React.FC = () => {
 
                   {/* Linha 2: Veículo, Placa, KM e Nível */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex items-center gap-2 col-span-2">
-                      <Car className="h-4 w-4 text-amber-400 shrink-0" />
+                    <div className="p-2.5 rounded-xl bg-wr-elevated border border-wr-border flex items-center gap-2 col-span-2">
+                      <Car className="h-4 w-4 text-amber-500 shrink-0" />
                       <div className="min-w-0">
-                        <span className="text-[9px] uppercase font-bold text-neutral-500 block">Veículo</span>
-                        <span className="font-bold text-white block truncate">{order.vehicleModel}</span>
+                        <span className="text-[9px] uppercase font-bold text-wr-muted block">Veículo</span>
+                        <span className="font-bold text-wr-text block truncate">{order.vehicleModel}</span>
                       </div>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-center">
-                      <span className="text-[9px] uppercase font-bold text-neutral-500 block">Placa</span>
-                      <span className="font-mono font-black text-orange-400">{order.vehiclePlate}</span>
+                    <div className="p-2.5 rounded-xl bg-wr-elevated border border-wr-border text-center">
+                      <span className="text-[9px] uppercase font-bold text-wr-muted block">Placa</span>
+                      <span className="font-mono font-black text-wr-orange">{order.vehiclePlate}</span>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-center">
-                      <span className="text-[9px] uppercase font-bold text-neutral-500 block">KM</span>
-                      <span className="font-mono font-bold text-neutral-300">
+                    <div className="p-2.5 rounded-xl bg-wr-elevated border border-wr-border text-center">
+                      <span className="text-[9px] uppercase font-bold text-wr-muted block">KM</span>
+                      <span className="font-mono font-bold text-wr-text">
                         {order.mileage ? `${order.mileage.toLocaleString('pt-BR')} km` : '—'}
                       </span>
                     </div>
                   </div>
 
                   {/* Linha 3: Serviço Solicitado & Mecânico */}
-                  <div className="p-3 rounded-2xl bg-neutral-900/60 border border-white/5 space-y-1 text-xs">
-                    <div className="flex items-center justify-between text-[10px] text-neutral-400 font-bold uppercase tracking-wider">
+                  <div className="p-3 rounded-2xl bg-wr-elevated border border-wr-border space-y-1 text-xs">
+                    <div className="flex items-center justify-between text-[10px] text-wr-muted font-bold uppercase tracking-wider">
                       <span>Serviço Solicitado</span>
-                      <span className="text-orange-400 flex items-center gap-1">
+                      <span className="text-wr-orange flex items-center gap-1">
                         <Wrench className="h-3 w-3" /> {order.mechanicAssigned || 'Roberto Silva'}
                       </span>
                     </div>
-                    <p className="text-neutral-200 font-semibold line-clamp-2">
+                    <p className="text-wr-text font-semibold line-clamp-2">
                       {order.serviceDescription || 'Serviço Geral'}
                     </p>
                   </div>
 
                   {/* Linha 4: Valor Total da OS */}
                   <div className="flex items-center justify-between pt-1">
-                    <span className="text-xs font-black uppercase tracking-wider text-neutral-400">
+                    <span className="text-xs font-black uppercase tracking-wider text-wr-muted">
                       Total da OS
                     </span>
-                    <span className="font-mono text-xl font-black text-orange-400">
+                    <span className="font-mono text-xl font-black text-wr-orange">
                       {formatCurrency(order.totalAmount || 0)}
                     </span>
                   </div>
                 </div>
 
                 {/* ===================== BOTÕES DO CARD ===================== */}
-                <div className="space-y-2 pt-2 border-t border-white/5">
+                <div className="space-y-2 pt-2 border-t border-wr-border">
+                  {/* Botão para Adicionar Valores na OS acima de terminar */}
+                  {!isPaid && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingOrder(order)
+                        setFormStatus('andamento')
+                      }}
+                      className="w-full py-2.5 px-4 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-700 dark:text-amber-400 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-sm"
+                    >
+                      <DollarSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      <span>Adicionar Valores na OS (Peças &amp; Serviços)</span>
+                    </button>
+                  )}
+
                   {/* Botão Principal em Destaque: Marcar como Pronto e ir para o Painel de Venda */}
                   {!isPaid && (
                     <button
@@ -807,7 +866,7 @@ export const OrdersView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleOpenClientWhatsApp(order)}
-                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 transition-all text-[11px] font-bold"
+                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 transition-all text-[11px] font-bold"
                       title="Abrir WhatsApp do cliente"
                     >
                       <MessageCircle className="h-4 w-4 shrink-0" />
@@ -818,7 +877,7 @@ export const OrdersView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleOpenNfse(order)}
-                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/25 transition-all text-[11px] font-bold"
+                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/25 transition-all text-[11px] font-bold"
                       title="Emitir ou Visualizar Nota Fiscal (NFS-e)"
                     >
                       <FileText className="h-4 w-4 shrink-0" />
@@ -829,7 +888,7 @@ export const OrdersView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setPdfModalOrder(order)}
-                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/25 transition-all text-[11px] font-bold"
+                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-500/25 transition-all text-[11px] font-bold"
                       title="Visualizar e Imprimir Ordem de Serviço"
                     >
                       <Printer className="h-4 w-4 shrink-0" />
@@ -840,7 +899,7 @@ export const OrdersView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setEditingOrder(order)}
-                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/25 transition-all text-[11px] font-bold"
+                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25 transition-all text-[11px] font-bold"
                       title="Alterar dados, serviços e peças da OS"
                     >
                       <Edit2 className="h-4 w-4 shrink-0" />
@@ -856,7 +915,7 @@ export const OrdersView: React.FC = () => {
                           showToast(`OS #${order.number} cancelada.`, 'info')
                         }
                       }}
-                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 transition-all text-[11px] font-bold"
+                      className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2.5 px-1 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/25 transition-all text-[11px] font-bold"
                       title="Cancelar esta OS"
                     >
                       <XCircle className="h-4 w-4 shrink-0" />
@@ -872,19 +931,19 @@ export const OrdersView: React.FC = () => {
 
       {/* ===================== MODAL: NOVA / EDITAR ORDEM DE SERVIÇO ===================== */}
       {(isNewOrderModalOpen || editingOrder) && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
-          <div className="relative w-full max-w-3xl rounded-[32px] border border-white/10 bg-[#12141c] p-5 sm:p-7 shadow-2xl space-y-5 my-auto max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-3xl rounded-[32px] border border-wr-border bg-wr-surface p-5 sm:p-7 shadow-elevated space-y-5 my-auto max-h-[92vh] overflow-y-auto text-wr-text transition-colors">
             {/* Cabeçalho do Modal */}
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+            <div className="flex items-center justify-between pb-4 border-b border-wr-border">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
+                <div className="h-10 w-10 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-500">
                   <ClipboardList className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-black text-white">
+                  <h3 className="text-base sm:text-lg font-black text-wr-text">
                     {editingOrder ? `Editar ${editingOrder.number}` : 'Nova Ordem de Serviço'}
                   </h3>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-wr-muted">
                     Preencha as informações do atendimento e o serviço solicitado
                   </p>
                 </div>
@@ -894,8 +953,9 @@ export const OrdersView: React.FC = () => {
                 onClick={() => {
                   setIsNewOrderModalOpen(false)
                   setEditingOrder(null)
+                  setShowClientSelector(false)
                 }}
-                className="rounded-xl p-2 text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
+                className="rounded-xl p-2 text-wr-muted hover:text-wr-text hover:bg-wr-elevated transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -913,14 +973,14 @@ export const OrdersView: React.FC = () => {
             >
               {/* 1. STATUS DO SERVIÇO */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-black uppercase tracking-wider text-neutral-400">
+                <label className="block text-xs font-black uppercase tracking-wider text-wr-muted">
                   Status do Serviço
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { id: 'aguardando', label: 'Aguardando', color: 'border-amber-500 bg-amber-500/15 text-amber-400' },
-                    { id: 'andamento', label: 'Em Andamento', color: 'border-orange-500 bg-orange-500/15 text-orange-400' },
-                    { id: 'pronto', label: 'Pronto', color: 'border-blue-500 bg-blue-500/15 text-blue-400' },
+                    { id: 'aguardando', label: 'Aguardando', color: 'border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400' },
+                    { id: 'andamento', label: 'Em Andamento', color: 'border-orange-500 bg-orange-500/15 text-orange-600 dark:text-orange-400' },
+                    { id: 'pronto', label: 'Pronto', color: 'border-blue-500 bg-blue-500/15 text-blue-600 dark:text-blue-400' },
                   ].map(st => (
                     <button
                       key={st.id}
@@ -929,7 +989,7 @@ export const OrdersView: React.FC = () => {
                       className={`py-2.5 px-3 rounded-2xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                         formStatus === st.id
                           ? `${st.color} shadow-md ring-2 ring-orange-500/30`
-                          : 'border-white/5 bg-white/5 text-neutral-400 hover:text-white'
+                          : 'border-wr-border bg-wr-surface text-wr-muted hover:text-wr-text hover:bg-wr-elevated'
                       }`}
                     >
                       {formStatus === st.id && <CheckCircle2 className="h-3.5 w-3.5" />}
@@ -939,14 +999,105 @@ export const OrdersView: React.FC = () => {
                 </div>
               </div>
 
-              {/* 2. DADOS DO CLIENTE & CONTATO */}
-              <div className="p-4 rounded-2xl bg-neutral-900/60 border border-white/5 space-y-3">
-                <span className="text-xs font-black uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
-                  <User className="h-4 w-4" /> Dados do Cliente
-                </span>
+              {/* 2. DADOS DO CLIENTE & CONTATO COM SELETOR DE CLIENTES JÁ CADASTRADOS */}
+              <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                    <User className="h-4 w-4" /> Dados do Cliente
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowClientSelector(prev => !prev)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-wr-orange/15 hover:bg-wr-orange/25 border border-wr-orange/30 text-wr-orange font-bold text-xs transition-all shadow-sm active:scale-95"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    <span>{showClientSelector ? 'Fechar Lista de Clientes' : 'Selecionar Cliente Já Cadastrado'}</span>
+                  </button>
+                </div>
+
+                {/* Dropdown / Busca de clientes já cadastrados */}
+                {showClientSelector && (
+                  <div className="p-3 rounded-2xl bg-wr-surface border border-wr-border space-y-2 shadow-sm animate-fadeIn">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-wr-muted" />
+                      <input
+                        type="text"
+                        autoFocus
+                        value={clientSearchQuery}
+                        onChange={e => setClientSearchQuery(e.target.value)}
+                        placeholder="Buscar por nome, telefone ou CPF do cliente cadastrado..."
+                        className="w-full bg-wr-elevated text-wr-text text-xs pl-9 pr-3 py-2.5 rounded-xl border border-wr-border focus:border-wr-orange outline-none"
+                      />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                      {filteredClientsList.length === 0 ? (
+                        <p className="text-[11px] text-wr-muted text-center py-2">
+                          Nenhum cliente encontrado para "{clientSearchQuery}".
+                        </p>
+                      ) : (
+                        filteredClientsList.map(c => {
+                          const cVehs = vehicles.filter(v => v.clientId === c.id)
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => handleSelectExistingClient(c)}
+                              className="w-full text-left p-2.5 rounded-xl hover:bg-wr-orange/10 border border-transparent hover:border-wr-orange/30 text-xs flex items-center justify-between transition-colors group"
+                            >
+                              <div>
+                                <p className="font-bold text-wr-text group-hover:text-wr-orange transition-colors">
+                                  {c.name}
+                                </p>
+                                <p className="text-[10px] text-wr-muted font-mono">
+                                  {c.phone} {c.cpfCnpj ? `• CPF: ${c.cpfCnpj}` : ''}
+                                </p>
+                              </div>
+                              {cVehs.length > 0 && (
+                                <span className="text-[10px] bg-wr-elevated text-wr-muted px-2 py-0.5 rounded-lg border border-wr-border font-mono shrink-0">
+                                  🚗 {cVehs[0].plate} ({cVehs[0].model})
+                                </span>
+                              )}
+                            </button>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Badge de cliente vinculado */}
+                {selectedClientId && (
+                  <div className="flex items-center justify-between flex-wrap gap-2 text-xs bg-emerald-500/10 border border-emerald-500/25 px-3 py-1.5 rounded-xl text-emerald-600 dark:text-emerald-400 font-bold">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Cliente selecionado do cadastro
+                    </span>
+                    {vehicles.filter(v => v.clientId === selectedClientId).length > 1 && (
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-[10px] text-wr-muted font-normal">Veículos do cliente:</span>
+                        {vehicles.filter(v => v.clientId === selectedClientId).map(v => (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() => {
+                              setVehicleModel(`${v.brand} ${v.model}`.trim())
+                              setVehiclePlate(v.plate)
+                              if (v.currentMileage) setMileage(v.currentMileage)
+                              showToast(`Veículo ${v.plate} aplicado à OS.`, 'info')
+                            }}
+                            className="text-[10px] bg-wr-surface border border-wr-border px-2 py-0.5 rounded font-mono text-wr-text hover:border-wr-orange"
+                          >
+                            {v.plate}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-1">
-                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                    <label className="block text-[11px] font-bold text-wr-muted mb-1">
                       Nome do Cliente *
                     </label>
                     <input
@@ -955,12 +1106,12 @@ export const OrdersView: React.FC = () => {
                       value={clientName}
                       onChange={e => setClientName(e.target.value)}
                       placeholder="Ex: João da Silva"
-                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 outline-none"
+                      className="w-full bg-wr-surface text-wr-text text-xs sm:text-sm p-3 rounded-xl border border-wr-border focus:border-wr-orange outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                    <label className="block text-[11px] font-bold text-wr-muted mb-1">
                       Telefone / WhatsApp *
                     </label>
                     <input
@@ -969,33 +1120,33 @@ export const OrdersView: React.FC = () => {
                       value={clientPhone}
                       onChange={e => setClientPhone(e.target.value)}
                       placeholder="(63) 99999-9999"
-                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 font-mono outline-none"
+                      className="w-full bg-wr-surface text-wr-text text-xs sm:text-sm p-3 rounded-xl border border-wr-border focus:border-wr-orange font-mono outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
-                      CPF / CNPJ <span className="text-neutral-500 font-normal">(Opcional)</span>
+                    <label className="block text-[11px] font-bold text-wr-muted mb-1">
+                      CPF / CNPJ <span className="text-wr-muted font-normal">(Opcional)</span>
                     </label>
                     <input
                       type="text"
                       value={clientCpfCnpj}
                       onChange={e => setClientCpfCnpj(e.target.value)}
                       placeholder="000.000.000-00"
-                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 font-mono outline-none"
+                      className="w-full bg-wr-surface text-wr-text text-xs sm:text-sm p-3 rounded-xl border border-wr-border focus:border-wr-orange font-mono outline-none"
                     />
                   </div>
                 </div>
               </div>
 
               {/* 3. DADOS DO CARRO, PLACA, KM & COMBUSTÍVEL */}
-              <div className="p-4 rounded-2xl bg-neutral-900/60 border border-white/5 space-y-3">
-                <span className="text-xs font-black uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+              <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
+                <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
                   <Car className="h-4 w-4" /> Veículo &bull; Dados de Entrada
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                   <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                    <label className="block text-[11px] font-bold text-wr-muted mb-1">
                       Carro / Modelo *
                     </label>
                     <input
@@ -1004,12 +1155,12 @@ export const OrdersView: React.FC = () => {
                       value={vehicleModel}
                       onChange={e => setVehicleModel(e.target.value)}
                       placeholder="Ex: Honda Civic 2.0 LXR"
-                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 outline-none"
+                      className="w-full bg-wr-surface text-wr-text text-xs sm:text-sm p-3 rounded-xl border border-wr-border focus:border-wr-orange outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                    <label className="block text-[11px] font-bold text-wr-muted mb-1">
                       Placa do Veículo *
                     </label>
                     <input
@@ -1018,12 +1169,12 @@ export const OrdersView: React.FC = () => {
                       value={vehiclePlate}
                       onChange={e => setVehiclePlate(e.target.value.toUpperCase())}
                       placeholder="ABC-1234"
-                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 font-mono font-bold uppercase outline-none"
+                      className="w-full bg-wr-surface text-wr-text text-xs sm:text-sm p-3 rounded-xl border border-wr-border focus:border-wr-orange font-mono font-bold uppercase outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                    <label className="block text-[11px] font-bold text-wr-muted mb-1">
                       Quilometragem (KM)
                     </label>
                     <input
@@ -1031,21 +1182,21 @@ export const OrdersView: React.FC = () => {
                       value={mileage || ''}
                       onChange={e => setMileage(Number(e.target.value))}
                       placeholder="Ex: 85000"
-                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 font-mono outline-none"
+                      className="w-full bg-wr-surface text-wr-text text-xs sm:text-sm p-3 rounded-xl border border-wr-border focus:border-wr-orange font-mono outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Combustível */}
                 <div className="pt-1">
-                  <label className="block text-[11px] font-bold text-neutral-400 mb-1.5 flex items-center gap-1">
-                    <Fuel className="h-3.5 w-3.5 text-orange-400" /> Nível de Combustível:
+                  <label className="block text-[11px] font-bold text-wr-muted mb-1.5 flex items-center gap-1">
+                    <Fuel className="h-3.5 w-3.5 text-wr-orange" /> Nível de Combustível:
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { id: 'reserva', label: 'Reserva', color: 'border-rose-500 bg-rose-500/15 text-rose-400' },
-                      { id: 'medio', label: 'Médio (~1/2)', color: 'border-amber-500 bg-amber-500/15 text-amber-400' },
-                      { id: 'cheio', label: 'Cheio', color: 'border-emerald-500 bg-emerald-500/15 text-emerald-400' },
+                      { id: 'reserva', label: 'Reserva', color: 'border-rose-500 bg-rose-500/15 text-rose-600 dark:text-rose-400' },
+                      { id: 'medio', label: 'Médio (~1/2)', color: 'border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400' },
+                      { id: 'cheio', label: 'Cheio', color: 'border-emerald-500 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
                     ].map(f => (
                       <button
                         key={f.id}
@@ -1054,7 +1205,7 @@ export const OrdersView: React.FC = () => {
                         className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center ${
                           fuelLevel === f.id
                             ? `${f.color} shadow-sm font-black`
-                            : 'border-white/5 bg-white/5 text-neutral-400 hover:text-white'
+                            : 'border-wr-border bg-wr-surface text-wr-muted hover:text-wr-text'
                         }`}
                       >
                         {f.label}
@@ -1065,13 +1216,13 @@ export const OrdersView: React.FC = () => {
               </div>
 
               {/* 4. SERVIÇO QUE O CLIENTE QUER FAZER & MECÂNICO */}
-              <div className="p-4 rounded-2xl bg-neutral-900/60 border border-white/5 space-y-3">
-                <span className="text-xs font-black uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+              <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
+                <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
                   <Wrench className="h-4 w-4" /> Serviço Solicitado &amp; Mecânico
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                    <label className="block text-[11px] font-bold text-wr-muted mb-1">
                       Serviço que o cliente quer fazer *
                     </label>
                     <input
@@ -1080,21 +1231,21 @@ export const OrdersView: React.FC = () => {
                       value={serviceDescription}
                       onChange={e => setServiceDescription(e.target.value)}
                       placeholder="Ex: Barulho na suspensão dianteira e troca de óleo..."
-                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 outline-none"
+                      className="w-full bg-wr-surface text-wr-text text-xs sm:text-sm p-3 rounded-xl border border-wr-border focus:border-wr-orange outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                    <label className="block text-[11px] font-bold text-wr-muted mb-1">
                       Qual mecânico vai fazer?
                     </label>
                     <select
                       value={mechanicAssigned}
                       onChange={e => setMechanicAssigned(e.target.value)}
-                      className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 outline-none cursor-pointer"
+                      className="w-full bg-wr-surface text-wr-text text-xs sm:text-sm p-3 rounded-xl border border-wr-border focus:border-wr-orange outline-none cursor-pointer"
                     >
                       {mechanics.map(m => (
-                        <option key={m} value={m} className="bg-neutral-900">
+                        <option key={m} value={m} className="bg-wr-surface text-wr-text">
                           {m}
                         </option>
                       ))}
@@ -1105,26 +1256,26 @@ export const OrdersView: React.FC = () => {
 
               {/* 5. TABELA DE SERVIÇOS & PEÇAS (QUANDO EM ANDAMENTO OU PRONTO) */}
               {(formStatus === 'andamento' || formStatus === 'pronto' || items.length > 0) && (
-                <div className="p-4 rounded-2xl bg-neutral-900/80 border border-orange-500/30 space-y-3 animate-fadeIn">
-                  <div className="flex items-center justify-between">
+                <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-orange/40 space-y-3 animate-fadeIn">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
-                      <span className="text-xs font-black uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+                      <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
                         <DollarSign className="h-4 w-4" /> Discriminação de Serviços Feitos &amp; Peças
                       </span>
-                      <p className="text-[11px] text-neutral-400">
+                      <p className="text-[11px] text-wr-muted">
                         Adicione os serviços executados, valor de peças e mão de obra
                       </p>
                     </div>
-                    <span className="text-xs font-mono font-black text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/25">
+                    <span className="text-xs font-mono font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/25">
                       Subtotal: {formatCurrency(calculatedGrandTotal)}
                     </span>
                   </div>
 
                   {/* Campos para Adicionar Novo Item */}
-                  <div className="p-3.5 rounded-2xl bg-[#181a24] border border-white/10 space-y-3">
+                  <div className="p-3.5 rounded-2xl bg-wr-surface border border-wr-border space-y-3">
                     {/* Descrição com Sugestões Predefinidas */}
                     <div className="relative">
-                      <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                      <label className="block text-[11px] font-bold text-wr-muted mb-1">
                         Descrição do Serviço ou Peça
                       </label>
                       <input
@@ -1136,12 +1287,12 @@ export const OrdersView: React.FC = () => {
                           setShowPresetsDropdown(true)
                         }}
                         placeholder="Digite o serviço ou escolha uma predefinição..."
-                        className="w-full bg-neutral-900 text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 outline-none"
+                        className="w-full bg-wr-elevated text-wr-text text-xs sm:text-sm p-3 rounded-xl border border-wr-border focus:border-wr-orange outline-none"
                       />
 
                       {showPresetsDropdown && filteredPresets.length > 0 && (
-                        <div className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto rounded-2xl border border-white/10 bg-neutral-950 p-1.5 shadow-2xl z-50 space-y-1">
-                          <span className="text-[10px] uppercase font-bold text-neutral-500 px-2 py-1 block">
+                        <div className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto rounded-2xl border border-wr-border bg-wr-surface p-1.5 shadow-elevated z-50 space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-wr-muted px-2 py-1 block">
                             Serviços Predefinidos Rápidos
                           </span>
                           {filteredPresets.map(preset => (
@@ -1149,10 +1300,10 @@ export const OrdersView: React.FC = () => {
                               key={preset.id}
                               type="button"
                               onClick={() => handleSelectPreset(preset)}
-                              className="w-full text-left p-2.5 rounded-xl hover:bg-orange-500/15 hover:text-orange-400 text-neutral-300 text-xs font-semibold flex items-center justify-between transition-colors"
+                              className="w-full text-left p-2.5 rounded-xl hover:bg-wr-orange/15 hover:text-wr-orange text-wr-text text-xs font-semibold flex items-center justify-between transition-colors"
                             >
                               <span className="truncate">{preset.name}</span>
-                              <span className="font-mono text-[11px] text-orange-400 shrink-0 font-bold ml-2">
+                              <span className="font-mono text-[11px] text-wr-orange shrink-0 font-bold ml-2">
                                 Peças: {formatCurrency(preset.partsCost)} | M.O: {formatCurrency(preset.laborCost)}
                               </span>
                             </button>
@@ -1163,7 +1314,7 @@ export const OrdersView: React.FC = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                       <div>
-                        <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                        <label className="block text-[11px] font-bold text-wr-muted mb-1">
                           Valor Peça (R$)
                         </label>
                         <input
@@ -1172,12 +1323,12 @@ export const OrdersView: React.FC = () => {
                           value={itemPartsCost}
                           onChange={e => setItemPartsCost(e.target.value)}
                           placeholder="0,00"
-                          className="w-full bg-neutral-900 text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 font-mono font-bold outline-none"
+                          className="w-full bg-wr-elevated text-wr-text text-xs sm:text-sm p-3 rounded-xl border border-wr-border font-mono font-bold outline-none"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                        <label className="block text-[11px] font-bold text-wr-muted mb-1">
                           Mão de Obra (R$)
                         </label>
                         <input
@@ -1192,7 +1343,7 @@ export const OrdersView: React.FC = () => {
                             }
                           }}
                           placeholder="0,00"
-                          className="w-full bg-neutral-900 text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 font-mono font-bold outline-none"
+                          className="w-full bg-wr-elevated text-wr-text text-xs sm:text-sm p-3 rounded-xl border border-wr-border font-mono font-bold outline-none"
                         />
                       </div>
 
@@ -1211,9 +1362,9 @@ export const OrdersView: React.FC = () => {
 
                   {/* Tabela dos Itens Adicionados */}
                   {items.length > 0 && (
-                    <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#181a24]">
+                    <div className="overflow-x-auto rounded-2xl border border-wr-border bg-wr-surface">
                       <table className="w-full text-left text-xs min-w-[420px]">
-                        <thead className="bg-white/5 text-neutral-400 border-b border-white/10 text-[11px] uppercase font-bold">
+                        <thead className="bg-wr-elevated text-wr-muted border-b border-wr-border text-[11px] uppercase font-bold">
                           <tr>
                             <th className="py-2.5 px-3">Serviço / Peça</th>
                             <th className="py-2.5 px-3 text-right">Peças</th>
@@ -1222,24 +1373,24 @@ export const OrdersView: React.FC = () => {
                             <th className="py-2.5 px-2 w-10"></th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5 text-white">
+                        <tbody className="divide-y divide-wr-border text-wr-text">
                           {items.map(it => (
                             <tr key={it.id}>
                               <td className="py-2.5 px-3 font-semibold">{it.serviceDescription}</td>
-                              <td className="py-2.5 px-3 font-mono text-right text-neutral-400">
+                              <td className="py-2.5 px-3 font-mono text-right text-wr-muted">
                                 {formatCurrency(it.partsCost)}
                               </td>
-                              <td className="py-2.5 px-3 font-mono text-right text-neutral-400">
+                              <td className="py-2.5 px-3 font-mono text-right text-wr-muted">
                                 {formatCurrency(it.laborCost)}
                               </td>
-                              <td className="py-2.5 px-3 font-mono text-right font-black text-emerald-400">
+                              <td className="py-2.5 px-3 font-mono text-right font-black text-emerald-600 dark:text-emerald-400">
                                 {formatCurrency(it.total)}
                               </td>
                               <td className="py-2.5 px-2 text-center">
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveItem(it.id)}
-                                  className="text-rose-400 hover:text-rose-300 p-1"
+                                  className="text-rose-500 hover:text-rose-400 p-1"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
@@ -1255,20 +1406,20 @@ export const OrdersView: React.FC = () => {
 
               {/* 6. CAMPO DE OBSERVAÇÃO */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-black uppercase tracking-wider text-neutral-400">
-                  Observações Gerais <span className="text-neutral-500 font-normal">(Opcional)</span>
+                <label className="block text-xs font-black uppercase tracking-wider text-wr-muted">
+                  Observações Gerais <span className="text-wr-muted font-normal">(Opcional)</span>
                 </label>
                 <textarea
                   rows={2}
                   value={observations}
                   onChange={e => setObservations(e.target.value)}
                   placeholder="Alguma observação adicional sobre o veículo ou instruções do cliente..."
-                  className="w-full bg-[#181a24] text-white text-xs sm:text-sm p-3 rounded-xl border border-white/10 focus:border-orange-500 outline-none"
+                  className="w-full bg-wr-surface text-wr-text text-xs sm:text-sm p-3 rounded-xl border border-wr-border focus:border-wr-orange outline-none"
                 />
               </div>
 
               {/* 7. BOTÕES SALVAR E CANCELAR */}
-              <div className="flex items-center gap-3 pt-3 border-t border-white/10">
+              <div className="flex items-center gap-3 pt-3 border-t border-wr-border">
                 <button
                   type="button"
                   onClick={handleSaveOrder}
@@ -1282,8 +1433,9 @@ export const OrdersView: React.FC = () => {
                   onClick={() => {
                     setIsNewOrderModalOpen(false)
                     setEditingOrder(null)
+                    setShowClientSelector(false)
                   }}
-                  className="px-6 py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 font-bold text-xs uppercase tracking-wider transition-all"
+                  className="px-6 py-3.5 rounded-2xl bg-wr-elevated hover:bg-wr-surface text-wr-text border border-wr-border font-bold text-xs uppercase tracking-wider transition-all"
                 >
                   Cancelar
                 </button>
@@ -1295,19 +1447,19 @@ export const OrdersView: React.FC = () => {
 
       {/* ===================== MODAL: PAINEL DE VENDA (CHECKOUT AO MARCAR COMO PRONTO) ===================== */}
       {finalizingOrder && (
-        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
-          <div className="relative w-full max-w-lg rounded-[32px] border border-white/10 bg-[#12141c] p-6 sm:p-8 shadow-2xl space-y-6 my-auto">
+        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/60 dark:bg-black/85 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-[32px] border border-wr-border bg-wr-surface p-6 sm:p-8 shadow-elevated space-y-6 my-auto text-wr-text transition-colors">
             {/* Cabeçalho do Checkout */}
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+            <div className="flex items-center justify-between pb-4 border-b border-wr-border">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <div className="h-10 w-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                   <DollarSign className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-black text-white">
+                  <h3 className="text-base sm:text-lg font-black text-wr-text">
                     Painel de Venda &bull; {finalizingOrder.number}
                   </h3>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-wr-muted">
                     {finalizingOrder.clientName} &bull; {finalizingOrder.vehicleModel} ({finalizingOrder.vehiclePlate})
                   </p>
                 </div>
@@ -1315,40 +1467,40 @@ export const OrdersView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFinalizingOrder(null)}
-                className="rounded-xl p-2 text-neutral-400 hover:text-white hover:bg-white/5"
+                className="rounded-xl p-2 text-wr-muted hover:text-wr-text hover:bg-wr-elevated transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             {/* Resumo Financeiro da OS */}
-            <div className="p-4 rounded-2xl bg-neutral-900/80 border border-white/5 space-y-3 text-xs">
+            <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3 text-xs">
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
-                  <span className="text-[10px] uppercase font-bold text-neutral-400 block">Peças</span>
-                  <span className="font-mono font-bold text-neutral-200">
+                <div className="p-2.5 rounded-xl bg-wr-surface border border-wr-border">
+                  <span className="text-[10px] uppercase font-bold text-wr-muted block">Peças</span>
+                  <span className="font-mono font-bold text-wr-text">
                     {formatCurrency(finalizingOrder.partsTotal || 0)}
                   </span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
-                  <span className="text-[10px] uppercase font-bold text-neutral-400 block">Mão de Obra</span>
-                  <span className="font-mono font-bold text-neutral-200">
+                <div className="p-2.5 rounded-xl bg-wr-surface border border-wr-border">
+                  <span className="text-[10px] uppercase font-bold text-wr-muted block">Mão de Obra</span>
+                  <span className="font-mono font-bold text-wr-text">
                     {formatCurrency(finalizingOrder.laborTotal || 0)}
                   </span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
-                  <span className="text-[10px] uppercase font-bold text-neutral-400 block">Subtotal</span>
-                  <span className="font-mono font-bold text-neutral-200">
+                <div className="p-2.5 rounded-xl bg-wr-surface border border-wr-border">
+                  <span className="text-[10px] uppercase font-bold text-wr-muted block">Subtotal</span>
+                  <span className="font-mono font-bold text-wr-text">
                     {formatCurrency((finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0))}
                   </span>
                 </div>
               </div>
 
               {/* Campo de Desconto */}
-              <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                <span className="font-bold text-neutral-300">Desconto Concedido:</span>
+              <div className="flex items-center justify-between pt-2 border-t border-wr-border">
+                <span className="font-bold text-wr-text">Desconto Concedido:</span>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-neutral-500 font-mono font-bold">R$</span>
+                  <span className="text-wr-muted font-mono font-bold">R$</span>
                   <input
                     type="number"
                     min="0"
@@ -1356,17 +1508,17 @@ export const OrdersView: React.FC = () => {
                     value={checkoutDiscount || ''}
                     onChange={e => setCheckoutDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
                     placeholder="0,00"
-                    className="w-28 bg-[#181a24] text-white text-xs sm:text-sm font-mono font-bold text-right p-2 rounded-xl border border-white/10 outline-none"
+                    className="w-28 bg-wr-surface text-wr-text text-xs sm:text-sm font-mono font-bold text-right p-2 rounded-xl border border-wr-border outline-none focus:border-wr-orange"
                   />
                 </div>
               </div>
 
               {/* Total Final a Pagar */}
-              <div className="flex items-center justify-between pt-3 border-t border-white/10">
-                <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
+              <div className="flex items-center justify-between pt-3 border-t border-wr-border">
+                <span className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                   Total Final a Pagar:
                 </span>
-                <span className="font-mono text-2xl font-black text-emerald-400">
+                <span className="font-mono text-2xl font-black text-emerald-600 dark:text-emerald-400">
                   {formatCurrency(
                     Math.max(
                       0,
@@ -1379,7 +1531,7 @@ export const OrdersView: React.FC = () => {
 
             {/* Seleção do Método de Pagamento */}
             <div className="space-y-2">
-              <label className="block text-xs font-black uppercase tracking-wider text-neutral-400">
+              <label className="block text-xs font-black uppercase tracking-wider text-wr-muted">
                 Escolha o Método de Pagamento:
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -1397,8 +1549,8 @@ export const OrdersView: React.FC = () => {
                     onClick={() => setCheckoutPaymentMethod(opt.id as PaymentMethod)}
                     className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center gap-1 ${
                       checkoutPaymentMethod === opt.id
-                        ? 'border-orange-500 bg-orange-500/15 text-orange-400 font-black shadow-md ring-2 ring-orange-500/30'
-                        : 'border-white/5 bg-white/5 text-neutral-400 hover:text-white'
+                        ? 'border-orange-500 bg-orange-500/15 text-orange-600 dark:text-orange-400 font-black shadow-md ring-2 ring-orange-500/30'
+                        : 'border-wr-border bg-wr-surface text-wr-muted hover:text-wr-text hover:bg-wr-elevated'
                     }`}
                   >
                     <span className="text-lg">{opt.icon}</span>
@@ -1410,17 +1562,17 @@ export const OrdersView: React.FC = () => {
 
             {/* Opções extras para Cartão de Crédito ou Fiado */}
             {checkoutPaymentMethod === 'cartao_credito' && (
-              <div className="p-3.5 rounded-2xl bg-neutral-900 border border-orange-500/30 space-y-1.5 animate-fadeIn">
-                <label className="block text-xs font-bold text-orange-400">
+              <div className="p-3.5 rounded-2xl bg-wr-elevated border border-orange-500/30 space-y-1.5 animate-fadeIn">
+                <label className="block text-xs font-bold text-wr-orange">
                   Parcelamento no Cartão de Crédito:
                 </label>
                 <select
                   value={checkoutInstallments}
                   onChange={e => setCheckoutInstallments(Number(e.target.value))}
-                  className="w-full bg-[#181a24] text-white text-xs p-2.5 rounded-xl border border-white/10 outline-none"
+                  className="w-full bg-wr-surface text-wr-text text-xs p-2.5 rounded-xl border border-wr-border outline-none focus:border-wr-orange cursor-pointer"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(num => (
-                    <option key={num} value={num}>
+                    <option key={num} value={num} className="bg-wr-surface text-wr-text">
                       {num}x de{' '}
                       {formatCurrency(
                         Math.max(
@@ -1435,15 +1587,15 @@ export const OrdersView: React.FC = () => {
             )}
 
             {checkoutPaymentMethod === 'pagar_depois' && (
-              <div className="p-3.5 rounded-2xl bg-neutral-900 border border-amber-500/30 space-y-1.5 animate-fadeIn">
-                <label className="block text-xs font-bold text-amber-400">
+              <div className="p-3.5 rounded-2xl bg-wr-elevated border border-amber-500/30 space-y-1.5 animate-fadeIn">
+                <label className="block text-xs font-bold text-amber-600 dark:text-amber-400">
                   Data combinada para pagamento (Vencimento):
                 </label>
                 <input
                   type="date"
                   value={checkoutDueDate}
                   onChange={e => setCheckoutDueDate(e.target.value)}
-                  className="w-full bg-[#181a24] text-white text-xs p-2.5 rounded-xl border border-white/10 font-mono outline-none"
+                  className="w-full bg-wr-surface text-wr-text text-xs p-2.5 rounded-xl border border-wr-border font-mono outline-none focus:border-wr-orange"
                 />
               </div>
             )}
@@ -1461,7 +1613,7 @@ export const OrdersView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFinalizingOrder(null)}
-                className="px-5 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 font-bold text-xs uppercase tracking-wider"
+                className="px-5 py-4 rounded-2xl bg-wr-elevated hover:bg-wr-surface text-wr-text border border-wr-border font-bold text-xs uppercase tracking-wider transition-all"
               >
                 Cancelar
               </button>
@@ -1472,37 +1624,37 @@ export const OrdersView: React.FC = () => {
 
       {/* ===================== MODAL: SUCESSO DO PAGAMENTO (COMPARTILHAR NOTA FISCAL) ===================== */}
       {completedPaymentOrder && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn">
-          <div className="relative w-full max-w-md rounded-[32px] border border-white/10 bg-[#12141c] p-6 sm:p-8 shadow-2xl space-y-6 text-center">
-            <div className="h-16 w-16 mx-auto rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 animate-bounce">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 dark:bg-black/85 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="relative w-full max-w-md rounded-[32px] border border-wr-border bg-wr-surface p-6 sm:p-8 shadow-elevated space-y-6 text-center text-wr-text transition-colors">
+            <div className="h-16 w-16 mx-auto rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-500 dark:text-emerald-400 animate-bounce">
               <CheckCircle2 className="h-9 w-9 stroke-[2.5]" />
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-xl font-black text-white">Venda Concluída com Sucesso!</h3>
-              <p className="text-xs text-neutral-400">
+              <h3 className="text-xl font-black text-wr-text">Venda Concluída com Sucesso!</h3>
+              <p className="text-xs text-wr-muted">
                 A {completedPaymentOrder.number} foi marcada como paga e o veículo foi liberado.
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-neutral-900 border border-white/5 text-xs space-y-1">
-              <div className="flex justify-between text-neutral-400">
+            <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border text-xs space-y-1">
+              <div className="flex justify-between text-wr-muted">
                 <span>Cliente:</span>
-                <strong className="text-white">{completedPaymentOrder.clientName}</strong>
+                <strong className="text-wr-text">{completedPaymentOrder.clientName}</strong>
               </div>
-              <div className="flex justify-between text-neutral-400">
+              <div className="flex justify-between text-wr-muted">
                 <span>Veículo:</span>
-                <strong className="text-white">{completedPaymentOrder.vehicleModel} ({completedPaymentOrder.vehiclePlate})</strong>
+                <strong className="text-wr-text">{completedPaymentOrder.vehicleModel} ({completedPaymentOrder.vehiclePlate})</strong>
               </div>
-              <div className="flex justify-between text-neutral-400">
+              <div className="flex justify-between text-wr-muted">
                 <span>Método:</span>
-                <strong className="text-emerald-400">
+                <strong className="text-emerald-600 dark:text-emerald-400">
                   {PAYMENT_LABELS[completedPaymentOrder.paymentMethod || 'pix']}
                 </strong>
               </div>
-              <div className="flex justify-between text-neutral-400 pt-1 border-t border-white/5">
+              <div className="flex justify-between text-wr-muted pt-1 border-t border-wr-border">
                 <span>Valor Pago:</span>
-                <strong className="font-mono text-base font-black text-emerald-400">
+                <strong className="font-mono text-base font-black text-emerald-600 dark:text-emerald-400">
                   {formatCurrency(completedPaymentOrder.totalAmount || 0)}
                 </strong>
               </div>
@@ -1539,7 +1691,7 @@ export const OrdersView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setCompletedPaymentOrder(null)}
-                className="w-full bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white font-bold text-xs uppercase tracking-wider py-3 rounded-2xl transition-all"
+                className="w-full bg-wr-elevated hover:bg-wr-surface text-wr-muted hover:text-wr-text font-bold text-xs uppercase tracking-wider py-3 rounded-2xl border border-wr-border transition-all"
               >
                 Fechar Painel
               </button>
@@ -1550,21 +1702,21 @@ export const OrdersView: React.FC = () => {
 
       {/* ===================== MODAL: WHATSAPP ===================== */}
       {whatsAppModalOrder && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
-          <div className="relative w-full max-w-lg rounded-[32px] border border-white/10 bg-[#12141c] p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <span className="font-black text-emerald-400 text-sm flex items-center gap-2">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="relative w-full max-w-lg rounded-[32px] border border-wr-border bg-wr-surface p-6 shadow-elevated space-y-4 text-wr-text transition-colors">
+            <div className="flex items-center justify-between pb-3 border-b border-wr-border">
+              <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-2">
                 <MessageCircle className="h-4 w-4" /> Enviar OS via WhatsApp
               </span>
               <button
                 onClick={() => setWhatsAppModalOrder(null)}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-white"
+                className="p-1.5 rounded-lg text-wr-muted hover:text-wr-text hover:bg-wr-elevated transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-neutral-900/80 p-2 flex items-center justify-center min-h-[220px]">
+            <div className="rounded-2xl border border-wr-border bg-wr-elevated p-2 flex items-center justify-center min-h-[220px]">
               {generatedImageUrl ? (
                 <img
                   src={generatedImageUrl}
@@ -1572,8 +1724,8 @@ export const OrdersView: React.FC = () => {
                   className="rounded-xl max-h-[300px] w-auto object-contain shadow-md"
                 />
               ) : (
-                <div className="flex items-center gap-2 text-neutral-400 text-xs animate-pulse">
-                  <Clock className="h-4 w-4 text-orange-400" />
+                <div className="flex items-center gap-2 text-wr-muted text-xs animate-pulse">
+                  <Clock className="h-4 w-4 text-wr-orange" />
                   <span>Gerando imagem da OS...</span>
                 </div>
               )}
@@ -1591,7 +1743,7 @@ export const OrdersView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleCopyAndOpenWhatsApp}
-                className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 font-bold text-xs"
+                className="px-4 py-3 rounded-xl bg-wr-elevated hover:bg-wr-surface border border-wr-border text-wr-text font-bold text-xs"
               >
                 <Copy className="h-4 w-4" />
               </button>
@@ -1602,19 +1754,19 @@ export const OrdersView: React.FC = () => {
 
       {/* ===================== MODAL: IMPRESSÃO OFICIAL DA OS (PDF / VISUALIZADOR) ===================== */}
       {pdfModalOrder && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-4 md:p-6 animate-fadeIn overflow-y-auto">
-          <div className="relative w-full max-w-4xl rounded-[32px] border border-white/10 bg-[#12141c] p-4 sm:p-6 shadow-2xl space-y-4 my-auto max-h-[95vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 dark:bg-black/85 backdrop-blur-md p-2 sm:p-4 md:p-6 animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-4xl rounded-[32px] border border-wr-border bg-wr-surface p-4 sm:p-6 shadow-elevated space-y-4 my-auto max-h-[95vh] overflow-y-auto text-wr-text transition-colors">
             {/* Barra Superior de Ações (Oculta na Impressão) */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10 no-print">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-wr-border no-print">
               <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
+                <div className="h-9 w-9 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-500">
                   <Printer className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-black text-white">
+                  <h3 className="text-sm sm:text-base font-black text-wr-text">
                     Ordem de Serviço &bull; {pdfModalOrder.number}
                   </h3>
-                  <p className="text-[11px] text-neutral-400">
+                  <p className="text-[11px] text-wr-muted">
                     Visualização executiva para impressão ou envio
                   </p>
                 </div>
@@ -1641,7 +1793,7 @@ export const OrdersView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setPdfModalOrder(null)}
-                  className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
+                  className="p-2 rounded-xl text-wr-muted hover:text-wr-text hover:bg-wr-elevated transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
