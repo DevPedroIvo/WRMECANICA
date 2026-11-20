@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useApp } from '../context/AppContext'
-import { WrLogo } from '../components/WrLogo'
 import {
   ServiceOrder,
   FuelStatus,
@@ -40,16 +39,14 @@ import {
   Phone,
   ArrowRight,
   ArrowLeft,
-  Kanban,
-  List,
-  Eye,
-  Check,
   Calendar,
   Layers,
   ChevronRight,
   AlertTriangle,
-  Play,
-  ArrowUpRight,
+  MoreVertical,
+  Check,
+  ChevronDown,
+  Filter,
 } from 'lucide-react'
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
@@ -60,6 +57,47 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   boleto: 'Boleto',
   pagar_depois: 'A Prazo (Fiado)',
   pendente: 'Pendente',
+}
+
+const STATUS_CONFIG: Record<
+  OrderStatus,
+  { label: string; bg: string; text: string; border: string; dot: string }
+> = {
+  aguardando: {
+    label: 'Aguardando',
+    bg: 'bg-amber-500/10',
+    text: 'text-amber-600 dark:text-amber-400',
+    border: 'border-amber-500/30',
+    dot: 'bg-amber-500',
+  },
+  andamento: {
+    label: 'Em Andamento',
+    bg: 'bg-wr-orange/15',
+    text: 'text-wr-orange',
+    border: 'border-wr-orange/30',
+    dot: 'bg-wr-orange',
+  },
+  pronto: {
+    label: 'Pronto p/ Retirada',
+    bg: 'bg-blue-500/15',
+    text: 'text-blue-600 dark:text-blue-400',
+    border: 'border-blue-500/30',
+    dot: 'bg-blue-500',
+  },
+  pago: {
+    label: 'Concluída & Paga',
+    bg: 'bg-emerald-500/15',
+    text: 'text-emerald-600 dark:text-emerald-400',
+    border: 'border-emerald-500/30',
+    dot: 'bg-emerald-500',
+  },
+  cancelado: {
+    label: 'Cancelada',
+    bg: 'bg-rose-500/15',
+    text: 'text-rose-600 dark:text-rose-400',
+    border: 'border-rose-500/30',
+    dot: 'bg-rose-500',
+  },
 }
 
 export const OrdersView: React.FC = () => {
@@ -85,14 +123,17 @@ export const OrdersView: React.FC = () => {
     showToast,
   } = useApp()
 
-  // Alternância de modo de visualização (Lista vs Kanban)
-  const [viewMode, setViewMode] = useState<'lista' | 'kanban'>('kanban')
-
   // Filtros e busca
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState<
-    'ativas' | 'aguardando' | 'andamento' | 'pronto' | 'pago' | 'cancelado' | 'todas'
-  >('ativas')
+  const [activeFilter, setActiveFilter] = useState<
+    'todas' | 'aguardando' | 'andamento' | 'pronto' | 'pago' | 'cancelado'
+  >('todas')
+
+  // Card clicado abre o Painel Lateral Amplo (Slide-Over Drawer)
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState<ServiceOrder | null>(null)
+
+  // Menu suspenso de ações rápidas no card
+  const [openCardMenuId, setOpenCardMenuId] = useState<string | null>(null)
 
   // Modais de Controle
   const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null)
@@ -101,10 +142,6 @@ export const OrdersView: React.FC = () => {
   const [whatsAppModalOrder, setWhatsAppModalOrder] = useState<ServiceOrder | null>(null)
   const [danfseModalOrder, setDanfseModalOrder] = useState<ServiceOrder | null>(null)
   const [pdfModalOrder, setPdfModalOrder] = useState<ServiceOrder | null>(null)
-
-  // Novo Modal de Detalhes da OS
-  const [selectedDetailOrder, setSelectedDetailOrder] = useState<ServiceOrder | null>(null)
-  const [detailTab, setDetailTab] = useState<'resumo' | 'itens' | 'diagnostico' | 'historico' | 'financeiro'>('resumo')
 
   // Stepper / Assistente em 5 etapas para Criação de OS
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5>(1)
@@ -147,6 +184,13 @@ export const OrdersView: React.FC = () => {
     d.setDate(d.getDate() + 30)
     return d.toISOString().slice(0, 10)
   })
+
+  // Fecha menus flutuantes ao clicar fora
+  useEffect(() => {
+    const handleWindowClick = () => setOpenCardMenuId(null)
+    window.addEventListener('click', handleWindowClick)
+    return () => window.removeEventListener('click', handleWindowClick)
+  }, [])
 
   // Sincroniza Mecânico Padrão
   useEffect(() => {
@@ -215,7 +259,7 @@ export const OrdersView: React.FC = () => {
     }
   }, [editingOrder, setIsNewOrderModalOpen])
 
-  // Gerar Canvas para WhatsApp sempre que abrir modal de WhatsApp
+  // Gerar Canvas para WhatsApp
   useEffect(() => {
     if (!whatsAppModalOrder) {
       setGeneratedImageUrl('')
@@ -245,7 +289,7 @@ export const OrdersView: React.FC = () => {
     }
   }, [whatsAppModalOrder])
 
-  // Adicionar item de serviço à OS
+  // Itens de serviço
   const handleAddItem = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!newItemDesc.trim()) {
@@ -271,7 +315,6 @@ export const OrdersView: React.FC = () => {
     setNewItemLabor(0)
   }
 
-  // Adicionar item pré-definido com 1 clique
   const handleAddPreset = (preset: ServicePreset) => {
     const newItem: OrderItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -288,12 +331,10 @@ export const OrdersView: React.FC = () => {
     setItems(prev => prev.filter(it => it.id !== id))
   }
 
-  // Cálculos de totais
   const partsTotal = items.reduce((sum, it) => sum + (it.partsCost || 0), 0)
   const laborTotal = items.reduce((sum, it) => sum + (it.laborCost || 0), 0)
   const itemsGrandTotal = partsTotal + laborTotal
 
-  // Seleção de cliente já existente
   const filteredExistingClients = useMemo(() => {
     if (!clientSearchQuery.trim()) return clients.slice(0, 8)
     const q = clientSearchQuery.toLowerCase().trim()
@@ -312,7 +353,6 @@ export const OrdersView: React.FC = () => {
     setClientCpf(c.cpfCnpj || '')
     setShowClientSelector(false)
 
-    // Busca veículos deste cliente para autocompletar
     const clientVehs = vehicles.filter(v => v.clientId === c.id)
     if (clientVehs.length > 0) {
       const v = clientVehs[0]
@@ -328,7 +368,7 @@ export const OrdersView: React.FC = () => {
     return vehicles.filter(v => v.clientId === selectedClientId)
   }, [selectedClientId, vehicles])
 
-  // Salvar Ordem de Serviço (Criar ou Atualizar)
+  // Salvar Ordem de Serviço
   const handleSaveOrder = () => {
     if (!clientName.trim()) {
       showToast('Por favor, informe o nome do cliente.', 'warning')
@@ -423,7 +463,7 @@ export const OrdersView: React.FC = () => {
     showToast('Ordem de Serviço criada com sucesso!', 'success')
   }
 
-  // Confirmar Pagamento no Painel de Vendas
+  // Checkout e Pagamento
   const handleConfirmCheckout = () => {
     if (!finalizingOrder) return
     const baseSubtotal = (finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0)
@@ -449,10 +489,13 @@ export const OrdersView: React.FC = () => {
 
     setFinalizingOrder(null)
     setCompletedPaymentOrder(updated)
+    if (selectedOrderDetails && selectedOrderDetails.id === finalizingOrder.id) {
+      setSelectedOrderDetails(updated)
+    }
     showToast(`Pagamento da ${finalizingOrder.number} registrado com sucesso!`, 'success')
   }
 
-  // Abrir WhatsApp do cliente diretamente
+  // WhatsApp direto
   const handleOpenClientWhatsApp = (order: ServiceOrder) => {
     const raw = (order.clientPhone || '').replace(/\D/g, '')
     if (!raw) {
@@ -463,7 +506,7 @@ export const OrdersView: React.FC = () => {
     window.open(`https://wa.me/${cleanNumber}`, '_blank')
   }
 
-  // Abrir Nota Fiscal Oficial (NFS-e)
+  // NFS-e Oficial
   const handleOpenNfse = (order: ServiceOrder) => {
     let targetOrder = order
     if (!targetOrder.fiscalInvoice) {
@@ -475,143 +518,18 @@ export const OrdersView: React.FC = () => {
     setDanfseModalOrder(targetOrder)
   }
 
-  // Filtragem das Ordens de Serviço
-  const filteredOrders = useMemo(() => {
-    return orders.filter(o => {
-      const q = searchTerm.toLowerCase().trim()
-      const matchesSearch =
-        !q ||
-        (o.number?.toLowerCase() || '').includes(q) ||
-        (o.clientName?.toLowerCase() || '').includes(q) ||
-        (o.clientPhone?.toLowerCase() || '').includes(q) ||
-        (o.vehiclePlate?.toLowerCase() || '').includes(q) ||
-        (o.vehicleModel?.toLowerCase() || '').includes(q) ||
-        (o.serviceDescription?.toLowerCase() || '').includes(q) ||
-        (o.mechanicAssigned?.toLowerCase() || '').includes(q)
-
-      let matchesFilter = true
-      if (activeTab === 'ativas') {
-        matchesFilter = o.status !== 'pago' && o.status !== 'cancelado'
-      } else if (activeTab === 'todas') {
-        matchesFilter = true
-      } else {
-        matchesFilter = o.status === activeTab
-      }
-
-      return matchesSearch && matchesFilter
-    })
-  }, [orders, searchTerm, activeTab])
-
-  // Contadores para as abas e métricas
-  const tabCounts = useMemo(() => {
-    return {
-      ativas: orders.filter(o => o.status !== 'pago' && o.status !== 'cancelado').length,
-      aguardando: orders.filter(o => o.status === 'aguardando').length,
-      andamento: orders.filter(o => o.status === 'andamento').length,
-      pronto: orders.filter(o => o.status === 'pronto').length,
-      pago: orders.filter(o => o.status === 'pago').length,
-      cancelado: orders.filter(o => o.status === 'cancelado').length,
-      todas: orders.length,
-    }
-  }, [orders])
-
-  const getStatusBadge = (status: OrderStatus) => {
-    switch (status) {
-      case 'aguardando':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-            <Clock className="h-3.5 w-3.5" />
-            Aguardando
-          </span>
-        )
-      case 'andamento':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-wr-orange/15 text-wr-orange border border-wr-orange/30 shadow-xs">
-            <span className="h-2 w-2 rounded-full bg-wr-orange animate-pulse" />
-            Em Execução
-          </span>
-        )
-      case 'pronto':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Pronto p/ Retirada
-          </span>
-        )
-      case 'pago':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-            <DollarSign className="h-3.5 w-3.5" />
-            Concluída &amp; Paga
-          </span>
-        )
-      case 'cancelado':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-            <XCircle className="h-3.5 w-3.5" />
-            Cancelada
-          </span>
-        )
-      default:
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-wr-elevated text-wr-muted border border-wr-border">
-            {status}
-          </span>
-        )
-    }
-  }
-
-  // Drag and drop para o Quadro Kanban
-  const handleDragStart = (e: React.DragEvent, orderId: string) => {
-    e.dataTransfer.setData('text/plain', orderId)
-  }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-  }
-
-  const handleDropOnColumn = (e: React.DragEvent, targetStatus: OrderStatus) => {
-    e.preventDefault()
-    const orderId = e.dataTransfer.getData('text/plain')
-    if (!orderId) return
-    const targetOrder = orders.find(o => o.id === orderId)
-    if (!targetOrder || targetOrder.status === targetStatus) return
-
-    if (targetStatus === 'pronto') {
-      updateOrderStatus(orderId, 'pronto')
-      showToast(`OS #${targetOrder.number} marcada como Pronta p/ Retirada!`, 'info')
-    } else if (targetStatus === 'pago') {
-      setFinalizingOrder(targetOrder)
-      setCheckoutPaymentMethod('pix')
-      setCheckoutDiscount(targetOrder.discount || 0)
-      setCheckoutInstallments(1)
-    } else {
-      updateOrderStatus(orderId, targetStatus)
-      showToast(`OS #${targetOrder.number} movida para ${targetStatus.toUpperCase()}!`, 'info')
-    }
-  }
-
-  // Compartilhamento direto WhatsApp
-  const handleCopyAndOpenWhatsApp = async () => {
-    if (!whatsAppModalOrder) return
-    try {
-      if (imageBlob && navigator.clipboard && window.ClipboardItem) {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })])
-        setCopyFeedback(true)
-      }
-    } catch {
-      // Fallback
-    }
-    const cleanNumber = whatsAppModalOrder.clientPhone.replace(/\D/g, '')
-    const fullNumber = cleanNumber.startsWith('55') ? cleanNumber : `55${cleanNumber}`
-    window.open(`https://wa.me/${fullNumber}`, '_blank')
-  }
-
+  // Compartilhamento com Imagem no WhatsApp
   const handleDirectShare = async () => {
     if (!whatsAppModalOrder) return
-    if (imageBlob && navigator.canShare && navigator.canShare({ files: [new File([imageBlob], 'os.png', { type: 'image/png' })] })) {
+    if (
+      imageBlob &&
+      navigator.canShare &&
+      navigator.canShare({ files: [new File([imageBlob], 'os.png', { type: 'image/png' })] })
+    ) {
       try {
-        const file = new File([imageBlob], `OS-${whatsAppModalOrder.number}.png`, { type: 'image/png' })
+        const file = new File([imageBlob], `OS-${whatsAppModalOrder.number}.png`, {
+          type: 'image/png',
+        })
         await navigator.share({
           title: `OS ${whatsAppModalOrder.number} - WR Mecânica`,
           text: `Olá ${whatsAppModalOrder.clientName}! Segue a sua Ordem de Serviço na WR Mecânica & Cia.`,
@@ -622,12 +540,53 @@ export const OrdersView: React.FC = () => {
         if (err instanceof Error && err.name === 'AbortError') return
       }
     }
-    await handleCopyAndOpenWhatsApp()
+
+    if (imageBlob && navigator.clipboard && window.ClipboardItem) {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })])
+        setCopyFeedback(true)
+      } catch {
+        // fallback
+      }
+    }
+    const cleanNumber = whatsAppModalOrder.clientPhone.replace(/\D/g, '')
+    const fullNumber = cleanNumber.startsWith('55') ? cleanNumber : `55${cleanNumber}`
+    window.open(`https://wa.me/${fullNumber}`, '_blank')
   }
 
+  // Filtragem
+  const filteredOrders = useMemo(() => {
+    return orders.filter(o => {
+      const q = searchTerm.toLowerCase().trim()
+      const matchesSearch =
+        !q ||
+        (o.number?.toLowerCase() || '').includes(q) ||
+        (o.clientName?.toLowerCase() || '').includes(q) ||
+        (o.clientPhone?.toLowerCase() || '').includes(q) ||
+        (o.vehiclePlate?.toLowerCase() || '').includes(q) ||
+        (o.vehicleModel?.toLowerCase() || '').includes(q) ||
+        (o.serviceDescription?.toLowerCase() || '').includes(q)
+
+      const matchesFilter = activeFilter === 'todas' ? true : o.status === activeFilter
+      return matchesSearch && matchesFilter
+    })
+  }, [orders, searchTerm, activeFilter])
+
+  // Contadores para as abas de filtro
+  const filterCounts = useMemo(() => {
+    return {
+      todas: orders.length,
+      aguardando: orders.filter(o => o.status === 'aguardando').length,
+      andamento: orders.filter(o => o.status === 'andamento').length,
+      pronto: orders.filter(o => o.status === 'pronto').length,
+      pago: orders.filter(o => o.status === 'pago').length,
+      cancelado: orders.filter(o => o.status === 'cancelado').length,
+    }
+  }, [orders])
+
   return (
-    <div className="space-y-6 select-none pb-12 animate-fadeIn">
-      {/* ===================== TOPO EXECUTIVO: DESIGN ADAPTÁVEL CLARO / ESCURO ===================== */}
+    <div className="space-y-6 select-none pb-14 animate-fadeIn">
+      {/* ===================== TOPO EXECUTIVO: GESTÃO VISUAL DE CARDS ===================== */}
       <div className="relative rounded-3xl border border-wr-border bg-wr-surface p-5 sm:p-6 shadow-card overflow-hidden transition-colors">
         <div className="absolute top-0 right-0 w-80 h-full bg-gradient-to-l from-wr-orange/10 to-transparent pointer-events-none" />
 
@@ -635,50 +594,18 @@ export const OrdersView: React.FC = () => {
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-wr-orange/15 border border-wr-orange/30 text-[11px] font-black uppercase tracking-wider text-wr-orange">
               <Sparkles className="h-3.5 w-3.5" />
-              Gestão Dinâmica de Ordens de Serviço
+              Gestão Visual por Cards &bull; WR Mecânica
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-wr-text tracking-tight flex items-center gap-2.5">
               <ClipboardList className="h-6 w-6 text-wr-orange" />
-              Ordens de Serviço &bull; WR Mecânica
+              Ordens de Serviço
             </h1>
             <p className="text-xs text-wr-muted max-w-xl">
-              Gerencie atendimentos com quadro visual Kanban ou lista analítica, controle de peças, mão de obra e faturamento integrado.
+              Navegue pelos cards clicáveis de cada ordem para abrir a ficha completa do atendimento, veículo, peças e financeiro.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Alternador de Visualização: Lista vs Kanban */}
-            <div className="inline-flex items-center rounded-2xl bg-wr-elevated border border-wr-border p-1 shadow-xs">
-              <button
-                type="button"
-                onClick={() => setViewMode('kanban')}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                  viewMode === 'kanban'
-                    ? 'bg-wr-orange text-white shadow-sm'
-                    : 'text-wr-muted hover:text-wr-text'
-                }`}
-                title="Visualização em Quadro Kanban"
-              >
-                <Kanban className="h-3.5 w-3.5" />
-                <span>Quadro Kanban</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setViewMode('lista')}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                  viewMode === 'lista'
-                    ? 'bg-wr-orange text-white shadow-sm'
-                    : 'text-wr-muted hover:text-wr-text'
-                }`}
-                title="Visualização em Lista Detalhada"
-              >
-                <List className="h-3.5 w-3.5" />
-                <span>Lista</span>
-              </button>
-            </div>
-
-            {/* Botão de Criação de OS com Assistente */}
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => {
@@ -694,43 +621,16 @@ export const OrdersView: React.FC = () => {
         </div>
       </div>
 
-      {/* ===================== CARDS DE KPIS DA OFICINA ===================== */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {[
-          { label: 'Total Geral', val: tabCounts.todas, color: 'text-wr-text', border: 'hover:border-wr-borderHover', tab: 'todas' },
-          { label: 'Aguardando', val: tabCounts.aguardando, color: 'text-amber-500', border: 'hover:border-amber-500/50', tab: 'aguardando' },
-          { label: 'Em Execução', val: tabCounts.andamento, color: 'text-wr-orange', border: 'hover:border-wr-orange/50', tab: 'andamento' },
-          { label: 'Prontos Retirada', val: tabCounts.pronto, color: 'text-blue-500', border: 'hover:border-blue-500/50', tab: 'pronto' },
-          { label: 'Concluídas / Pagas', val: tabCounts.pago, color: 'text-emerald-500', border: 'hover:border-emerald-500/50', tab: 'pago' },
-          { label: 'Canceladas', val: tabCounts.cancelado, color: 'text-rose-500', border: 'hover:border-rose-500/50', tab: 'cancelado' },
-        ].map(kpi => (
-          <button
-            key={kpi.label}
-            type="button"
-            onClick={() => setActiveTab(kpi.tab as typeof activeTab)}
-            className={`p-3.5 rounded-2xl bg-wr-surface border border-wr-border text-left transition-all shadow-xs ${kpi.border} ${
-              activeTab === kpi.tab ? 'ring-2 ring-wr-orange/50 bg-wr-elevated' : ''
-            }`}
-          >
-            <span className="text-[10px] font-bold uppercase tracking-wider text-wr-muted block truncate">
-              {kpi.label}
-            </span>
-            <span className={`text-xl font-black font-mono mt-1 block ${kpi.color}`}>
-              {kpi.val}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* ===================== BARRA DE BUSCA & FILTROS ===================== */}
+      {/* ===================== FILTROS VISUAIS & BARRA DE BUSCA ===================== */}
       <div className="space-y-3">
+        {/* Barra de Pesquisa */}
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-wr-muted pointer-events-none" />
           <input
             type="text"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Buscar por cliente, placa, modelo do carro, telefone, OS ou mecânico..."
+            placeholder="Pesquisar por cliente, placa do carro ou número da OS..."
             className="w-full bg-wr-surface text-wr-text placeholder-wr-muted text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-wr-border focus:border-wr-orange focus:ring-2 focus:ring-wr-orange/20 outline-none transition-all shadow-xs"
           />
           {searchTerm && (
@@ -743,723 +643,573 @@ export const OrdersView: React.FC = () => {
           )}
         </div>
 
-        {/* Abas Rápidas de Status */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+        {/* Filtros em Abas de Status com contadores reais */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
           {[
-            { id: 'ativas', label: 'Na Oficina (Ativas)', count: tabCounts.ativas },
-            { id: 'aguardando', label: 'Aguardando', count: tabCounts.aguardando },
-            { id: 'andamento', label: 'Em Execução', count: tabCounts.andamento },
-            { id: 'pronto', label: 'Prontos p/ Retirada', count: tabCounts.pronto },
-            { id: 'pago', label: 'Pagas', count: tabCounts.pago },
-            { id: 'cancelado', label: 'Canceladas', count: tabCounts.cancelado },
-            { id: 'todas', label: 'Todas as OS', count: tabCounts.todas },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`flex items-center gap-2 whitespace-nowrap px-4 py-2 rounded-xl font-bold transition-all shadow-xs ${
-                activeTab === tab.id
-                  ? 'bg-wr-orange text-white font-black shadow-sm'
-                  : 'bg-wr-surface border border-wr-border text-wr-muted hover:text-wr-text hover:bg-wr-elevated'
-              }`}
-            >
-              <span>{tab.label}</span>
-              <span
-                className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                  activeTab === tab.id
-                    ? 'bg-black/25 text-white font-black'
-                    : 'bg-wr-elevated text-wr-muted border border-wr-border'
+            { id: 'todas', label: 'Todas as OS', count: filterCounts.todas },
+            { id: 'aguardando', label: 'Aguardando', count: filterCounts.aguardando },
+            { id: 'andamento', label: 'Em Andamento', count: filterCounts.andamento },
+            { id: 'pronto', label: 'Pronto p/ Retirada', count: filterCounts.pronto },
+            { id: 'pago', label: 'Concluídas / Pagas', count: filterCounts.pago },
+            { id: 'cancelado', label: 'Canceladas', count: filterCounts.cancelado },
+          ].map(f => {
+            const isSelected = activeFilter === f.id
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setActiveFilter(f.id as typeof activeFilter)}
+                className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold transition-all shadow-xs ${
+                  isSelected
+                    ? 'bg-wr-orange text-white font-black shadow-sm'
+                    : 'bg-wr-surface border border-wr-border text-wr-muted hover:text-wr-text hover:bg-wr-elevated'
                 }`}
               >
-                {tab.count}
-              </span>
-            </button>
-          ))}
+                <span>{f.label}</span>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
+                    isSelected
+                      ? 'bg-black/25 text-white'
+                      : 'bg-wr-elevated text-wr-muted border border-wr-border'
+                  }`}
+                >
+                  {f.count}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* ===================== ÁREA PRINCIPAL: KANBAN OU LISTA ===================== */}
-      {viewMode === 'kanban' ? (
-        /* ===================== MODO KANBAN MODERNO ===================== */
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-start">
-          {[
-            { status: 'aguardando' as OrderStatus, title: 'Aguardando Entrada', dot: 'bg-amber-500' },
-            { status: 'andamento' as OrderStatus, title: 'Em Execução', dot: 'bg-wr-orange' },
-            { status: 'pronto' as OrderStatus, title: 'Pronto p/ Retirada', dot: 'bg-blue-500' },
-            { status: 'pago' as OrderStatus, title: 'Concluída & Paga', dot: 'bg-emerald-500' },
-            { status: 'cancelado' as OrderStatus, title: 'Cancelada', dot: 'bg-rose-500' },
-          ].map(col => {
-            const colOrders = filteredOrders.filter(o => o.status === col.status)
-            const colTotal = colOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0)
+      {/* ===================== GRADE RESPONSIVA DE CARDS CLICÁVEIS ===================== */}
+      {filteredOrders.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-wr-border bg-wr-surface/60 p-12 text-center text-wr-muted space-y-3">
+          <ClipboardList className="h-12 w-12 mx-auto text-wr-muted opacity-50" />
+          <h3 className="text-base font-bold text-wr-text">Nenhuma Ordem de Serviço encontrada</h3>
+          <p className="text-xs max-w-sm mx-auto text-wr-muted">
+            Tente outro termo de busca ou selecione outro status no filtro acima.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              resetForm()
+              setIsNewOrderModalOpen(true)
+            }}
+            className="wr-btn-primary px-4 py-2.5 text-xs mx-auto"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Criar Nova OS</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+          {filteredOrders.map(order => {
+            const statusStyle = STATUS_CONFIG[order.status] || STATUS_CONFIG.aguardando
+            const hasFiscal = order.fiscalInvoice && order.fiscalInvoice.status === 'autorizada'
+            const isMenuOpen = openCardMenuId === order.id
 
             return (
               <div
-                key={col.status}
-                onDragOver={handleDragOver}
-                onDrop={e => handleDropOnColumn(e, col.status)}
-                className="rounded-3xl border border-wr-border bg-wr-surface/70 dark:bg-wr-surfaceDark/60 p-3.5 flex flex-col gap-3 min-h-[460px] transition-colors shadow-xs"
+                key={order.id}
+                onClick={() => setSelectedOrderDetails(order)}
+                className="group relative rounded-3xl border border-wr-border bg-wr-surface hover:border-wr-orange/60 p-5 shadow-card hover:shadow-elevated transition-all duration-200 cursor-pointer flex flex-col justify-between gap-4 overflow-hidden"
               >
-                {/* Cabeçalho da Coluna Kanban */}
-                <div className="flex items-center justify-between pb-2.5 border-b border-wr-border px-1">
+                {/* Linha 1: Número da OS, Data & Badge de Status */}
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className={`h-2.5 w-2.5 rounded-full ${col.dot}`} />
-                    <span className="text-xs font-black uppercase tracking-wider text-wr-text">
-                      {col.title}
+                    <span className="font-mono text-xs font-black text-wr-orange px-2.5 py-1 rounded-xl bg-wr-orange/10 border border-wr-orange/25">
+                      {order.number}
+                    </span>
+                    <span className="text-[11px] font-medium text-wr-muted">
+                      {order.date}
                     </span>
                   </div>
-                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-wr-elevated text-wr-text border border-wr-border">
-                    {colOrders.length}
-                  </span>
-                </div>
 
-                <div className="text-[10px] text-wr-muted px-1 font-mono font-semibold flex justify-between">
-                  <span>Subtotal etapa:</span>
-                  <span className="text-wr-text font-bold">{formatCurrency(colTotal)}</span>
-                </div>
-
-                {/* Lista de Cards da Coluna */}
-                <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[75vh] pr-1">
-                  {colOrders.length === 0 ? (
-                    <div className="py-12 text-center rounded-2xl border border-dashed border-wr-border p-4 text-[11px] text-wr-muted">
-                      Nenhuma OS nesta etapa
-                    </div>
-                  ) : (
-                    colOrders.map(order => (
-                      <div
-                        key={order.id}
-                        draggable={true}
-                        onDragStart={e => handleDragStart(e, order.id)}
-                        onClick={() => {
-                          setSelectedDetailOrder(order)
-                          setDetailTab('resumo')
-                        }}
-                        className="p-3.5 rounded-2xl border border-wr-border bg-wr-surface hover:border-wr-orange/60 hover:shadow-card transition-all cursor-pointer space-y-2.5 group"
+                  <div className="flex items-center gap-1.5">
+                    {hasFiscal && (
+                      <span
+                        title="Nota Fiscal Autorizada"
+                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 font-mono"
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-xs font-black text-wr-orange">
-                            {order.number}
-                          </span>
-                          <span className="text-[10px] text-wr-muted font-medium">
-                            {order.date}
-                          </span>
-                        </div>
+                        NFS-e
+                      </span>
+                    )}
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${statusStyle.dot}`} />
+                      {statusStyle.label}
+                    </span>
+                  </div>
+                </div>
 
-                        <div>
-                          <p className="text-xs font-bold text-wr-text group-hover:text-wr-orange transition-colors truncate">
-                            {order.clientName}
-                          </p>
-                          <div className="flex items-center gap-1.5 text-[11px] text-wr-muted mt-0.5">
-                            <span className="truncate">{order.vehicleModel}</span>
-                            <span className="font-mono text-[9px] font-black px-1.5 py-0.2 rounded bg-wr-elevated border border-wr-border text-wr-orange">
-                              {order.vehiclePlate}
+                {/* Linha 2: Veículo, Placa & Foto / Ícone */}
+                <div className="flex items-center gap-3">
+                  {/* Foto do Veículo ou Ícone Automotivo com estilo Mercosul */}
+                  <div className="h-12 w-12 rounded-2xl bg-wr-elevated border border-wr-border flex flex-col items-center justify-center text-wr-orange shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                    <Car className="h-5 w-5" />
+                    <span className="text-[8px] font-mono font-black text-wr-muted tracking-tighter uppercase mt-0.5">
+                      Auto
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-black px-2 py-0.5 rounded-md bg-wr-elevated border border-wr-border text-wr-text">
+                        {order.vehiclePlate}
+                      </span>
+                      {order.mileage ? (
+                        <span className="text-[10px] font-mono text-wr-muted">
+                          {order.mileage.toLocaleString('pt-BR')} km
+                        </span>
+                      ) : null}
+                    </div>
+                    <h3 className="text-sm font-bold text-wr-text truncate mt-1">
+                      {order.vehicleModel}
+                    </h3>
+                  </div>
+                </div>
+
+                {/* Linha 3: Cliente & Telefone */}
+                <div className="p-3 rounded-2xl bg-wr-elevated border border-wr-border space-y-1 text-xs">
+                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-wr-muted">
+                    <span>Cliente</span>
+                    {order.clientPhone && (
+                      <span className="font-mono text-wr-muted">{order.clientPhone}</span>
+                    )}
+                  </div>
+                  <p className="font-bold text-wr-text truncate">
+                    {order.clientName}
+                  </p>
+                </div>
+
+                {/* Linha 4: Serviço Principal Solicitado */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-wr-muted flex items-center gap-1">
+                    <Wrench className="h-3 w-3 text-wr-orange" /> Serviço Principal
+                  </span>
+                  <p className="text-xs text-wr-text font-medium line-clamp-2">
+                    {order.serviceDescription || (order.items?.[0]?.serviceDescription || 'Revisão Periódica Geral')}
+                  </p>
+                </div>
+
+                {/* Linha 5: Valor Total e Barra de Ações Rápidas */}
+                <div className="pt-3 border-t border-wr-border flex items-center justify-between gap-2">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-wr-muted">
+                      Total
+                    </span>
+                    <span className="font-mono text-base font-black text-wr-orange">
+                      {formatCurrency(order.totalAmount || 0)}
+                    </span>
+                  </div>
+
+                  {/* Botões de Ações Rápidas (com stopPropagation para não abrir o card ao clicar) */}
+                  <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                    {/* Botão de WhatsApp Rápido */}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenClientWhatsApp(order)}
+                      className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                      title="Abrir WhatsApp do cliente"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                    </button>
+
+                    {/* Botão de Impressão Rápida */}
+                    <button
+                      type="button"
+                      onClick={() => setPdfModalOrder(order)}
+                      className="p-2 rounded-xl bg-wr-elevated text-wr-text border border-wr-border hover:border-wr-orange hover:text-wr-orange transition-colors"
+                      title="Imprimir Ordem de Serviço"
+                    >
+                      <Printer className="h-4 w-4" />
+                    </button>
+
+                    {/* Menu Mais Opções */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenCardMenuId(prev => (prev === order.id ? null : order.id))
+                        }
+                        className="p-2 rounded-xl bg-wr-elevated text-wr-muted hover:text-wr-text border border-wr-border hover:border-wr-orange transition-colors"
+                        title="Mais Ações"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+
+                      {/* Dropdown de Opções */}
+                      {isMenuOpen && (
+                        <div
+                          className="absolute right-0 bottom-full mb-2 w-48 rounded-2xl border border-wr-border bg-wr-surface p-1.5 shadow-elevated z-30 space-y-1 text-xs"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenCardMenuId(null)
+                              setEditingOrder(order)
+                            }}
+                            className="w-full px-3 py-2 rounded-xl text-left font-semibold text-wr-text hover:bg-wr-elevated flex items-center gap-2"
+                          >
+                            <Edit2 className="h-3.5 w-3.5 text-wr-orange" />
+                            <span>Editar Ordem</span>
+                          </button>
+
+                          {order.status !== 'pago' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenCardMenuId(null)
+                                setFinalizingOrder(order)
+                                setCheckoutPaymentMethod('pix')
+                                setCheckoutDiscount(order.discount || 0)
+                                setCheckoutInstallments(1)
+                              }}
+                              className="w-full px-3 py-2 rounded-xl text-left font-semibold text-emerald-500 hover:bg-emerald-500/10 flex items-center gap-2"
+                            >
+                              <DollarSign className="h-3.5 w-3.5" />
+                              <span>Receber / Venda</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenCardMenuId(null)
+                              handleOpenNfse(order)
+                            }}
+                            className="w-full px-3 py-2 rounded-xl text-left font-semibold text-blue-500 hover:bg-blue-500/10 flex items-center gap-2"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                            <span>Nota Fiscal (NFS-e)</span>
+                          </button>
+
+                          <div className="pt-1 border-t border-wr-border">
+                            <span className="px-3 py-1 text-[9px] uppercase font-bold text-wr-muted block">
+                              Mudar Status Rápido
                             </span>
+                            {(['aguardando', 'andamento', 'pronto'] as OrderStatus[]).map(st => (
+                              <button
+                                key={st}
+                                type="button"
+                                onClick={() => {
+                                  setOpenCardMenuId(null)
+                                  updateOrderStatus(order.id, st)
+                                  showToast(`Status atualizado para ${STATUS_CONFIG[st].label}!`, 'info')
+                                }}
+                                className="w-full px-3 py-1.5 rounded-lg text-left text-[11px] font-semibold text-wr-muted hover:text-wr-text hover:bg-wr-elevated flex items-center gap-2"
+                              >
+                                <span className={`h-1.5 w-1.5 rounded-full ${STATUS_CONFIG[st].dot}`} />
+                                <span>{STATUS_CONFIG[st].label}</span>
+                              </button>
+                            ))}
                           </div>
                         </div>
-
-                        <p className="text-[11px] text-wr-muted line-clamp-2">
-                          {order.serviceDescription || 'Serviço Geral'}
-                        </p>
-
-                        <div className="pt-2 border-t border-wr-border flex items-center justify-between">
-                          <span className="text-xs font-black font-mono text-wr-text">
-                            {formatCurrency(order.totalAmount || 0)}
-                          </span>
-
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={e => {
-                                e.stopPropagation()
-                                handleOpenClientWhatsApp(order)
-                              }}
-                              className="p-1 rounded-lg text-emerald-500 hover:bg-emerald-500/20 transition-colors"
-                              title="WhatsApp"
-                            >
-                              <MessageCircle className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={e => {
-                                e.stopPropagation()
-                                setPdfModalOrder(order)
-                              }}
-                              className="p-1 rounded-lg text-wr-orange hover:bg-wr-orange/20 transition-colors"
-                              title="Imprimir O.S"
-                            >
-                              <Printer className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Botões Rápidos para Mover Status no Kanban */}
-                        {col.status !== 'pago' && col.status !== 'cancelado' && (
-                          <div className="pt-1 flex items-center gap-1.5">
-                            {col.status === 'aguardando' && (
-                              <button
-                                type="button"
-                                onClick={e => {
-                                  e.stopPropagation()
-                                  updateOrderStatus(order.id, 'andamento')
-                                  showToast(`OS #${order.number} em execução!`, 'info')
-                                }}
-                                className="w-full py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-wr-orange/15 hover:bg-wr-orange/25 text-wr-orange border border-wr-orange/30 flex items-center justify-center gap-1 transition-colors"
-                              >
-                                <span>Iniciar Execução</span>
-                                <ArrowRight className="h-3 w-3" />
-                              </button>
-                            )}
-                            {col.status === 'andamento' && (
-                              <button
-                                type="button"
-                                onClick={e => {
-                                  e.stopPropagation()
-                                  updateOrderStatus(order.id, 'pronto')
-                                  showToast(`OS #${order.number} pronta p/ retirada!`, 'info')
-                                }}
-                                className="w-full py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center justify-center gap-1 transition-colors"
-                              >
-                                <span>Marcar Pronto</span>
-                                <CheckCircle2 className="h-3 w-3" />
-                              </button>
-                            )}
-                            {col.status === 'pronto' && (
-                              <button
-                                type="button"
-                                onClick={e => {
-                                  e.stopPropagation()
-                                  setFinalizingOrder(order)
-                                  setCheckoutPaymentMethod('pix')
-                                  setCheckoutDiscount(order.discount || 0)
-                                  setCheckoutInstallments(1)
-                                }}
-                                className="w-full py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-1 transition-colors"
-                              >
-                                <span>Receber Venda</span>
-                                <DollarSign className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )
           })}
         </div>
-      ) : (
-        /* ===================== MODO LISTA ANALÍTICA ===================== */
-        <div className="space-y-3">
-          {filteredOrders.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-wr-border bg-wr-surface/60 p-12 text-center text-wr-muted space-y-3">
-              <ClipboardList className="h-10 w-10 mx-auto text-wr-muted opacity-50" />
-              <p className="text-sm font-bold text-wr-text">Nenhuma ordem de serviço encontrada</p>
-              <p className="text-xs max-w-sm mx-auto text-wr-muted">
-                Alterne os filtros acima ou abra uma nova OS no botão superior.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {filteredOrders.map(order => {
-                const hasFiscal = order.fiscalInvoice && order.fiscalInvoice.status === 'autorizada'
-                const isPaid = order.status === 'pago'
-
-                return (
-                  <div
-                    key={order.id}
-                    className="rounded-3xl border border-wr-border bg-wr-surface p-5 shadow-card hover:border-wr-orange/50 transition-all flex flex-col justify-between gap-4 group"
-                  >
-                    {/* Cabeçalho do Card */}
-                    <div className="flex items-center justify-between gap-2 pb-3 border-b border-wr-border">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedDetailOrder(order)
-                            setDetailTab('resumo')
-                          }}
-                          className="font-mono text-xs font-black text-wr-orange bg-wr-orange/10 border border-wr-orange/30 px-3 py-1 rounded-xl hover:bg-wr-orange/20 transition-colors"
-                        >
-                          {order.number}
-                        </button>
-                        <span className="text-xs text-wr-muted font-medium">{order.date}</span>
-                        {hasFiscal && (
-                          <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                            <ShieldCheck className="h-3 w-3" /> NFS-e
-                          </span>
-                        )}
-                      </div>
-
-                      <div>{getStatusBadge(order.status)}</div>
-                    </div>
-
-                    {/* Conteúdo Principal do Card */}
-                    <div className="space-y-3">
-                      {/* Cliente & Telefone */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="h-9 w-9 rounded-xl bg-wr-orange/10 border border-wr-orange/25 flex items-center justify-center text-wr-orange shrink-0">
-                            <User className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-wr-muted block">
-                              Cliente
-                            </span>
-                            <h3 className="text-sm font-bold text-wr-text truncate">{order.clientName}</h3>
-                          </div>
-                        </div>
-                        {order.clientPhone && (
-                          <a
-                            href={`tel:${order.clientPhone.replace(/\D/g, '')}`}
-                            className="text-xs font-mono text-wr-muted bg-wr-elevated px-2.5 py-1 rounded-lg border border-wr-border hover:text-wr-text flex items-center gap-1 shrink-0 transition-colors"
-                          >
-                            <Phone className="h-3 w-3 text-wr-orange" />
-                            {order.clientPhone}
-                          </a>
-                        )}
-                      </div>
-
-                      {/* Veículo, Placa, KM */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                        <div className="p-2.5 rounded-xl bg-wr-elevated border border-wr-border flex items-center gap-2 col-span-2">
-                          <Car className="h-4 w-4 text-wr-orange shrink-0" />
-                          <div className="min-w-0">
-                            <span className="text-[9px] uppercase font-bold text-wr-muted block">Veículo</span>
-                            <span className="font-bold text-wr-text block truncate">{order.vehicleModel}</span>
-                          </div>
-                        </div>
-
-                        <div className="p-2.5 rounded-xl bg-wr-elevated border border-wr-border text-center">
-                          <span className="text-[9px] uppercase font-bold text-wr-muted block">Placa</span>
-                          <span className="font-mono font-black text-wr-orange">{order.vehiclePlate}</span>
-                        </div>
-
-                        <div className="p-2.5 rounded-xl bg-wr-elevated border border-wr-border text-center">
-                          <span className="text-[9px] uppercase font-bold text-wr-muted block">KM</span>
-                          <span className="font-mono font-bold text-wr-text">
-                            {order.mileage ? `${order.mileage.toLocaleString('pt-BR')} km` : '—'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Serviço & Mecânico */}
-                      <div className="p-3 rounded-2xl bg-wr-elevated border border-wr-border space-y-1 text-xs">
-                        <div className="flex items-center justify-between text-[10px] text-wr-muted font-bold uppercase tracking-wider">
-                          <span>Serviço Solicitado</span>
-                          <span className="text-wr-orange flex items-center gap-1">
-                            <Wrench className="h-3 w-3" /> {order.mechanicAssigned || 'Roberto Silva'}
-                          </span>
-                        </div>
-                        <p className="text-wr-text font-semibold line-clamp-2">
-                          {order.serviceDescription || 'Serviço Geral'}
-                        </p>
-                      </div>
-
-                      {/* Total */}
-                      <div className="flex items-center justify-between pt-1">
-                        <span className="text-xs font-black uppercase tracking-wider text-wr-muted">
-                          Total da OS
-                        </span>
-                        <span className="font-mono text-xl font-black text-wr-orange">
-                          {formatCurrency(order.totalAmount || 0)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Botões de Ação */}
-                    <div className="space-y-2 pt-2 border-t border-wr-border">
-                      {/* Botão de Checkout se não paga */}
-                      {!isPaid && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFinalizingOrder(order)
-                            setCheckoutPaymentMethod('pix')
-                            setCheckoutDiscount(order.discount || 0)
-                            setCheckoutInstallments(1)
-                          }}
-                          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider py-3 rounded-2xl shadow-md flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
-                          <span>
-                            {order.status === 'pronto'
-                              ? 'Receber Pagamento (Painel de Venda)'
-                              : 'Marcar como Pronto & Receber'}
-                          </span>
-                          <ArrowRight className="h-4 w-4" />
-                        </button>
-                      )}
-
-                      {/* Barra com os botões utilitários */}
-                      <div className="grid grid-cols-5 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedDetailOrder(order)
-                            setDetailTab('resumo')
-                          }}
-                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-wr-elevated hover:bg-wr-surface text-wr-text border border-wr-border transition-all text-[11px] font-bold"
-                          title="Ver Detalhes Completos"
-                        >
-                          <Eye className="h-4 w-4 text-wr-orange shrink-0" />
-                          <span className="truncate">Detalhes</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleOpenClientWhatsApp(order)}
-                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 transition-all text-[11px] font-bold"
-                          title="Abrir WhatsApp do cliente"
-                        >
-                          <MessageCircle className="h-4 w-4 shrink-0" />
-                          <span className="truncate">WhatsApp</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleOpenNfse(order)}
-                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/25 transition-all text-[11px] font-bold"
-                          title="Nota Fiscal (NFS-e)"
-                        >
-                          <FileText className="h-4 w-4 shrink-0" />
-                          <span className="truncate">NFS-e</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setPdfModalOrder(order)}
-                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-wr-orange/10 hover:bg-wr-orange/20 text-wr-orange border border-wr-orange/25 transition-all text-[11px] font-bold"
-                          title="Visualizar e Imprimir Ordem de Serviço"
-                        >
-                          <Printer className="h-4 w-4 shrink-0" />
-                          <span className="truncate">O.S</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setEditingOrder(order)}
-                          className="flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl bg-wr-elevated hover:bg-wr-surface text-wr-muted hover:text-wr-text border border-wr-border transition-all text-[11px] font-bold"
-                          title="Editar OS"
-                        >
-                          <Edit2 className="h-4 w-4 shrink-0" />
-                          <span className="truncate">Editar</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
       )}
 
-      {/* ===================== MODAL DE DETALHES COMPLETOS DA OS ===================== */}
-      {selectedDetailOrder && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
-          <div className="relative w-full max-w-4xl rounded-[32px] border border-wr-border bg-wr-surface p-5 sm:p-7 shadow-elevated space-y-6 my-auto max-h-[92vh] overflow-y-auto text-wr-text">
-            {/* Cabeçalho do Modal de Detalhes */}
-            <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-wr-border">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-2xl bg-wr-orange/15 border border-wr-orange/30 flex items-center justify-center text-wr-orange shrink-0">
-                  <ClipboardList className="h-6 w-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-base font-black text-wr-orange">
-                      {selectedDetailOrder.number}
-                    </span>
-                    {getStatusBadge(selectedDetailOrder.status)}
+      {/* ===================== PAINEL LATERAL AMPLO (SLIDE-OVER DRAWER DE DETALHES) ===================== */}
+      {selectedOrderDetails && (
+        <div className="fixed inset-0 z-50 overflow-hidden animate-fadeIn">
+          {/* Backdrop Escurecido com Blur */}
+          <div
+            onClick={() => setSelectedOrderDetails(null)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+          />
+
+          <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <div className="w-screen max-w-2xl bg-wr-surface border-l border-wr-border shadow-2xl flex flex-col justify-between overflow-hidden animate-slideInRight text-wr-text">
+              {/* Topo do Painel Lateral */}
+              <div className="p-5 sm:p-6 border-b border-wr-border flex items-center justify-between gap-4 bg-wr-surface">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-2xl bg-wr-orange/15 border border-wr-orange/30 flex items-center justify-center text-wr-orange shrink-0">
+                    <ClipboardList className="h-6 w-6" />
                   </div>
-                  <h3 className="text-base sm:text-lg font-bold text-wr-text mt-0.5">
-                    {selectedDetailOrder.clientName} &bull; {selectedDetailOrder.vehicleModel} ({selectedDetailOrder.vehiclePlate})
-                  </h3>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-base font-black text-wr-orange">
+                        {selectedOrderDetails.number}
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                          STATUS_CONFIG[selectedOrderDetails.status]?.bg || ''
+                        } ${STATUS_CONFIG[selectedOrderDetails.status]?.text || ''} ${
+                          STATUS_CONFIG[selectedOrderDetails.status]?.border || ''
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            STATUS_CONFIG[selectedOrderDetails.status]?.dot || ''
+                          }`}
+                        />
+                        {STATUS_CONFIG[selectedOrderDetails.status]?.label || selectedOrderDetails.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-wr-muted mt-0.5">
+                      Aberta em {selectedOrderDetails.date} &bull; Garantia CDC 90 dias
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPdfModalOrder(selectedOrderDetails)}
+                    className="p-2.5 rounded-xl border border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text hover:border-wr-orange transition-colors"
+                    title="Imprimir OS Oficial"
+                  >
+                    <Printer className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrderDetails(null)}
+                    className="p-2.5 rounded-xl border border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <span className="text-[10px] text-wr-muted uppercase font-bold block">Valor Total</span>
-                  <span className="font-mono text-xl font-black text-wr-orange">
-                    {formatCurrency(selectedDetailOrder.totalAmount || 0)}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedDetailOrder(null)}
-                  className="rounded-xl p-2 text-wr-muted hover:text-wr-text hover:bg-wr-elevated transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Abas de Navegação Interna */}
-            <div className="flex items-center gap-2 border-b border-wr-border pb-1 overflow-x-auto">
-              {[
-                { id: 'resumo', label: '1. Resumo Geral' },
-                { id: 'itens', label: '2. Serviços & Peças' },
-                { id: 'diagnostico', label: '3. Diagnóstico & Vistoria' },
-                { id: 'historico', label: '4. Histórico da OS' },
-                { id: 'financeiro', label: '5. Financeiro & NFS-e' },
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setDetailTab(tab.id as typeof detailTab)}
-                  className={`px-4 py-2 text-xs font-bold whitespace-nowrap rounded-xl transition-all ${
-                    detailTab === tab.id
-                      ? 'bg-wr-orange text-white shadow-sm'
-                      : 'text-wr-muted hover:text-wr-text hover:bg-wr-elevated'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* CONTEÚDO DAS ABAS */}
-            {detailTab === 'resumo' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-2">
+              {/* Corpo com Rolagem e Seções Visuais Organizadas */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+                {/* Seção 1: Cliente e Contato */}
+                <div className="p-4 rounded-3xl bg-wr-elevated border border-wr-border space-y-3">
+                  <div className="flex items-center justify-between">
                     <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
                       <User className="h-4 w-4" /> Dados do Cliente
                     </span>
-                    <p className="text-sm font-bold text-wr-text">{selectedDetailOrder.clientName}</p>
-                    <p className="text-xs text-wr-muted">Telefone: {selectedDetailOrder.clientPhone}</p>
-                    {selectedDetailOrder.clientCpfCnpj && (
-                      <p className="text-xs text-wr-muted">CPF/CNPJ: {selectedDetailOrder.clientCpfCnpj}</p>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenClientWhatsApp(selectedOrderDetails)}
+                      className="px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-500/25 transition-colors"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      <span>WhatsApp</span>
+                    </button>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-2">
-                    <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
-                      <Car className="h-4 w-4" /> Dados do Veículo
-                    </span>
-                    <p className="text-sm font-bold text-wr-text">{selectedDetailOrder.vehicleModel}</p>
-                    <p className="text-xs text-wr-muted font-mono font-bold">Placa: {selectedDetailOrder.vehiclePlate}</p>
-                    <p className="text-xs text-wr-muted">KM: {selectedDetailOrder.mileage || 'Não informado'}</p>
-                    <p className="text-xs text-wr-muted capitalize">Combustível: {selectedDetailOrder.fuelLevel || 'médio'}</p>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-2">
-                  <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
-                    <Wrench className="h-4 w-4" /> Mecânico &amp; Diagnóstico
-                  </span>
-                  <p className="text-xs text-wr-muted">
-                    Responsável: <strong className="text-wr-text">{selectedDetailOrder.mechanicAssigned || 'Roberto Silva'}</strong>
-                  </p>
-                  <p className="text-xs text-wr-text">
-                    {selectedDetailOrder.serviceDescription || 'Revisão periódica geral'}
-                  </p>
-                  {selectedDetailOrder.observations && (
-                    <p className="text-xs text-wr-muted italic mt-1">
-                      Obs: {selectedDetailOrder.observations}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {detailTab === 'itens' && (
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-wr-border overflow-hidden">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-wr-elevated text-wr-muted font-bold border-b border-wr-border">
-                      <tr>
-                        <th className="p-3">Descrição do Serviço / Peça</th>
-                        <th className="p-3 text-right">Peças</th>
-                        <th className="p-3 text-right">Mão de Obra</th>
-                        <th className="p-3 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-wr-border">
-                      {selectedDetailOrder.items && selectedDetailOrder.items.length > 0 ? (
-                        selectedDetailOrder.items.map(it => (
-                          <tr key={it.id} className="hover:bg-wr-elevated/50">
-                            <td className="p-3 font-semibold text-wr-text">{it.serviceDescription}</td>
-                            <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(it.partsCost)}</td>
-                            <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(it.laborCost)}</td>
-                            <td className="p-3 text-right font-mono font-bold text-wr-text">{formatCurrency(it.total)}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td className="p-3 font-semibold text-wr-text">{selectedDetailOrder.serviceDescription}</td>
-                          <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(selectedDetailOrder.partsTotal || 0)}</td>
-                          <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(selectedDetailOrder.laborTotal || 0)}</td>
-                          <td className="p-3 text-right font-mono font-bold text-wr-text">{formatCurrency(selectedDetailOrder.totalAmount || 0)}</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="flex justify-end">
-                  <div className="w-64 p-3.5 rounded-2xl bg-wr-elevated border border-wr-border space-y-1.5 font-mono text-xs">
-                    <div className="flex justify-between text-wr-muted">
-                      <span>Total Peças:</span>
-                      <span>{formatCurrency(selectedDetailOrder.partsTotal || 0)}</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-wr-muted block">Nome</span>
+                      <p className="font-bold text-wr-text text-sm">{selectedOrderDetails.clientName}</p>
                     </div>
-                    <div className="flex justify-between text-wr-muted">
-                      <span>Total Mão de Obra:</span>
-                      <span>{formatCurrency(selectedDetailOrder.laborTotal || 0)}</span>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-wr-muted block">Telefone</span>
+                      <p className="font-mono font-bold text-wr-text">{selectedOrderDetails.clientPhone || '—'}</p>
                     </div>
-                    <div className="flex justify-between font-black text-sm text-wr-orange pt-2 border-t border-wr-border">
-                      <span>Total Líquido:</span>
-                      <span>{formatCurrency(selectedDetailOrder.totalAmount || 0)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {detailTab === 'diagnostico' && (
-              <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-wr-orange">Checklist de Vistoria de Entrada</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    <div className="p-2.5 rounded-xl bg-wr-surface border border-wr-border text-center">
-                      <span className="text-[10px] text-wr-muted block">Faróis e Lanternas</span>
-                      <span className="font-bold text-emerald-500">Aprovado</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-wr-surface border border-wr-border text-center">
-                      <span className="text-[10px] text-wr-muted block">Pintura e Lataria</span>
-                      <span className="font-bold text-emerald-500">Conferido</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-wr-surface border border-wr-border text-center">
-                      <span className="text-[10px] text-wr-muted block">Vidros e Retrovisores</span>
-                      <span className="font-bold text-emerald-500">Sem Avarias</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-wr-surface border border-wr-border text-center">
-                      <span className="text-[10px] text-wr-muted block">Rodas e Estepe</span>
-                      <span className="font-bold text-emerald-500">No Veículo</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-2">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-wr-orange">Laudo e Observações do Mecânico</h4>
-                  <p className="text-xs text-wr-text">
-                    {selectedDetailOrder.observations || 'Nenhuma avaria grave identificada na inspeção visual de entrada.'}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {detailTab === 'historico' && (
-              <div className="space-y-3">
-                <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-wr-orange">Linha do Tempo do Atendimento</h4>
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center gap-3">
-                      <span className="h-2 w-2 rounded-full bg-wr-orange" />
-                      <span className="font-bold text-wr-text">OS Aberta</span>
-                      <span className="text-wr-muted">&bull; {selectedDetailOrder.date}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="h-2 w-2 rounded-full bg-blue-500" />
-                      <span className="font-bold text-wr-text">Mecânico Atribuído:</span>
-                      <span className="text-wr-muted">{selectedDetailOrder.mechanicAssigned || 'Roberto Silva'}</span>
-                    </div>
-                    {selectedDetailOrder.status === 'pago' && (
-                      <div className="flex items-center gap-3">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                        <span className="font-bold text-emerald-500">OS Finalizada e Paga</span>
-                        <span className="text-wr-muted">&bull; Pagamento confirmado</span>
+                    {selectedOrderDetails.clientCpfCnpj && (
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-wr-muted block">CPF / CNPJ</span>
+                        <p className="font-mono text-wr-text">{selectedOrderDetails.clientCpfCnpj}</p>
                       </div>
                     )}
                   </div>
                 </div>
-              </div>
-            )}
 
-            {detailTab === 'financeiro' && (
-              <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-wr-orange">Dados Financeiros &amp; Fiscal</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                    <div className="p-3 rounded-xl bg-wr-surface border border-wr-border">
-                      <span className="text-[10px] text-wr-muted block">Forma de Pagamento</span>
-                      <span className="font-bold text-wr-text capitalize">
-                        {PAYMENT_LABELS[selectedDetailOrder.paymentMethod || 'pendente']}
-                      </span>
+                {/* Seção 2: Veículo & Entrada */}
+                <div className="p-4 rounded-3xl bg-wr-elevated border border-wr-border space-y-3">
+                  <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                    <Car className="h-4 w-4" /> Veículo &bull; Vistoria de Entrada
+                  </span>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="p-3 rounded-2xl bg-wr-surface border border-wr-border col-span-2">
+                      <span className="text-[10px] uppercase font-bold text-wr-muted block">Modelo</span>
+                      <p className="font-bold text-wr-text text-sm truncate">{selectedOrderDetails.vehicleModel}</p>
                     </div>
-                    <div className="p-3 rounded-xl bg-wr-surface border border-wr-border">
-                      <span className="text-[10px] text-wr-muted block">Status de Pagamento</span>
-                      <span className="font-bold text-wr-text capitalize">{selectedDetailOrder.status}</span>
+
+                    <div className="p-3 rounded-2xl bg-wr-surface border border-wr-border text-center">
+                      <span className="text-[10px] uppercase font-bold text-wr-muted block">Placa</span>
+                      <p className="font-mono font-black text-wr-orange text-sm">{selectedOrderDetails.vehiclePlate}</p>
                     </div>
-                    <div className="p-3 rounded-xl bg-wr-surface border border-wr-border">
-                      <span className="text-[10px] text-wr-muted block">Desconto Aplicado</span>
-                      <span className="font-mono font-bold text-wr-text">
-                        {selectedDetailOrder.discount ? formatCurrency(selectedDetailOrder.discount) : 'R$ 0,00'}
-                      </span>
+
+                    <div className="p-3 rounded-2xl bg-wr-surface border border-wr-border text-center">
+                      <span className="text-[10px] uppercase font-bold text-wr-muted block">KM</span>
+                      <p className="font-mono font-bold text-wr-text">
+                        {selectedOrderDetails.mileage ? `${selectedOrderDetails.mileage.toLocaleString('pt-BR')} km` : '—'}
+                      </p>
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-wr-muted pt-1">
+                    <span>Nível de Combustível: <strong className="text-wr-text capitalize">{selectedOrderDetails.fuelLevel || 'médio'}</strong></span>
+                    <span>Mecânico: <strong className="text-wr-orange">{selectedOrderDetails.mechanicAssigned || 'Roberto Silva'}</strong></span>
                   </div>
                 </div>
 
-                <div className="flex gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenNfse(selectedDetailOrder)}
-                    className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase flex items-center justify-center gap-2 shadow-sm transition-all"
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span>Visualizar NFS-e Municipal</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPdfModalOrder(selectedDetailOrder)}
-                    className="flex-1 py-3 px-4 rounded-xl bg-wr-orange hover:bg-wr-orangeDark text-white font-bold text-xs uppercase flex items-center justify-center gap-2 shadow-sm transition-all"
-                  >
-                    <Printer className="h-4 w-4" />
-                    <span>Imprimir OS Oficial</span>
-                  </button>
+                {/* Seção 3: Diagnóstico & Queixa */}
+                <div className="p-4 rounded-3xl bg-wr-elevated border border-wr-border space-y-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                    <Wrench className="h-4 w-4" /> Diagnóstico Técnico &amp; Queixa do Cliente
+                  </span>
+                  <p className="text-xs text-wr-text font-medium bg-wr-surface p-3 rounded-2xl border border-wr-border">
+                    {selectedOrderDetails.serviceDescription || 'Revisão e manutenção geral solicitada.'}
+                  </p>
+                  {selectedOrderDetails.observations && (
+                    <p className="text-[11px] text-wr-muted italic px-1">
+                      Obs: {selectedOrderDetails.observations}
+                    </p>
+                  )}
+                </div>
+
+                {/* Seção 4: Tabela de Serviços & Peças */}
+                <div className="space-y-3">
+                  <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                    <Layers className="h-4 w-4" /> Serviços Executados &amp; Peças Utilizadas
+                  </span>
+
+                  <div className="rounded-2xl border border-wr-border overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-wr-elevated text-wr-muted font-bold border-b border-wr-border">
+                        <tr>
+                          <th className="p-3">Descrição</th>
+                          <th className="p-3 text-right">Peças</th>
+                          <th className="p-3 text-right">M.O</th>
+                          <th className="p-3 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-wr-border">
+                        {selectedOrderDetails.items && selectedOrderDetails.items.length > 0 ? (
+                          selectedOrderDetails.items.map(it => (
+                            <tr key={it.id} className="hover:bg-wr-elevated/40">
+                              <td className="p-3 font-semibold text-wr-text">{it.serviceDescription}</td>
+                              <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(it.partsCost)}</td>
+                              <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(it.laborCost)}</td>
+                              <td className="p-3 text-right font-mono font-bold text-wr-text">{formatCurrency(it.total)}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td className="p-3 font-semibold text-wr-text">{selectedOrderDetails.serviceDescription}</td>
+                            <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(selectedOrderDetails.partsTotal || 0)}</td>
+                            <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(selectedOrderDetails.laborTotal || 0)}</td>
+                            <td className="p-3 text-right font-mono font-bold text-wr-text">{formatCurrency(selectedOrderDetails.totalAmount || 0)}</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Seção 5: Resumo Financeiro, Desconto e Total */}
+                <div className="p-4 rounded-3xl bg-wr-elevated border border-wr-border space-y-2">
+                  <div className="flex justify-between text-xs font-mono text-wr-muted">
+                    <span>Subtotal Peças:</span>
+                    <span>{formatCurrency(selectedOrderDetails.partsTotal || 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs font-mono text-wr-muted">
+                    <span>Subtotal Mão de Obra:</span>
+                    <span>{formatCurrency(selectedOrderDetails.laborTotal || 0)}</span>
+                  </div>
+                  {selectedOrderDetails.discount ? (
+                    <div className="flex justify-between text-xs font-mono text-rose-500">
+                      <span>Desconto Aplicado:</span>
+                      <span>- {formatCurrency(selectedOrderDetails.discount)}</span>
+                    </div>
+                  ) : null}
+                  <div className="pt-2 border-t border-wr-border flex justify-between items-center">
+                    <span className="text-xs font-black uppercase tracking-wider text-wr-text">Total da Ordem:</span>
+                    <span className="font-mono text-2xl font-black text-wr-orange">
+                      {formatCurrency(selectedOrderDetails.totalAmount || 0)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Seção 6: Status & Mudança Rápida */}
+                <div className="p-4 rounded-3xl bg-wr-elevated border border-wr-border space-y-2.5">
+                  <span className="text-xs font-black uppercase tracking-wider text-wr-orange block">
+                    Atualizar Andamento da OS
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['aguardando', 'andamento', 'pronto'] as OrderStatus[]).map(st => (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => {
+                          updateOrderStatus(selectedOrderDetails.id, st)
+                          setSelectedOrderDetails(prev => (prev ? { ...prev, status: st } : null))
+                          showToast(`Status atualizado para ${STATUS_CONFIG[st].label}!`, 'info')
+                        }}
+                        className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                          selectedOrderDetails.status === st
+                            ? 'bg-wr-orange text-white border-wr-orange shadow-sm'
+                            : 'bg-wr-surface text-wr-muted border-wr-border hover:text-wr-text'
+                        }`}
+                      >
+                        {STATUS_CONFIG[st].label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* Rodapé de Ações do Modal de Detalhes */}
-            <div className="pt-4 border-t border-wr-border flex flex-wrap items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => setSelectedDetailOrder(null)}
-                className="px-5 py-2.5 rounded-xl border border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text font-bold text-xs uppercase"
-              >
-                Fechar
-              </button>
+              {/* Rodapé Fixo do Painel Lateral */}
+              <div className="p-5 sm:p-6 border-t border-wr-border bg-wr-surface flex flex-wrap items-center justify-between gap-3">
+                {selectedOrderDetails.status !== 'pago' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = selectedOrderDetails
+                      setSelectedOrderDetails(null)
+                      setFinalizingOrder(target)
+                      setCheckoutPaymentMethod('pix')
+                      setCheckoutDiscount(target.discount || 0)
+                      setCheckoutInstallments(1)
+                    }}
+                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-md flex items-center justify-center gap-2 transition-all"
+                  >
+                    <DollarSign className="h-4 w-4" />
+                    <span>Receber Pagamento (Finalizar Venda)</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenNfse(selectedOrderDetails)}
+                    className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-md flex items-center justify-center gap-2 transition-all"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>Visualizar NFS-e Autorizada</span>
+                  </button>
+                )}
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleOpenClientWhatsApp(selectedDetailOrder)}
-                  className="px-4 py-2.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 font-bold text-xs flex items-center gap-1.5 transition-colors"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  <span>WhatsApp</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = selectedOrderDetails
+                      setSelectedOrderDetails(null)
+                      setEditingOrder(target)
+                    }}
+                    className="px-4 py-3.5 rounded-2xl border border-wr-border bg-wr-elevated text-wr-text hover:border-wr-orange font-bold text-xs uppercase flex items-center gap-1.5 transition-colors"
+                  >
+                    <Edit2 className="h-4 w-4 text-wr-orange" />
+                    <span>Editar</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingOrder(selectedDetailOrder)
-                    setSelectedDetailOrder(null)
-                  }}
-                  className="px-4 py-2.5 rounded-xl bg-wr-elevated border border-wr-border hover:border-wr-orange text-wr-text font-bold text-xs flex items-center gap-1.5 transition-colors"
-                >
-                  <Edit2 className="h-4 w-4 text-wr-orange" />
-                  <span>Editar OS</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrderDetails(null)}
+                    className="px-4 py-3.5 rounded-2xl border border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text font-bold text-xs uppercase"
+                  >
+                    Fechar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ===================== ASSISTENTE DE CRIAÇÃO DE OS EM 5 ETAPAS (STEPPER) ===================== */}
+      {/* ===================== ASSISTENTE DE CRIAÇÃO / EDIÇÃO DE OS EM 5 ETAPAS (STEPPER) ===================== */}
       {isNewOrderModalOpen && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
           <div className="relative w-full max-w-3xl rounded-[32px] border border-wr-border bg-wr-surface p-5 sm:p-8 shadow-elevated space-y-6 my-auto max-h-[92vh] overflow-y-auto text-wr-text">
