@@ -93,6 +93,13 @@ const STATUS_CONFIG: Record<
     border: 'border-emerald-500/30',
     dot: 'bg-emerald-500',
   },
+  parcial: {
+    label: 'Pago Parcial (Saldo)',
+    bg: 'bg-amber-500/15',
+    text: 'text-amber-500 dark:text-amber-400',
+    border: 'border-amber-500/35',
+    dot: 'bg-amber-400',
+  },
   cancelado: {
     label: 'Cancelada',
     bg: 'bg-rose-500/15',
@@ -128,7 +135,7 @@ export const OrdersView: React.FC = () => {
   // Filtros e busca
   const [searchTerm, setSearchTerm] = useState('')
   const [activeFilter, setActiveFilter] = useState<
-    'todas' | 'aguardando' | 'andamento' | 'pronto' | 'pago' | 'cancelado'
+    'todas' | 'aguardando' | 'andamento' | 'pronto' | 'parcial' | 'pago' | 'cancelado'
   >('todas')
 
   // Paginação e controle de quantidade por tela para os cards caberem certinho
@@ -185,11 +192,20 @@ export const OrdersView: React.FC = () => {
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<PaymentMethod>('pix')
   const [checkoutDiscount, setCheckoutDiscount] = useState<number>(0)
   const [checkoutInstallments, setCheckoutInstallments] = useState<number>(1)
+  const [checkoutCustomAmount, setCheckoutCustomAmount] = useState<number | ''>('')
   const [checkoutDueDate, setCheckoutDueDate] = useState<string>(() => {
     const d = new Date()
     d.setDate(d.getDate() + 30)
     return d.toISOString().slice(0, 10)
   })
+
+  // Edição de item existente no Wizard
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null)
+
+  // Modal para alterar valores e itens diretamente da gaveta de detalhes
+  const [isEditingValuesModalOpen, setIsEditingValuesModalOpen] = useState(false)
+  const [editableItems, setEditableItems] = useState<OrderItem[]>([])
+  const [editableDiscount, setEditableDiscount] = useState<number>(0)
 
   // Fecha menus flutuantes ao clicar fora
   useEffect(() => {
@@ -247,6 +263,7 @@ export const OrdersView: React.FC = () => {
     setShowClientSelector(false)
     setClientSearchQuery('')
     setEditingOrder(null)
+    setEditingItemIndex(null)
   }
 
   // Preencher dados ao editar uma OS
@@ -340,6 +357,157 @@ export const OrdersView: React.FC = () => {
 
   const handleRemoveItem = (id: string) => {
     setItems(prev => prev.filter(it => it.id !== id))
+    if (editingItemIndex !== null) {
+      setEditingItemIndex(null)
+      setNewItemDesc('')
+      setNewItemParts(0)
+      setNewItemLabor(0)
+    }
+  }
+
+  // Edição de item existente no Assistente (Wizard)
+  const handleEditItemInWizard = (index: number) => {
+    const it = items[index]
+    if (!it) return
+    setNewItemDesc(it.serviceDescription)
+    setNewItemParts(it.partsCost || 0)
+    setNewItemLabor(it.laborCost || 0)
+    setEditingItemIndex(index)
+  }
+
+  const handleSaveItemEditInWizard = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (editingItemIndex === null) return
+    if (!newItemDesc.trim()) {
+      showToast('Informe a descrição do serviço ou peça.', 'warning')
+      return
+    }
+    const pCost = Number(newItemParts) || 0
+    const lCost = Number(newItemLabor) || 0
+    const itemTotal = pCost + lCost
+
+    setItems(prev =>
+      prev.map((it, idx) =>
+        idx === editingItemIndex
+          ? {
+              ...it,
+              serviceDescription: newItemDesc.trim(),
+              partsCost: pCost,
+              laborCost: lCost,
+              total: itemTotal,
+            }
+          : it
+      )
+    )
+    setEditingItemIndex(null)
+    setNewItemDesc('')
+    setNewItemParts(0)
+    setNewItemLabor(0)
+    showToast('Item atualizado com sucesso!', 'success')
+  }
+
+  const handleCancelItemEdit = () => {
+    setEditingItemIndex(null)
+    setNewItemDesc('')
+    setNewItemParts(0)
+    setNewItemLabor(0)
+  }
+
+  // Alteração direta de valores e itens a partir da gaveta de detalhes
+  const handleOpenEditValuesModal = (order: ServiceOrder) => {
+    setEditableItems(
+      order.items && order.items.length > 0
+        ? JSON.parse(JSON.stringify(order.items))
+        : [
+            {
+              id: `item-${Date.now()}`,
+              serviceDescription: order.serviceDescription || 'Revisão e Manutenção Geral',
+              partsCost: order.partsTotal || 0,
+              laborCost: order.laborTotal || 0,
+              total: (order.partsTotal || 0) + (order.laborTotal || 0),
+            },
+          ]
+    )
+    setEditableDiscount(order.discount || 0)
+    setIsEditingValuesModalOpen(true)
+  }
+
+  const handleAddEditableItem = () => {
+    setEditableItems(prev => [
+      ...prev,
+      {
+        id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        serviceDescription: 'Novo Item / Peça',
+        partsCost: 0,
+        laborCost: 0,
+        total: 0,
+      },
+    ])
+  }
+
+  const handleUpdateEditableItem = (
+    index: number,
+    field: 'serviceDescription' | 'partsCost' | 'laborCost',
+    value: string | number
+  ) => {
+    setEditableItems(prev =>
+      prev.map((it, idx) => {
+        if (idx !== index) return it
+        const updated = { ...it, [field]: value }
+        const p = Number(field === 'partsCost' ? value : updated.partsCost) || 0
+        const l = Number(field === 'laborCost' ? value : updated.laborCost) || 0
+        updated.total = p + l
+        return updated
+      })
+    )
+  }
+
+  const handleRemoveEditableItem = (index: number) => {
+    setEditableItems(prev => prev.filter((_, idx) => idx !== index))
+  }
+
+  const handleSaveEditedValues = () => {
+    if (!selectedOrderDetails) return
+    const pTotal = editableItems.reduce((acc, it) => acc + (Number(it.partsCost) || 0), 0)
+    const lTotal = editableItems.reduce((acc, it) => acc + (Number(it.laborCost) || 0), 0)
+    const subtotal = pTotal + lTotal
+    const discount = Math.min(Math.max(0, Number(editableDiscount) || 0), subtotal)
+    const newTotal = Math.max(0, subtotal - discount)
+
+    // Recalcula o saldo restante preservando o que já foi amortizado
+    const paid = selectedOrderDetails.paidAmount || 0
+    const newRemaining = Math.max(0, newTotal - paid)
+    const newStatus: OrderStatus =
+      newRemaining === 0 && newTotal > 0
+        ? 'pago'
+        : paid > 0
+        ? 'parcial'
+        : selectedOrderDetails.status
+
+    const updatedData: Partial<ServiceOrder> = {
+      items: editableItems,
+      partsTotal: pTotal,
+      laborTotal: lTotal,
+      discount: discount > 0 ? discount : undefined,
+      totalAmount: newTotal,
+      paidAmount: paid,
+      remainingAmount: newRemaining,
+      status: newStatus,
+    }
+
+    updateOrder(selectedOrderDetails.id, updatedData)
+
+    const updatedOrder: ServiceOrder = {
+      ...selectedOrderDetails,
+      ...updatedData,
+    }
+
+    setSelectedOrderDetails(updatedOrder)
+    setIsEditingValuesModalOpen(false)
+    showToast(
+      `Valores da OS #${selectedOrderDetails.number} atualizados para ${formatCurrency(newTotal)}!`,
+      'success'
+    )
   }
 
   const partsTotal = items.reduce((sum, it) => sum + (it.partsCost || 0), 0)
@@ -475,11 +643,41 @@ export const OrdersView: React.FC = () => {
   }
 
   // Checkout e Pagamento
+  const handleOpenCheckout = (order: ServiceOrder) => {
+    setFinalizingOrder(order)
+    setCheckoutPaymentMethod(order.paymentMethod && order.paymentMethod !== 'pendente' ? order.paymentMethod : 'pix')
+    setCheckoutDiscount(order.discount || 0)
+    setCheckoutInstallments(order.paymentInstallments || 1)
+
+    const baseSubtotal = (order.partsTotal || 0) + (order.laborTotal || 0)
+    const disc = order.discount || 0
+    const finalTotal = Math.max(0, baseSubtotal - disc)
+    const previouslyPaid = order.paidAmount || 0
+    const currentRemaining =
+      order.remainingAmount !== undefined
+        ? order.remainingAmount
+        : (order.status === 'pago' ? 0 : Math.max(0, finalTotal - previouslyPaid))
+
+    // Preenche por padrão com o valor restante que falta pagar
+    setCheckoutCustomAmount(currentRemaining > 0 ? currentRemaining : finalTotal)
+  }
+
   const handleConfirmCheckout = () => {
     if (!finalizingOrder) return
     const baseSubtotal = (finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0)
     const discount = Math.min(Math.max(0, checkoutDiscount), baseSubtotal)
     const finalTotal = Math.max(0, baseSubtotal - discount)
+    const previouslyPaid = finalizingOrder.paidAmount || 0
+    const currentRemaining =
+      finalizingOrder.remainingAmount !== undefined
+        ? finalizingOrder.remainingAmount
+        : Math.max(0, finalTotal - previouslyPaid)
+
+    // Valor sendo pago agora (ex: cliente pagou R$ 1.000 em uma OS de R$ 2.000)
+    const amountToPay =
+      typeof checkoutCustomAmount === 'number'
+        ? Math.min(Math.max(0, checkoutCustomAmount), currentRemaining)
+        : (checkoutPaymentMethod === 'pagar_depois' ? 0 : currentRemaining)
 
     finishOrder(finalizingOrder.id, {
       paymentMethod: checkoutPaymentMethod,
@@ -487,15 +685,26 @@ export const OrdersView: React.FC = () => {
       discount,
       emitNfse: false,
       dueDate: checkoutDueDate,
+      amountToPay,
     })
+
+    const newPaid = previouslyPaid + amountToPay
+    const newRemaining = Math.max(0, finalTotal - newPaid)
+    const isFullyPaid = newRemaining === 0 && finalTotal > 0
+
+    const nextStatus: OrderStatus = isFullyPaid
+      ? 'pago'
+      : (newPaid > 0 ? 'parcial' : (checkoutPaymentMethod === 'pagar_depois' ? 'parcial' : finalizingOrder.status))
 
     const updated: ServiceOrder = {
       ...finalizingOrder,
-      status: 'pago',
+      status: nextStatus,
       paymentMethod: checkoutPaymentMethod,
       paymentInstallments: checkoutPaymentMethod === 'cartao_credito' ? checkoutInstallments : 1,
-      discount,
+      discount: discount > 0 ? discount : undefined,
       totalAmount: finalTotal,
+      paidAmount: newPaid,
+      remainingAmount: newRemaining,
     }
 
     setFinalizingOrder(null)
@@ -503,7 +712,6 @@ export const OrdersView: React.FC = () => {
     if (selectedOrderDetails && selectedOrderDetails.id === finalizingOrder.id) {
       setSelectedOrderDetails(updated)
     }
-    showToast(`Pagamento da ${finalizingOrder.number} registrado com sucesso!`, 'success')
   }
 
   // WhatsApp direto
@@ -578,7 +786,12 @@ export const OrdersView: React.FC = () => {
         (o.vehicleModel?.toLowerCase() || '').includes(q) ||
         (o.serviceDescription?.toLowerCase() || '').includes(q)
 
-      const matchesFilter = activeFilter === 'todas' ? true : o.status === activeFilter
+      const matchesFilter =
+        activeFilter === 'todas'
+          ? true
+          : activeFilter === 'parcial'
+          ? (o.status === 'parcial' || ((o.paidAmount || 0) > 0 && (o.remainingAmount || 0) > 0))
+          : o.status === activeFilter
       return matchesSearch && matchesFilter
     })
   }, [orders, searchTerm, activeFilter])
@@ -590,6 +803,9 @@ export const OrdersView: React.FC = () => {
       aguardando: orders.filter(o => o.status === 'aguardando').length,
       andamento: orders.filter(o => o.status === 'andamento').length,
       pronto: orders.filter(o => o.status === 'pronto').length,
+      parcial: orders.filter(
+        o => o.status === 'parcial' || ((o.paidAmount || 0) > 0 && (o.remainingAmount || 0) > 0)
+      ).length,
       pago: orders.filter(o => o.status === 'pago').length,
       cancelado: orders.filter(o => o.status === 'cancelado').length,
     }
@@ -689,6 +905,7 @@ export const OrdersView: React.FC = () => {
             { id: 'aguardando', label: 'Aguardando', count: filterCounts.aguardando },
             { id: 'andamento', label: 'Em Andamento', count: filterCounts.andamento },
             { id: 'pronto', label: 'Pronto p/ Retirada', count: filterCounts.pronto },
+            { id: 'parcial', label: 'Pago Parcial (Saldo)', count: filterCounts.parcial },
             { id: 'pago', label: 'Concluídas / Pagas', count: filterCounts.pago },
             { id: 'cancelado', label: 'Canceladas', count: filterCounts.cancelado },
           ].map(f => {
@@ -891,6 +1108,20 @@ export const OrdersView: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Alerta de Pagamento Parcial / Saldo Restante se houver */}
+                  {(order.paidAmount || 0) > 0 && (order.remainingAmount || 0) > 0 && (
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs font-mono">
+                      <div className="flex items-center gap-1.5 text-amber-400 font-bold">
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                        <span>Pago: {formatCurrency(order.paidAmount || 0)}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] uppercase font-bold text-wr-muted block">Falta Pagar</span>
+                        <span className="text-xs font-black text-rose-400">{formatCurrency(order.remainingAmount || 0)}</span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Linha 6: Barra de Ações Rápidas Espaçosas */}
                   <div
                     className="pt-3 border-t border-wr-border flex items-center justify-between gap-2"
@@ -935,16 +1166,11 @@ export const OrdersView: React.FC = () => {
                       {order.status !== 'pago' ? (
                         <button
                           type="button"
-                          onClick={() => {
-                            setFinalizingOrder(order)
-                            setCheckoutPaymentMethod('pix')
-                            setCheckoutDiscount(order.discount || 0)
-                            setCheckoutInstallments(1)
-                          }}
+                          onClick={() => handleOpenCheckout(order)}
                           className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
                         >
                           <DollarSign className="h-4 w-4" />
-                          <span>Receber</span>
+                          <span>{(order.paidAmount || 0) > 0 ? 'Receber Restante' : 'Receber'}</span>
                         </button>
                       ) : (
                         <button
@@ -1163,9 +1389,20 @@ export const OrdersView: React.FC = () => {
 
                 {/* Seção 4: Tabela de Serviços & Peças */}
                 <div className="space-y-3">
-                  <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
-                    <Layers className="h-4 w-4" /> Serviços Executados &amp; Peças Utilizadas
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                      <Layers className="h-4 w-4" /> Serviços Executados &amp; Peças Utilizadas
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditValuesModal(selectedOrderDetails)}
+                      className="px-3 py-1 rounded-xl bg-wr-orange/15 text-wr-orange border border-wr-orange/30 text-xs font-bold flex items-center gap-1.5 hover:bg-wr-orange/25 transition-colors"
+                      title="Editar serviços, peças e valores já lançados"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                      <span>Alterar Valores &amp; Itens</span>
+                    </button>
+                  </div>
 
                   <div className="rounded-2xl border border-wr-border overflow-hidden">
                     <table className="w-full text-left text-xs">
@@ -1222,6 +1459,98 @@ export const OrdersView: React.FC = () => {
                       {formatCurrency(selectedOrderDetails.totalAmount || 0)}
                     </span>
                   </div>
+                </div>
+
+                {/* Seção 5.1: Situação do Pagamento, Saldo Devedor & Histórico de Amortizações */}
+                <div className="p-4 rounded-3xl bg-wr-elevated border border-wr-border space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-wr-text flex items-center gap-1.5">
+                      <DollarSign className="h-4 w-4 text-emerald-500" /> Situação do Pagamento
+                    </span>
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                        STATUS_CONFIG[selectedOrderDetails.status]?.bg || ''
+                      } ${STATUS_CONFIG[selectedOrderDetails.status]?.text || ''} ${
+                        STATUS_CONFIG[selectedOrderDetails.status]?.border || ''
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          STATUS_CONFIG[selectedOrderDetails.status]?.dot || ''
+                        }`}
+                      />
+                      {STATUS_CONFIG[selectedOrderDetails.status]?.label || selectedOrderDetails.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-3 rounded-2xl bg-wr-surface border border-wr-border">
+                      <span className="text-[10px] uppercase font-bold text-wr-muted block">Valor Já Pago</span>
+                      <p className="font-mono font-bold text-emerald-500 text-base">
+                        {formatCurrency(
+                          selectedOrderDetails.paidAmount ||
+                            (selectedOrderDetails.status === 'pago' ? selectedOrderDetails.totalAmount || 0 : 0)
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-wr-surface border border-wr-border">
+                      <span className="text-[10px] uppercase font-bold text-wr-muted block">Falta Pagar</span>
+                      <p
+                        className={`font-mono font-black text-base ${
+                          (selectedOrderDetails.remainingAmount ??
+                            (selectedOrderDetails.status === 'pago' ? 0 : selectedOrderDetails.totalAmount || 0)) > 0
+                            ? 'text-rose-500'
+                            : 'text-wr-muted'
+                        }`}
+                      >
+                        {formatCurrency(
+                          selectedOrderDetails.remainingAmount ??
+                            (selectedOrderDetails.status === 'pago' ? 0 : selectedOrderDetails.totalAmount || 0)
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Histórico de parcelas ou amortizações parciais */}
+                  {selectedOrderDetails.payments && selectedOrderDetails.payments.length > 0 && (
+                    <div className="pt-2 border-t border-wr-border/60 space-y-1.5">
+                      <span className="text-[10px] uppercase font-bold text-wr-muted block">
+                        Histórico de Amortizações Recebidas
+                      </span>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {selectedOrderDetails.payments.map((p, idx) => (
+                          <div
+                            key={p.id || idx}
+                            className="flex items-center justify-between text-xs bg-wr-surface px-2.5 py-1.5 rounded-xl border border-wr-border"
+                          >
+                            <span className="text-wr-muted text-[11px]">
+                              {p.date} às {p.time} &bull; {PAYMENT_LABELS[p.method] || p.method}
+                            </span>
+                            <span className="font-mono font-bold text-emerald-500">
+                              + {formatCurrency(p.amount)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(selectedOrderDetails.remainingAmount ??
+                    (selectedOrderDetails.status === 'pago' ? 0 : selectedOrderDetails.totalAmount || 0)) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = selectedOrderDetails
+                        setSelectedOrderDetails(null)
+                        handleOpenCheckout(target)
+                      }}
+                      className="w-full py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-500 dark:text-amber-400 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                    >
+                      <DollarSign className="h-4 w-4" />
+                      <span>Receber Pagamento / Quitar Saldo Pendente</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Seção 6: Status & Mudança Rápida */}
@@ -1721,11 +2050,36 @@ export const OrdersView: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Formulário para Adicionar Item */}
-                  <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-3">
-                    <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
-                      <Plus className="h-4 w-4" /> Lançar Serviço ou Peça Manual
-                    </span>
+                  {/* Formulário para Adicionar / Alterar Item */}
+                  <div
+                    className={`p-4 rounded-2xl border space-y-3 transition-colors ${
+                      editingItemIndex !== null
+                        ? 'bg-wr-orange/10 border-wr-orange/50 shadow-inner'
+                        : 'bg-wr-elevated border-wr-border'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                        {editingItemIndex !== null ? (
+                          <>
+                            <Edit2 className="h-4 w-4" /> Editando Item #{editingItemIndex + 1}
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4" /> Lançar Serviço ou Peça Manual
+                          </>
+                        )}
+                      </span>
+                      {editingItemIndex !== null && (
+                        <button
+                          type="button"
+                          onClick={handleCancelItemEdit}
+                          className="text-[11px] font-bold text-wr-muted hover:text-rose-500 underline transition-colors"
+                        >
+                          Cancelar Edição
+                        </button>
+                      )}
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
                       <div className="sm:col-span-6">
@@ -1759,14 +2113,25 @@ export const OrdersView: React.FC = () => {
                         />
                       </div>
                       <div className="sm:col-span-2 flex items-end">
-                        <button
-                          type="button"
-                          onClick={() => handleAddItem()}
-                          className="w-full py-2.5 rounded-xl bg-wr-orange hover:bg-wr-orangeDark text-white font-bold text-xs uppercase flex items-center justify-center gap-1 shadow-sm"
-                        >
-                          <Plus className="h-4 w-4" />
-                          <span>Adicionar</span>
-                        </button>
+                        {editingItemIndex !== null ? (
+                          <button
+                            type="button"
+                            onClick={() => handleSaveItemEditInWizard()}
+                            className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase flex items-center justify-center gap-1 shadow-sm"
+                          >
+                            <Save className="h-4 w-4" />
+                            <span>Salvar</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleAddItem()}
+                            className="w-full py-2.5 rounded-xl bg-wr-orange hover:bg-wr-orangeDark text-white font-bold text-xs uppercase flex items-center justify-center gap-1 shadow-sm"
+                          >
+                            <Plus className="h-4 w-4" />
+                            <span>Adicionar</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1780,7 +2145,7 @@ export const OrdersView: React.FC = () => {
                           <th className="p-3 text-right">Peças</th>
                           <th className="p-3 text-right">M.O</th>
                           <th className="p-3 text-right">Total</th>
-                          <th className="p-3 text-center">Remover</th>
+                          <th className="p-3 text-center">Ações</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-wr-border">
@@ -1791,20 +2156,31 @@ export const OrdersView: React.FC = () => {
                             </td>
                           </tr>
                         ) : (
-                          items.map(it => (
+                          items.map((it, idx) => (
                             <tr key={it.id} className="hover:bg-wr-elevated/40">
                               <td className="p-3 font-semibold text-wr-text">{it.serviceDescription}</td>
                               <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(it.partsCost)}</td>
                               <td className="p-3 text-right font-mono text-wr-muted">{formatCurrency(it.laborCost)}</td>
                               <td className="p-3 text-right font-mono font-bold text-wr-text">{formatCurrency(it.total)}</td>
                               <td className="p-3 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveItem(it.id)}
-                                  className="p-1 text-rose-500 hover:bg-rose-500/10 rounded-lg"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditItemInWizard(idx)}
+                                    className="p-1.5 text-wr-orange hover:bg-wr-orange/15 rounded-lg transition-colors"
+                                    title="Editar valores deste item"
+                                  >
+                                    <Edit2 className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveItem(it.id)}
+                                    className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                                    title="Remover item"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))
@@ -1951,33 +2327,149 @@ export const OrdersView: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-2 text-xs font-mono">
-              <div className="flex justify-between text-wr-muted">
-                <span>Peças:</span>
-                <span>{formatCurrency(finalizingOrder.partsTotal || 0)}</span>
-              </div>
-              <div className="flex justify-between text-wr-muted">
-                <span>Mão de Obra:</span>
-                <span>{formatCurrency(finalizingOrder.laborTotal || 0)}</span>
-              </div>
-              {checkoutDiscount > 0 && (
-                <div className="flex justify-between text-rose-500">
-                  <span>Desconto Concedido:</span>
-                  <span>- {formatCurrency(checkoutDiscount)}</span>
+            {/* Resumo Financeiro da OS & Saldo Pendente */}
+            {(() => {
+              const baseSubtotal = (finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0)
+              const finalTotal = Math.max(0, baseSubtotal - checkoutDiscount)
+              const previouslyPaid = finalizingOrder.paidAmount || 0
+              const currentRemaining =
+                finalizingOrder.remainingAmount !== undefined
+                  ? finalizingOrder.remainingAmount
+                  : Math.max(0, finalTotal - previouslyPaid)
+              const amountNow =
+                typeof checkoutCustomAmount === 'number'
+                  ? Math.max(0, checkoutCustomAmount)
+                  : (checkoutPaymentMethod === 'pagar_depois' ? 0 : currentRemaining)
+              const willRemainAfter = Math.max(0, currentRemaining - amountNow)
+
+              return (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-2 text-xs font-mono">
+                    <div className="flex justify-between text-wr-muted">
+                      <span>Subtotal Peças:</span>
+                      <span>{formatCurrency(finalizingOrder.partsTotal || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-wr-muted">
+                      <span>Subtotal Mão de Obra:</span>
+                      <span>{formatCurrency(finalizingOrder.laborTotal || 0)}</span>
+                    </div>
+                    {checkoutDiscount > 0 && (
+                      <div className="flex justify-between text-rose-500">
+                        <span>Desconto Concedido:</span>
+                        <span>- {formatCurrency(checkoutDiscount)}</span>
+                      </div>
+                    )}
+                    <div className="pt-2 border-t border-wr-border flex justify-between text-sm font-bold text-wr-text">
+                      <span>Total Geral da OS:</span>
+                      <span>{formatCurrency(finalTotal)}</span>
+                    </div>
+                    {previouslyPaid > 0 && (
+                      <div className="flex justify-between text-emerald-500 font-bold">
+                        <span>Já Pago Anteriormente:</span>
+                        <span>+ {formatCurrency(previouslyPaid)}</span>
+                      </div>
+                    )}
+                    <div className="pt-2 border-t border-wr-border flex justify-between text-base font-black text-wr-orange">
+                      <span>Saldo Pendente a Pagar:</span>
+                      <span>{formatCurrency(currentRemaining)}</span>
+                    </div>
+                  </div>
+
+                  {/* Campo: Quanto o cliente está pagando agora? */}
+                  <div className="p-4 rounded-2xl bg-wr-surface border border-wr-border space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black uppercase tracking-wider text-wr-text">
+                        Valor Sendo Pago Agora (R$)
+                      </label>
+                      <span className="text-[11px] font-bold text-wr-muted">
+                        Total pendente: {formatCurrency(currentRemaining)}
+                      </span>
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-wr-muted font-mono font-bold text-sm">
+                        R$
+                      </div>
+                      <input
+                        type="number"
+                        step="any"
+                        value={checkoutCustomAmount === '' ? '' : checkoutCustomAmount}
+                        onChange={e => {
+                          const val = e.target.value === '' ? '' : Number(e.target.value)
+                          setCheckoutCustomAmount(val)
+                        }}
+                        placeholder={currentRemaining.toFixed(2)}
+                        className="w-full pl-11 pr-4 py-3 rounded-xl bg-wr-elevated text-wr-text border border-wr-border focus:border-wr-orange outline-none font-mono text-lg font-black text-emerald-500"
+                      />
+                    </div>
+
+                    {/* Botões de Atalho Rápido */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setCheckoutCustomAmount(currentRemaining)}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 transition-colors"
+                      >
+                        Pagar Tudo ({formatCurrency(currentRemaining)})
+                      </button>
+                      {currentRemaining > 10 && (
+                        <button
+                          type="button"
+                          onClick={() => setCheckoutCustomAmount(Math.round((currentRemaining / 2) * 100) / 100)}
+                          className="px-2.5 py-1 rounded-lg bg-wr-elevated hover:bg-wr-elevated/80 border border-wr-border text-[11px] font-bold text-wr-text transition-colors"
+                        >
+                          50% ({formatCurrency(Math.round((currentRemaining / 2) * 100) / 100)})
+                        </button>
+                      )}
+                      {[100, 200, 500, 1000].map(
+                        preset =>
+                          preset < currentRemaining && (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => setCheckoutCustomAmount(preset)}
+                              className="px-2.5 py-1 rounded-lg bg-wr-elevated hover:bg-wr-elevated/80 border border-wr-border text-[11px] font-bold text-wr-muted hover:text-wr-text transition-colors"
+                            >
+                              R$ {preset}
+                            </button>
+                          )
+                      )}
+                    </div>
+
+                    {/* Alerta Informativo Dinâmico */}
+                    {checkoutPaymentMethod === 'pagar_depois' ? (
+                      <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-xs text-amber-600 dark:text-amber-400 flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Pagamento a Prazo (Fiado):</strong> Nenhum valor entra no caixa agora. O valor de{' '}
+                          <strong>{formatCurrency(currentRemaining)}</strong> permanecerá registrado como saldo a receber
+                          com vencimento em <strong>{checkoutDueDate}</strong>.
+                        </div>
+                      </div>
+                    ) : amountNow < currentRemaining ? (
+                      <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/35 text-xs text-amber-600 dark:text-amber-400 flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-bold">Pagamento Parcial Selecionado!</strong>
+                          Entrada de <strong>{formatCurrency(amountNow)}</strong> entrando no caixa agora. O sistema
+                          manterá a OS com status <strong>Pago Parcial</strong> e registrará o saldo restante de{' '}
+                          <strong className="text-rose-500">{formatCurrency(willRemainAfter)}</strong> a pagar.
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-600 dark:text-emerald-400 flex items-start gap-2">
+                        <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-bold">Quitação Integral (100%)!</strong>
+                          O valor total pendente de <strong>{formatCurrency(currentRemaining)}</strong> será recebido e a
+                          OS será marcada como <strong>Concluída &amp; Paga</strong>.
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-              <div className="pt-2 border-t border-wr-border flex justify-between text-base font-black text-wr-orange">
-                <span>Total a Cobrar:</span>
-                <span>
-                  {formatCurrency(
-                    Math.max(
-                      0,
-                      (finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0) - checkoutDiscount
-                    )
-                  )}
-                </span>
-              </div>
-            </div>
+              )
+            })()}
 
             {/* Seleção do Método de Pagamento */}
             <div className="space-y-2">
@@ -2045,11 +2537,213 @@ export const OrdersView: React.FC = () => {
                 className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-lg flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                <span>Confirmar Pagamento &bull; Dar Baixa</span>
+                <span>
+                  {typeof checkoutCustomAmount === 'number' &&
+                  checkoutCustomAmount <
+                    (finalizingOrder.remainingAmount !== undefined
+                      ? finalizingOrder.remainingAmount
+                      : Math.max(
+                          0,
+                          (finalizingOrder.partsTotal || 0) +
+                            (finalizingOrder.laborTotal || 0) -
+                            checkoutDiscount -
+                            (finalizingOrder.paidAmount || 0)
+                        ))
+                    ? 'Confirmar Pagamento Parcial'
+                    : 'Confirmar Quitação Total & Dar Baixa'}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setFinalizingOrder(null)}
+                className="px-5 py-3.5 rounded-2xl bg-wr-elevated border border-wr-border text-wr-muted hover:text-wr-text font-bold text-xs uppercase"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== MODAL: ALTERAÇÃO DE VALORES E ITENS DA OS ===================== */}
+      {isEditingValuesModalOpen && selectedOrderDetails && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/75 backdrop-blur-md p-3 sm:p-6 animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-2xl rounded-[32px] border border-wr-border bg-wr-surface p-6 sm:p-8 shadow-elevated space-y-6 my-auto max-h-[92vh] overflow-y-auto text-wr-text">
+            <div className="flex items-center justify-between pb-3 border-b border-wr-border">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-wr-orange/15 border border-wr-orange/30 flex items-center justify-center text-wr-orange">
+                  <Edit2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-wr-text">Alterar Valores &amp; Itens da OS</h3>
+                  <p className="text-xs text-wr-muted">
+                    OS #{selectedOrderDetails.number} &bull; {selectedOrderDetails.clientName} ({selectedOrderDetails.vehicleModel})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditingValuesModalOpen(false)}
+                className="rounded-xl p-2 text-wr-muted hover:text-wr-text hover:bg-wr-elevated transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Lista editável de itens */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-wr-orange flex items-center gap-1.5">
+                  <Layers className="h-4 w-4" /> Itens, Peças e Mão de Obra
+                </span>
+                <button
+                  type="button"
+                  onClick={handleAddEditableItem}
+                  className="px-3 py-1.5 rounded-xl bg-wr-orange/15 hover:bg-wr-orange/25 text-wr-orange border border-wr-orange/30 text-xs font-bold flex items-center gap-1 transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Adicionar Outro Item</span>
+                </button>
+              </div>
+
+              <div className="space-y-2.5 max-h-[42vh] overflow-y-auto pr-1">
+                {editableItems.map((item, index) => (
+                  <div
+                    key={item.id || index}
+                    className="p-3.5 rounded-2xl bg-wr-elevated border border-wr-border space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-wr-muted">Item #{index + 1}</span>
+                      {editableItems.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEditableItem(index)}
+                          className="text-rose-500 hover:text-rose-400 p-1 rounded-lg text-xs flex items-center gap-1"
+                          title="Excluir item"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Remover</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                      <div className="sm:col-span-6">
+                        <label className="block text-[10px] font-bold text-wr-muted mb-1">Descrição</label>
+                        <input
+                          type="text"
+                          value={item.serviceDescription}
+                          onChange={e => handleUpdateEditableItem(index, 'serviceDescription', e.target.value)}
+                          placeholder="Descrição do serviço / peça"
+                          className="w-full p-2.5 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none"
+                        />
+                      </div>
+                      <div className="sm:col-span-3">
+                        <label className="block text-[10px] font-bold text-wr-muted mb-1">Peças (R$)</label>
+                        <input
+                          type="number"
+                          value={item.partsCost || ''}
+                          onChange={e => handleUpdateEditableItem(index, 'partsCost', Number(e.target.value) || 0)}
+                          placeholder="0.00"
+                          className="w-full p-2.5 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-mono"
+                        />
+                      </div>
+                      <div className="sm:col-span-3">
+                        <label className="block text-[10px] font-bold text-wr-muted mb-1">M.O (R$)</label>
+                        <input
+                          type="number"
+                          value={item.laborCost || ''}
+                          onChange={e => handleUpdateEditableItem(index, 'laborCost', Number(e.target.value) || 0)}
+                          placeholder="0.00"
+                          className="w-full p-2.5 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-1 text-[11px] text-wr-muted font-mono">
+                      Subtotal deste item: <strong className="text-wr-text ml-1">{formatCurrency((Number(item.partsCost) || 0) + (Number(item.laborCost) || 0))}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Desconto */}
+            <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div>
+                <label className="block font-bold text-wr-text">Desconto Geral na OS (R$)</label>
+                <span className="text-[11px] text-wr-muted">Abatimento aplicado sobre o valor total</span>
+              </div>
+              <div className="w-full sm:w-44">
+                <input
+                  type="number"
+                  value={editableDiscount || ''}
+                  onChange={e => setEditableDiscount(Number(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="w-full p-2.5 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-mono text-right font-bold"
+                />
+              </div>
+            </div>
+
+            {/* Recálculo em tempo real */}
+            {(() => {
+              const editParts = editableItems.reduce((acc, it) => acc + (Number(it.partsCost) || 0), 0)
+              const editLabor = editableItems.reduce((acc, it) => acc + (Number(it.laborCost) || 0), 0)
+              const editSubtotal = editParts + editLabor
+              const editDisc = Math.min(Math.max(0, Number(editableDiscount) || 0), editSubtotal)
+              const editFinalTotal = Math.max(0, editSubtotal - editDisc)
+              const previouslyPaid = selectedOrderDetails.paidAmount || 0
+              const editRemaining = Math.max(0, editFinalTotal - previouslyPaid)
+
+              return (
+                <div className="p-4 rounded-2xl bg-wr-surface border border-wr-border space-y-2 text-xs font-mono">
+                  <div className="flex justify-between text-wr-muted">
+                    <span>Novo Total das Peças:</span>
+                    <span>{formatCurrency(editParts)}</span>
+                  </div>
+                  <div className="flex justify-between text-wr-muted">
+                    <span>Novo Total da Mão de Obra:</span>
+                    <span>{formatCurrency(editLabor)}</span>
+                  </div>
+                  {editDisc > 0 && (
+                    <div className="flex justify-between text-rose-500">
+                      <span>Desconto:</span>
+                      <span>- {formatCurrency(editDisc)}</span>
+                    </div>
+                  )}
+                  <div className="pt-2 border-t border-wr-border flex justify-between text-base font-black text-wr-orange">
+                    <span>Novo Total da OS:</span>
+                    <span>{formatCurrency(editFinalTotal)}</span>
+                  </div>
+                  {previouslyPaid > 0 && (
+                    <div className="flex justify-between text-emerald-500 font-bold">
+                      <span>Valor Já Pago Anteriormente:</span>
+                      <span>{formatCurrency(previouslyPaid)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-bold pt-1 border-t border-wr-border/60">
+                    <span className="text-wr-text">Novo Saldo Devedor Restante:</span>
+                    <span className={editRemaining > 0 ? 'text-rose-500 font-black' : 'text-emerald-500 font-black'}>
+                      {formatCurrency(editRemaining)}
+                    </span>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Ações */}
+            <div className="flex items-center gap-3 pt-2 border-t border-wr-border">
+              <button
+                type="button"
+                onClick={handleSaveEditedValues}
+                className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-lg flex items-center justify-center gap-2"
+              >
+                <Save className="h-4 w-4" />
+                <span>Salvar Novos Valores da OS</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEditingValuesModalOpen(false)}
                 className="px-5 py-3.5 rounded-2xl bg-wr-elevated border border-wr-border text-wr-muted hover:text-wr-text font-bold text-xs uppercase"
               >
                 Cancelar

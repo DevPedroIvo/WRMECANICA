@@ -60,7 +60,7 @@ export interface OrderItem {
   cnae?: string        // CNAE (ex: 4520-0/01)
 }
 
-export type OrderStatus = 'aguardando' | 'andamento' | 'pronto' | 'pago' | 'cancelado'
+export type OrderStatus = 'aguardando' | 'andamento' | 'pronto' | 'parcial' | 'pago' | 'cancelado'
 
 export type PaymentMethod =
   | 'pix'
@@ -159,6 +159,15 @@ export interface DailyCashShift {
   notes?: string
 }
 
+export interface OrderPayment {
+  id: string
+  date: string // DD/MM/YYYY
+  time?: string
+  amount: number
+  method: PaymentMethod
+  notes?: string
+}
+
 export interface ServiceOrder {
   id: string
   number: string
@@ -191,6 +200,9 @@ export interface ServiceOrder {
   laborTotal: number
   discount?: number // Desconto concedido na finalização (R$)
   totalAmount: number // Valor final (peças + mão de obra - desconto)
+  paidAmount?: number // Valor total já pago/amortizado (ex: R$ 1.000 em uma OS de R$ 2.000)
+  remainingAmount?: number // Saldo devedor restante (ex: R$ 1.000)
+  payments?: OrderPayment[] // Histórico detalhado de pagamentos/amortizações
 }
 
 export interface DeferredPaymentEntry {

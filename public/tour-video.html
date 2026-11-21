@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tour em Vídeo — WR Mecânica & Cia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    body {
+      background: #0d0f12;
+      color: #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1040px;
+      width: 100%;
+      background: #14171d;
+      border: 1px solid #232733;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      border-bottom: 1px solid #232733;
+      padding-bottom: 16px;
+    }
+    .logo-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 20px;
+      color: #fff;
+      box-shadow: 0 0 20px rgba(249, 115, 22, 0.4);
+    }
+    .logo-text h1 {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+    .logo-text p {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    .status-pill {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: #4ade80;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+    .video-viewport {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #090a0d;
+      border: 1px solid #2a2e3d;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .progress-bar-container {
+      width: 100%;
+      height: 8px;
+      background: #1f2430;
+      border-radius: 4px;
+      cursor: pointer;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f97316, #fb923c);
+      box-shadow: 0 0 10px rgba(249, 115, 22, 0.6);
+      transition: width 0.1s linear;
+    }
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    button {
+      background: #1e232e;
+      color: #e5e7eb;
+      border: 1px solid #32384a;
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      background: #282e3d;
+      border-color: #f97316;
+      color: #fff;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      border: none;
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #fb923c, #f97316);
+      box-shadow: 0 6px 20px rgba(249, 115, 22, 0.5);
+    }
+    .time-display {
+      font-size: 13px;
+      font-weight: 700;
+      color: #9ca3af;
+      font-variant-numeric: tabular-nums;
+    }
+    .scene-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #232733;
+    }
+    .scene-btn {
+      padding: 6px 12px;
+      font-size: 11px;
+      border-radius: 8px;
+      background: #14171d;
+      border: 1px solid #2a2f3f;
+      color: #9ca3af;
+    }
+    .scene-btn.active {
+      background: rgba(249, 115, 22, 0.15);
+      border-color: #f97316;
+      color: #f97316;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <div class="logo-badge">
+        <div class="logo-icon">WR</div>
+        <div class="logo-text">
+          <h1>Tour Oficial da Oficina — WR Mecânica & Cia</h1>
+          <p>Apresentação Visual e Treinamento do Sistema</p>
+        </div>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        Pronto para Operação
+      </div>
+    </div>
+
+    <!-- Viewport do Vídeo -->
+    <div class="video-viewport">
+      <canvas id="tourCanvas" width="1920" height="1080"></canvas>
+    </div>
+
+    <!-- Controles do Player -->
+    <div class="controls">
+      <div class="progress-bar-container" id="timelineBar">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+
+      <div class="controls-row">
+        <div class="btn-group">
+          <button id="playBtn" class="btn-primary">
+            <span id="playIcon">▶</span> <span id="playText">Assistir Tour</span>
+          </button>
+          <button id="restartBtn">
+            ↺ Reiniciar
+          </button>
+        </div>
+
+        <div class="time-display" id="timeDisplay">
+          00:00 / 00:32
+        </div>
+
+        <div class="btn-group">
+          <button id="downloadVideoBtn" class="btn-primary" title="Grava o vídeo em alta resolução e baixa para o seu computador">
+            🎬 Gravar &amp; Baixar Vídeo (.webm)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cenas do Tour -->
+    <div class="scene-selector" id="sceneList">
+      <button class="scene-btn active" data-time="0">1. Abertura</button>
+      <button class="scene-btn" data-time="4">2. Aplicativo &amp; PWA</button>
+      <button class="scene-btn" data-time="8.5">3. Cards de OS</button>
+      <button class="scene-btn" data-time="14">4. Gaveta de Detalhes</button>
+      <button class="scene-btn" data-time="19">5. Caixa &amp; Fiado</button>
+      <button class="scene-btn" data-time="24">6. Nota Fiscal em PDF</button>
+      <button class="scene-btn" data-time="28">7. Encerramento</button>
+    </div>
+
+    <!-- Galeria de Imagens Oficiais para Enviar à Cliente -->
+    <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #232733;">
+      <h2 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+        📸 Imagens Oficiais de Demonstração (Prontas para Enviar à Cliente)
+      </h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
+        <!-- Imagem 1 -->
+        <div style="background: #191c25; border: 1px solid #2e3547; border-radius: 14px; overflow: hidden; padding: 14px;">
+          <img src="assets/mockup-apresentacao.jpg" alt="Mockup Sistema WR Mecânica" style="width: 100%; border-radius: 10px; display: block; aspect-ratio: 16/9; object-fit: cover;">
+          <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="font-size: 13px; color: #fff; display: block;">Mockup Multi-Aparelhos 4K</strong>
+              <span style="font-size: 11px; color: #9ca3af;">Celular &amp; Computador na Bancada</span>
+            </div>
+            <a href="assets/mockup-apresentacao.jpg" download="WR_Mecanica_Mockup_Oficial.jpg" style="background: #f97316; color: #fff; text-decoration: none; padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;">Baixar Imagem</a>
+          </div>
+        </div>
+
+        <!-- Imagem 2 -->
+        <div style="background: #191c25; border: 1px solid #2e3547; border-radius: 14px; overflow: hidden; padding: 14px;">
+          <img src="assets/whatsapp-danfse.jpg" alt="WhatsApp DANFSE WR Mecânica" style="width: 100%; border-radius: 10px; display: block; aspect-ratio: 16/9; object-fit: cover;">
+          <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="font-size: 13px; color: #fff; display: block;">Compartilhamento PDF WhatsApp</strong>
+              <span style="font-size: 11px; color: #9ca3af;">Nota Fiscal DANFSE para o Cliente</span>
+            </div>
+            <a href="assets/whatsapp-danfse.jpg" download="WR_Mecanica_WhatsApp_DANFSE.jpg" style="background: #25D366; color: #fff; text-decoration: none; padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;">Baixar Imagem</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('tourCanvas');
+    const ctx = canvas.getContext('2d');
+    const progressBar = document.getElementById('progressBar');
+    const timelineBar = document.getElementById('timelineBar');
+    const playBtn = document.getElementById('playBtn');
+    const playIcon = document.getElementById('playIcon');
+    const playText = document.getElementById('playText');
+    const restartBtn = document.getElementById('restartBtn');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const downloadVideoBtn = document.getElementById('downloadVideoBtn');
+    const sceneBtns = document.querySelectorAll('.scene-btn');
+
+    const TOTAL_DURATION = 32; // segundos
+    let currentTime = 0;
+    let isPlaying = false;
+    let lastTimestamp = null;
+    let animationFrameId = null;
+
+    // Cenas
+    const scenes = [
+      { start: 0, end: 4, name: 'Abertura & Identidade WR Mecânica' },
+      { start: 4, end: 8.5, name: 'Aplicativo Instalável (Celular & PC)' },
+      { start: 8.5, end: 14, name: 'Painel de Ordens de Serviço em Cards' },
+      { start: 14, end: 19, name: 'Gaveta Lateral com Detalhes da OS' },
+      { start: 19, end: 24, name: 'Frente de Caixa & Cobrança de Fiado' },
+      { start: 24, end: 28, name: 'DANFSE & Envio de PDF no WhatsApp' },
+      { start: 28, end: 32, name: 'Sistema Conectado & 100% Operacional' }
+    ];
+
+    function formatTime(s) {
+      const min = Math.floor(s / 60);
+      const sec = Math.floor(s % 60);
+      return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    }
+
+    function render(t) {
+      ctx.clearRect(0, 0, 1920, 1080);
+
+      // Fundo Gradiente Automotivo Escuro
+      const bgGrad = ctx.createRadialGradient(960, 540, 200, 960, 540, 1100);
+      bgGrad.addColorStop(0, '#151922');
+      bgGrad.addColorStop(0.6, '#0d0f14');
+      bgGrad.addColorStop(1, '#07080a');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, 1920, 1080);
+
+      // Linhas Tecnológicas de Fundo
+      ctx.strokeStyle = 'rgba(249, 115, 22, 0.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < 1920; x += 80) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 1080);
+        ctx.stroke();
+      }
+      for (let y = 0; y < 1080; y += 80) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(1920, y);
+        ctx.stroke();
+      }
+
+      // Barra superior com branding
+      ctx.fillStyle = '#101319';
+      ctx.fillRect(0, 0, 1920, 110);
+      ctx.strokeStyle = '#222736';
+      ctx.beginPath();
+      ctx.moveTo(0, 110);
+      ctx.lineTo(1920, 110);
+      ctx.stroke();
+
+      // Logo Topo
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(80, 25, 60, 60);
+      ctx.fillStyle = '#fff';
+      ctx.font = '900 28px Inter';
+      ctx.fillText('WR', 90, 67);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 28px Inter';
+      ctx.fillText('WR MECÂNICA & CIA', 160, 52);
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '600 16px Inter';
+      ctx.fillText('Luzimangues / Porto Nacional - TO • Sistema Integrado', 160, 78);
+
+      // Badge Supabase Nuvem Topo
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, 1540, 32, 300, 48, 24, true, true);
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath();
+      ctx.arc(1565, 56, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#4ade80';
+      ctx.font = '700 16px Inter';
+      ctx.fillText('NUVEM CONECTADA & ATIVA', 1585, 62);
+
+      // Renderizador por Cenas
+      if (t < 4) {
+        drawScene1(t);
+      } else if (t < 8.5) {
+        drawScene2(t - 4);
+      } else if (t < 14) {
+        drawScene3(t - 8.5);
+      } else if (t < 19) {
+        drawScene4(t - 14);
+      } else if (t < 24) {
+        drawScene5(t - 19);
+      } else if (t < 28) {
+        drawScene6(t - 24);
+      } else {
+        drawScene7(t - 28);
+      }
+
+      // Indicador inferior da cena
+      const currentScene = scenes.find(s => t >= s.start && t < s.end) || scenes[scenes.length - 1];
+      ctx.fillStyle = '#f97316';
+      ctx.font = '800 20px Inter';
+      ctx.fillText(`ETAPA: ${currentScene.name.toUpperCase()}`, 80, 1020);
+    }
+
+    function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+
+    // Cena 1: Abertura
+    function drawScene1(dt) {
+      const alpha = Math.min(dt / 1.5, 1);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      // Glow Laranja
+      const glow = ctx.createRadialGradient(960, 520, 50, 960, 520, 450);
+      glow.addColorStop(0, 'rgba(249, 115, 22, 0.25)');
+      glow.addColorStop(1, 'rgba(249, 115, 22, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(400, 200, 1120, 640);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 68px Inter';
+      ctx.textAlign = 'center';
+      ctx.fillText('BEM-VINDA À NOVA GESTÃO', 960, 480);
+
+      ctx.fillStyle = '#f97316';
+      ctx.font = '900 84px Inter';
+      ctx.fillText('WR MECÂNICA & CIA', 960, 570);
+
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '600 24px Inter';
+      ctx.fillText('Painel Visual • Ordens de Serviço em Cards • Emissão de NFS-e • Frente de Caixa', 960, 640);
+
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+
+    // Cena 2: PWA e Instalação no Aparelho
+    function drawScene2(dt) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '800 44px Inter';
+      ctx.fillText('1. Aplicativo Direto no Celular e Computador', 140, 220);
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '500 22px Inter';
+      ctx.fillText('Sem precisar de loja ou memória pesada. Funciona offline em qualquer aparelho.', 140, 260);
+
+      // Mockup Computador
+      ctx.fillStyle = '#161922';
+      ctx.strokeStyle = '#2d3345';
+      ctx.lineWidth = 3;
+      roundRect(ctx, 220, 320, 800, 500, 16, true, true);
+      ctx.fillStyle = '#f97316';
+      roundRect(ctx, 250, 350, 220, 50, 10, true, false);
+      ctx.fillStyle = '#fff';
+      ctx.font = '700 18px Inter';
+      ctx.fillText('⬇ Instalar Aplicativo', 280, 382);
+
+      // Mockup Celular
+      ctx.fillStyle = '#0f1117';
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 4;
+      roundRect(ctx, 1150, 280, 360, 640, 36, true, true);
+      ctx.fillStyle = '#1f2433';
+      roundRect(ctx, 1180, 350, 300, 120, 16, true, false);
+      ctx.fillStyle = '#f97316';
+      ctx.font = '800 22px Inter';
+      ctx.fillText('WR Mecânica App', 1205, 400);
+      ctx.fillStyle = '#4ade80';
+      ctx.font = '600 16px Inter';
+      ctx.fillText('✓ Instalado na Tela Inicial', 1205, 435);
+    }
+
+    // Cena 3: Cards de OS
+    function drawScene3(dt) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '800 44px Inter';
+      ctx.fillText('2. Gestão Visual de Ordens de Serviço', 140, 200);
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '500 22px Inter';
+      ctx.fillText('Cards clicáveis com informações completas, fotos, status e valores.', 140, 240);
+
+      // Grid de 3 cards modernos
+      const cards = [
+        { os: 'OS #1042', car: 'Toyota Hilux 2.8 D-4D', plate: 'QWA-4E90', client: 'Marcos Vinícius', status: 'Em Andamento', statusColor: '#38bdf8', total: 'R$ 2.450,00' },
+        { os: 'OS #1043', car: 'Chevrolet Onix Plus', plate: 'PLM-9821', client: 'Juliana Castro', status: 'Aguardando', statusColor: '#fbbf24', total: 'R$ 890,00' },
+        { os: 'OS #1044', car: 'Volkswagen Gol G6', plate: 'HPX-3312', client: 'Carlos Alberto', status: 'Concluída', statusColor: '#4ade80', total: 'R$ 1.120,00' }
+      ];
+
+      cards.forEach((c, idx) => {
+        const x = 140 + idx * 560;
+        const y = 300;
+
+        ctx.fillStyle = '#161922';
+        ctx.strokeStyle = idx === 0 ? '#f97316' : '#2b3142';
+        ctx.lineWidth = idx === 0 ? 3 : 1.5;
+        roundRect(ctx, x, y, 520, 540, 20, true, true);
+
+        // Header Card
+        ctx.fillStyle = '#f97316';
+        ctx.font = '800 22px Inter';
+        ctx.fillText(c.os, x + 30, y + 55);
+
+        // Status Pill
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.strokeStyle = c.statusColor;
+        ctx.lineWidth = 1.5;
+        roundRect(ctx, x + 320, y + 30, 170, 38, 19, true, true);
+        ctx.fillStyle = c.statusColor;
+        ctx.font = '700 15px Inter';
+        ctx.fillText(c.status, x + 345, y + 55);
+
+        // Dados Veículo
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '800 26px Inter';
+        ctx.fillText(c.car, x + 30, y + 120);
+
+        ctx.fillStyle = '#f97316';
+        ctx.font = '700 18px Inter';
+        ctx.fillText(`Placa: ${c.plate}`, x + 30, y + 160);
+
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '600 18px Inter';
+        ctx.fillText(`Cliente: ${c.client}`, x + 30, y + 210);
+
+        // Linha divisória
+        ctx.strokeStyle = '#232838';
+        ctx.beginPath();
+        ctx.moveTo(x + 30, y + 260);
+        ctx.lineTo(x + 490, y + 260);
+        ctx.stroke();
+
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '600 16px Inter';
+        ctx.fillText('Valor Total do Serviço:', x + 30, y + 310);
+        ctx.fillStyle = '#22c55e';
+        ctx.font = '900 36px Inter';
+        ctx.fillText(c.total, x + 30, y + 360);
+
+        // Botões de Ação Rápida
+        ctx.fillStyle = '#222736';
+        roundRect(ctx, x + 30, y + 420, 210, 50, 12, true, false);
+        ctx.fillStyle = '#fff';
+        ctx.font = '700 16px Inter';
+        ctx.fillText('✏ Editar OS', x + 75, y + 452);
+
+        ctx.fillStyle = '#f97316';
+        roundRect(ctx, x + 260, y + 420, 230, 50, 12, true, false);
+        ctx.fillStyle = '#fff';
+        ctx.font = '700 16px Inter';
+        ctx.fillText('🔍 Ver Detalhes', x + 310, y + 452);
+      });
+    }
+
+    // Cena 4: Gaveta de Detalhes
+    function drawScene4(dt) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '800 44px Inter';
+      ctx.fillText('3. Gaveta Lateral Ampla de Detalhes', 140, 200);
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '500 22px Inter';
+      ctx.fillText('Clique no card e consulte todas as peças, mão de obra, diagnósticos e pagamentos.', 140, 240);
+
+      // Fundo escuro
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(140, 290, 800, 600);
+
+      // Gaveta Lateral Aberta
+      ctx.fillStyle = '#161922';
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 3;
+      roundRect(ctx, 980, 280, 800, 620, 24, true, true);
+
+      ctx.fillStyle = '#fff';
+      ctx.font = '800 32px Inter';
+      ctx.fillText('Detalhes da OS #1042', 1030, 350);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '700 18px Inter';
+      ctx.fillText('Status: Em Andamento • Mecânico: Roberto Santos', 1030, 390);
+
+      // Abas de Diagnóstico
+      ctx.fillStyle = '#1e2330';
+      roundRect(ctx, 1030, 430, 700, 180, 14, true, false);
+      ctx.fillStyle = '#f97316';
+      ctx.font = '700 20px Inter';
+      ctx.fillText('🔧 Peças & Serviços Aplicados:', 1060, 480);
+      ctx.fillStyle = '#fff';
+      ctx.font = '600 18px Inter';
+      ctx.fillText('• Troca de Óleo 5W30 Sintético (8L) - R$ 480,00', 1060, 520);
+      ctx.fillText('• Filtro de Óleo & Combustível - R$ 220,00', 1060, 555);
+      ctx.fillText('• Mão de Obra Revisão Preventiva - R$ 650,00', 1060, 590);
+
+      // Botão Imprimir / Emitir
+      ctx.fillStyle = '#22c55e';
+      roundRect(ctx, 1030, 650, 340, 60, 14, true, false);
+      ctx.fillStyle = '#fff';
+      ctx.font = '800 20px Inter';
+      ctx.fillText('📄 Emitir NFS-e / DANFSE', 1070, 688);
+
+      ctx.fillStyle = '#3b82f6';
+      roundRect(ctx, 1390, 650, 340, 60, 14, true, false);
+      ctx.fillStyle = '#fff';
+      ctx.font = '800 20px Inter';
+      ctx.fillText('🖨 Imprimir Ordem', 1460, 688);
+    }
+
+    // Cena 5: Caixa e Fiado
+    function drawScene5(dt) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '800 44px Inter';
+      ctx.fillText('4. Controle de Caixa & Cobrança de Fiado', 140, 200);
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '500 22px Inter';
+      ctx.fillText('Abertura e fechamento de turno diário, recebimentos e aviso no WhatsApp do cliente.', 140, 240);
+
+      // Card Caixa
+      ctx.fillStyle = '#161922';
+      ctx.strokeStyle = '#2b3142';
+      ctx.lineWidth = 2;
+      roundRect(ctx, 140, 310, 760, 520, 20, true, true);
+
+      ctx.fillStyle = '#22c55e';
+      ctx.font = '800 26px Inter';
+      ctx.fillText('Turno de Caixa: ABERTO', 180, 370);
+      ctx.fillStyle = '#fff';
+      ctx.font = '700 20px Inter';
+      ctx.fillText('Saldo em Caixa (Dinheiro/PIX/Cartão):', 180, 420);
+      ctx.fillStyle = '#22c55e';
+      ctx.font = '900 48px Inter';
+      ctx.fillText('R$ 4.890,50', 180, 480);
+
+      // Card Fiado
+      ctx.fillStyle = '#161922';
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 2;
+      roundRect(ctx, 960, 310, 820, 520, 20, true, true);
+
+      ctx.fillStyle = '#f97316';
+      ctx.font = '800 26px Inter';
+      ctx.fillText('Cobrança de Pagamento Aprazado (Fiado)', 1000, 370);
+
+      ctx.fillStyle = '#fff';
+      ctx.font = '700 20px Inter';
+      ctx.fillText('Cliente: Marcos Vinícius (Vence em 3 dias)', 1000, 420);
+      ctx.fillStyle = '#f43f5e';
+      ctx.font = '800 36px Inter';
+      ctx.fillText('Pendente: R$ 850,00', 1000, 470);
+
+      // Botão WhatsApp
+      ctx.fillStyle = '#25D366';
+      roundRect(ctx, 1000, 540, 480, 70, 16, true, false);
+      ctx.fillStyle = '#fff';
+      ctx.font = '800 22px Inter';
+      ctx.fillText('📲 Cobrar no WhatsApp com 1 Clique', 1040, 583);
+    }
+
+    // Cena 6: Nota Fiscal PDF
+    function drawScene6(dt) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '800 44px Inter';
+      ctx.fillText('5. Nota Fiscal Eletrônica & PDF Oficial no WhatsApp', 140, 200);
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '500 22px Inter';
+      ctx.fillText('DANFSE em formato A4 gerada e compartilhada instantaneamente com validade fiscal.', 140, 240);
+
+      // Folha A4 Mockup
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, 360, 300, 440, 580, 12, true, false);
+      ctx.fillStyle = '#111827';
+      ctx.font = '800 20px Inter';
+      ctx.fillText('DANFSE - NFS-e', 490, 350);
+      ctx.font = '600 12px Inter';
+      ctx.fillText('WR MECÂNICA & CIA - PORTO NACIONAL/TO', 400, 380);
+      ctx.fillText('ISSQN: 2.5% • Item LC 116: 14.01', 440, 410);
+
+      ctx.fillStyle = '#e5e7eb';
+      ctx.fillRect(400, 440, 360, 120);
+
+      // Mockup WhatsApp
+      ctx.fillStyle = '#0b141a';
+      ctx.strokeStyle = '#25D366';
+      ctx.lineWidth = 3;
+      roundRect(ctx, 940, 310, 680, 540, 24, true, true);
+
+      ctx.fillStyle = '#005c4b';
+      roundRect(ctx, 980, 380, 600, 160, 16, true, false);
+
+      ctx.fillStyle = '#f97316';
+      ctx.font = '800 22px Inter';
+      ctx.fillText('📄 DANFSE_NFSe_OS1042.pdf', 1020, 430);
+      ctx.fillStyle = '#fff';
+      ctx.font = '600 16px Inter';
+      ctx.fillText('Documento Auxiliar da NFS-e • 154 KB', 1020, 465);
+      ctx.fillStyle = '#34d399';
+      ctx.fillText('✓✓ Enviado para o cliente com sucesso!', 1020, 500);
+    }
+
+    // Cena 7: Encerramento
+    function drawScene7(dt) {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 68px Inter';
+      ctx.textAlign = 'center';
+      ctx.fillText('PRONTO PARA A SUA OFICINA!', 960, 460);
+
+      ctx.fillStyle = '#f97316';
+      ctx.font = '900 52px Inter';
+      ctx.fillText('WR MECÂNICA & CIA', 960, 540);
+
+      ctx.fillStyle = '#4ade80';
+      ctx.font = '700 28px Inter';
+      ctx.fillText('✓ Banco em Nuvem Ativo  •  ✓ Zero Configurações Difíceis  •  ✓ 100% Prático', 960, 620);
+      ctx.textAlign = 'left';
+    }
+
+    // Loop de Animação
+    function tick(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const delta = (timestamp - lastTimestamp) / 1000;
+      lastTimestamp = timestamp;
+
+      if (isPlaying) {
+        currentTime += delta;
+        if (currentTime >= TOTAL_DURATION) {
+          currentTime = TOTAL_DURATION;
+          isPlaying = false;
+          updatePlayBtnUI();
+        }
+      }
+
+      render(currentTime);
+      updateUI();
+
+      if (isPlaying || currentTime < TOTAL_DURATION) {
+        animationFrameId = requestAnimationFrame(tick);
+      }
+    }
+
+    function updateUI() {
+      const progress = (currentTime / TOTAL_DURATION) * 100;
+      progressBar.style.width = `${progress}%`;
+      timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(TOTAL_DURATION)}`;
+
+      // Atualiza botões de cenas
+      sceneBtns.forEach(btn => {
+        const t = parseFloat(btn.dataset.time);
+        const scene = scenes.find(s => s.start === t);
+        if (scene && currentTime >= scene.start && currentTime < scene.end) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    function updatePlayBtnUI() {
+      if (isPlaying) {
+        playIcon.textContent = '⏸';
+        playText.textContent = 'Pausar';
+      } else {
+        playIcon.textContent = '▶';
+        playText.textContent = currentTime >= TOTAL_DURATION ? 'Assistir Novamente' : 'Assistir Tour';
+      }
+    }
+
+    playBtn.addEventListener('click', () => {
+      if (currentTime >= TOTAL_DURATION) currentTime = 0;
+      isPlaying = !isPlaying;
+      lastTimestamp = null;
+      updatePlayBtnUI();
+      if (isPlaying) animationFrameId = requestAnimationFrame(tick);
+    });
+
+    restartBtn.addEventListener('click', () => {
+      currentTime = 0;
+      lastTimestamp = null;
+      render(0);
+      updateUI();
+    });
+
+    timelineBar.addEventListener('click', e => {
+      const rect = timelineBar.getBoundingClientRect();
+      const pos = (e.clientX - rect.left) / rect.width;
+      currentTime = pos * TOTAL_DURATION;
+      lastTimestamp = null;
+      render(currentTime);
+      updateUI();
+    });
+
+    sceneBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentTime = parseFloat(btn.dataset.time);
+        lastTimestamp = null;
+        render(currentTime);
+        updateUI();
+      });
+    });
+
+    // Gravação e Download do Vídeo (.webm)
+    downloadVideoBtn.addEventListener('click', async () => {
+      const stream = canvas.captureStream(30);
+      let recorder;
+      try {
+        recorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+      } catch {
+        recorder = new MediaRecorder(stream);
+      }
+
+      const chunks = [];
+      recorder.ondataavailable = e => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Tour_WR_Mecanica_Oficial.webm';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        downloadVideoBtn.textContent = '🎬 Gravar & Baixar Vídeo (.webm)';
+        alert('Vídeo gravado e baixado com sucesso!');
+      };
+
+      downloadVideoBtn.textContent = '🔴 Gravando Vídeo (Aguarde 32s)...';
+      currentTime = 0;
+      isPlaying = true;
+      lastTimestamp = null;
+      recorder.start();
+
+      const recordCheck = setInterval(() => {
+        if (currentTime >= TOTAL_DURATION) {
+          clearInterval(recordCheck);
+          recorder.stop();
+          isPlaying = false;
+          updatePlayBtnUI();
+        }
+      }, 500);
+
+      animationFrameId = requestAnimationFrame(tick);
+    });
+
+    // Render inicial
+    render(0);
+  </script>
+</body>
+</html>
