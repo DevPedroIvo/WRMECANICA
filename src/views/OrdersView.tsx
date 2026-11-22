@@ -1332,98 +1332,119 @@ export const OrdersView: React.FC = () => {
                     )
                   })()}
 
-                  {/* Linha 6: Barra de Ações Rápidas Espaçosas */}
+                  {/* Linha 6: Botões de Ação em Cascata (todos visíveis com descrição clara) */}
                   <div
-                    className="pt-3 border-t border-wr-border flex items-center justify-between gap-2"
+                    className="pt-3 border-t border-wr-border flex flex-col gap-2"
                     onClick={e => e.stopPropagation()}
                   >
-                    <div className="flex items-center gap-2">
-                      {/* Botão WhatsApp */}
+                    {/* Ação Principal: Receber Pagamento ou NFS-e */}
+                    {order.status !== 'pago' ? (
                       <button
                         type="button"
-                        onClick={() => handleOpenClientWhatsApp(order)}
-                        className="px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/20 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
-                        title="Abrir WhatsApp do cliente"
+                        onClick={() => handleOpenCheckout(order)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-between gap-2 shadow-sm transition-all"
                       >
-                        <MessageCircle className="h-4 w-4" />
-                        <span className="hidden sm:inline">WhatsApp</span>
+                        <span className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 shrink-0" />
+                          <span>
+                            {getOrderPaymentSummary(order).paid > 0
+                              ? 'Receber Saldo Restante'
+                              : 'Receber Pagamento'}
+                          </span>
+                        </span>
+                        <ChevronRight className="h-4 w-4 opacity-80 shrink-0" />
                       </button>
-
-                      {/* Botão Imprimir */}
+                    ) : (
                       <button
                         type="button"
-                        onClick={() => setPdfModalOrder(order)}
-                        className="px-3 py-2 rounded-xl bg-wr-elevated text-wr-text border border-wr-border hover:border-wr-orange hover:text-wr-orange text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
-                        title="Imprimir Ordem de Serviço"
+                        onClick={() => handleOpenNfse(order)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-between gap-2 shadow-sm transition-all"
                       >
-                        <Printer className="h-4 w-4" />
-                        <span className="hidden sm:inline">Imprimir</span>
+                        <span className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 shrink-0" />
+                          <span>Visualizar / Emitir Nota Fiscal (NFS-e)</span>
+                        </span>
+                        <ChevronRight className="h-4 w-4 opacity-80 shrink-0" />
                       </button>
+                    )}
 
-                      {/* Botão Alterar Serviços e Valores diretamente */}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditValuesModal(order)}
-                        className="px-2.5 py-2 rounded-xl bg-wr-orange/10 text-wr-orange border border-wr-orange/30 hover:bg-wr-orange/20 text-xs font-bold flex items-center gap-1 transition-colors"
-                        title="Alterar serviços, peças e valores desta OS"
-                      >
-                        <Wrench className="h-3.5 w-3.5" />
-                        <span className="hidden xl:inline">Serviços / Valores</span>
-                      </button>
+                    {/* Alterar Serviços e Valores */}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditValuesModal(order)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-wr-orange/15 text-wr-orange border border-wr-orange/35 hover:bg-wr-orange hover:text-white font-bold text-xs flex items-center justify-between gap-2 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Wrench className="h-4 w-4 shrink-0" />
+                        <span>Alterar Serviços e Valores</span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 opacity-70 shrink-0" />
+                    </button>
 
-                      {/* Botão Editar OS completa */}
-                      <button
-                        type="button"
-                        onClick={() => setEditingOrder(order)}
-                        className="p-2 rounded-xl bg-wr-elevated text-wr-muted hover:text-wr-text border border-wr-border hover:border-wr-orange transition-colors"
-                        title="Editar todos os dados da OS"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
+                    {/* Ver Ficha Completa */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOrderDetails(order)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-wr-elevated text-wr-text border border-wr-border hover:border-wr-orange hover:text-wr-orange font-bold text-xs flex items-center justify-between gap-2 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Eye className="h-4 w-4 shrink-0 text-wr-orange" />
+                        <span>Ver Ficha Completa da OS</span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 opacity-60 shrink-0" />
+                    </button>
 
-                      {/* Botão Excluir OS */}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteOrderConfirm(order)}
-                        className="p-2 rounded-xl bg-wr-elevated text-wr-muted hover:text-rose-500 border border-wr-border hover:border-rose-500/40 transition-colors"
-                        title="Excluir Ordem de Serviço"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                    {/* Editar Dados da OS */}
+                    <button
+                      type="button"
+                      onClick={() => setEditingOrder(order)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-wr-elevated text-wr-text border border-wr-border hover:border-wr-orange hover:text-wr-orange font-bold text-xs flex items-center justify-between gap-2 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Edit2 className="h-4 w-4 shrink-0 text-wr-orange" />
+                        <span>Editar Dados da OS</span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 opacity-60 shrink-0" />
+                    </button>
 
-                    <div className="flex items-center gap-2">
-                      {/* Botão Receber Pagamento se não pago */}
-                      {order.status !== 'pago' ? (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenCheckout(order)}
-                          className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
-                        >
-                          <DollarSign className="h-4 w-4" />
-                          <span>{(order.paidAmount || 0) > 0 ? 'Receber Restante' : 'Receber'}</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenNfse(order)}
-                          className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
-                        >
-                          <FileText className="h-4 w-4" />
-                          <span>NFS-e</span>
-                        </button>
-                      )}
+                    {/* WhatsApp do Cliente */}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenClientWhatsApp(order)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white font-bold text-xs flex items-center justify-between gap-2 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4 shrink-0" />
+                        <span>Enviar WhatsApp para o Cliente</span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 opacity-70 shrink-0" />
+                    </button>
 
-                      {/* Botão Abrir Detalhes */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedOrderDetails(order)}
-                        className="p-2 rounded-xl bg-wr-elevated hover:bg-wr-orange text-wr-muted hover:text-white border border-wr-border transition-colors"
-                        title="Ver Ficha Completa da OS"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
-                    </div>
+                    {/* Imprimir / Salvar PDF */}
+                    <button
+                      type="button"
+                      onClick={() => setPdfModalOrder(order)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-wr-elevated text-wr-text border border-wr-border hover:border-wr-orange hover:text-wr-orange font-bold text-xs flex items-center justify-between gap-2 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Printer className="h-4 w-4 shrink-0 text-wr-muted" />
+                        <span>Imprimir / Salvar PDF da OS</span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 opacity-60 shrink-0" />
+                    </button>
+
+                    {/* Apagar OS de todo o sistema */}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOrderConfirm(order)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/30 hover:bg-rose-600 hover:text-white font-bold text-xs flex items-center justify-between gap-2 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Trash2 className="h-4 w-4 shrink-0" />
+                        <span>Apagar Ordem de Serviço</span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 opacity-70 shrink-0" />
+                    </button>
                   </div>
                 </div>
               )
@@ -1810,8 +1831,8 @@ export const OrdersView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Rodapé Fixo do Painel Lateral */}
-              <div className="p-5 sm:p-6 border-t border-wr-border bg-wr-surface flex flex-wrap items-center justify-between gap-3">
+              {/* Rodapé Fixo do Painel Lateral (em cascata organizada) */}
+              <div className="p-4 sm:p-5 border-t border-wr-border bg-wr-surface flex flex-col gap-2">
                 {selectedOrderDetails.status !== 'pago' ? (
                   <button
                     type="button"
@@ -1820,12 +1841,12 @@ export const OrdersView: React.FC = () => {
                       setSelectedOrderDetails(null)
                       handleOpenCheckout(target)
                     }}
-                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-md flex items-center justify-center gap-2 transition-all"
+                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider py-3 rounded-2xl shadow-md flex items-center justify-center gap-2 transition-all"
                   >
                     <DollarSign className="h-4 w-4" />
                     <span>
                       {getOrderPaymentSummary(selectedOrderDetails).paid > 0
-                        ? 'Receber Restante / Quitar'
+                        ? 'Receber Saldo Restante / Quitar'
                         : 'Receber Pagamento'}
                     </span>
                   </button>
@@ -1833,14 +1854,14 @@ export const OrdersView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleOpenNfse(selectedOrderDetails)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-md flex items-center justify-center gap-2 transition-all"
+                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider py-3 rounded-2xl shadow-md flex items-center justify-center gap-2 transition-all"
                   >
                     <FileText className="h-4 w-4" />
-                    <span>Visualizar NFS-e Autorizada</span>
+                    <span>Visualizar / Emitir NFS-e Autorizada</span>
                   </button>
                 )}
 
-                <div className="flex items-center gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -1848,17 +1869,16 @@ export const OrdersView: React.FC = () => {
                       setSelectedOrderDetails(null)
                       setEditingOrder(target)
                     }}
-                    className="px-4 py-3.5 rounded-2xl border border-wr-border bg-wr-elevated text-wr-text hover:border-wr-orange font-bold text-xs uppercase flex items-center gap-1.5 transition-colors"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-wr-border bg-wr-elevated text-wr-text hover:border-wr-orange hover:text-wr-orange font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
                   >
                     <Edit2 className="h-4 w-4 text-wr-orange" />
-                    <span>Editar</span>
+                    <span>Editar Dados da OS</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleDeleteOrderConfirm(selectedOrderDetails)}
-                    className="px-4 py-3.5 rounded-2xl border border-rose-500/35 bg-rose-500/10 text-rose-500 hover:bg-rose-600 hover:text-white font-bold text-xs uppercase flex items-center gap-1.5 transition-colors"
-                    title="Apagar esta Ordem de Serviço de todo o sistema"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-rose-500/35 bg-rose-500/10 text-rose-500 hover:bg-rose-600 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
                   >
                     <Trash2 className="h-4 w-4" />
                     <span>Apagar OS</span>
@@ -1867,9 +1887,10 @@ export const OrdersView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedOrderDetails(null)}
-                    className="px-4 py-3.5 rounded-2xl border border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text font-bold text-xs uppercase"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
                   >
-                    Fechar
+                    <X className="h-4 w-4" />
+                    <span>Fechar Painel</span>
                   </button>
                 </div>
               </div>
