@@ -121,8 +121,8 @@ export const DeferredPaymentsView: React.FC = () => {
         if (!q) return true
 
         return (
-          item.clientName.toLowerCase().includes(q) ||
-          item.description.toLowerCase().includes(q) ||
+          (item.clientName || '').toLowerCase().includes(q) ||
+          (item.description || '').toLowerCase().includes(q) ||
           (item.vehicleInfo || '').toLowerCase().includes(q) ||
           (item.orderNumber || '').toLowerCase().includes(q)
         )
@@ -132,7 +132,7 @@ export const DeferredPaymentsView: React.FC = () => {
         const remA = a.totalAmount - a.paidAmount > 0.01 ? 0 : 1
         const remB = b.totalAmount - b.paidAmount > 0.01 ? 0 : 1
         if (remA !== remB) return remA - remB
-        return a.dueDate.localeCompare(b.dueDate)
+        return (a.dueDate || '').localeCompare(b.dueDate || '')
       })
   }, [deferredPayments, searchTerm, statusFilter, todayISO])
 

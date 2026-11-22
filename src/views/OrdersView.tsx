@@ -515,7 +515,7 @@ export const OrdersView: React.FC = () => {
         const l = Number(it.laborCost) || 0
         return {
           ...it,
-          serviceDescription: it.serviceDescription.trim() || 'Serviço / Peça',
+          serviceDescription: (it.serviceDescription || '').trim() || 'Serviço / Peça',
           partsCost: p,
           laborCost: l,
           total: Number((p + l).toFixed(2)),
@@ -2895,7 +2895,7 @@ export const OrdersView: React.FC = () => {
                         <label className="block text-[10px] font-bold text-wr-muted mb-1">Descrição do Serviço / Peça</label>
                         <input
                           type="text"
-                          value={item.serviceDescription}
+                          value={item.serviceDescription || ''}
                           onChange={e => handleUpdateEditableItem(index, 'serviceDescription', e.target.value)}
                           placeholder="Descrição do serviço / peça"
                           className="w-full p-2.5 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none"

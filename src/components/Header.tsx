@@ -82,30 +82,39 @@ export const Header: React.FC = () => {
     if (q.length < 2) return null
 
     const matchedClients = clients
-      .filter(c => c.name.toLowerCase().includes(q) || c.phone.includes(q) || (c.cpfCnpj || '').includes(q))
+      .filter(
+        c =>
+          (c.name || '').toLowerCase().includes(q) ||
+          (c.phone || '').includes(q) ||
+          (c.cpfCnpj || '').includes(q)
+      )
       .slice(0, 4)
 
     const matchedVehicles = vehicles
       .filter(
         v =>
-          v.plate.toLowerCase().includes(q) ||
-          v.model.toLowerCase().includes(q) ||
-          v.brand.toLowerCase().includes(q)
+          (v.plate || '').toLowerCase().includes(q) ||
+          (v.model || '').toLowerCase().includes(q) ||
+          (v.brand || '').toLowerCase().includes(q)
       )
       .slice(0, 4)
 
     const matchedOrders = orders
       .filter(
         o =>
-          o.number.toLowerCase().includes(q) ||
-          o.clientName.toLowerCase().includes(q) ||
-          o.vehiclePlate.toLowerCase().includes(q) ||
-          o.serviceDescription.toLowerCase().includes(q)
+          (o.number || '').toLowerCase().includes(q) ||
+          (o.clientName || '').toLowerCase().includes(q) ||
+          (o.vehiclePlate || '').toLowerCase().includes(q) ||
+          (o.serviceDescription || '').toLowerCase().includes(q)
       )
       .slice(0, 4)
 
     const matchedStock = stock
-      .filter(s => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q))
+      .filter(
+        s =>
+          (s.name || '').toLowerCase().includes(q) ||
+          (s.code || '').toLowerCase().includes(q)
+      )
       .slice(0, 3)
 
     const total =

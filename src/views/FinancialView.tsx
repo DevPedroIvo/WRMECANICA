@@ -163,10 +163,10 @@ export const FinancialView: React.FC = () => {
     if (!q) return currentList
     return currentList.filter(
       item =>
-        item.description.toLowerCase().includes(q) ||
-        item.entityName.toLowerCase().includes(q) ||
-        item.category.toLowerCase().includes(q) ||
-        item.dueDate.toLowerCase().includes(q)
+        (item.description || '').toLowerCase().includes(q) ||
+        (item.entityName || '').toLowerCase().includes(q) ||
+        (item.category || '').toLowerCase().includes(q) ||
+        (item.dueDate || '').toLowerCase().includes(q)
     )
   }, [subTab, contasReceber, contasPagar, searchTerm])
 

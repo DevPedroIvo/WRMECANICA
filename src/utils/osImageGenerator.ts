@@ -241,7 +241,7 @@ export async function generateOsCanvas(
   ctx.fillText('SERVIÇO DISCRIMINADO:', 48, y + 18)
   ctx.font = 'bold 13px sans-serif'
   ctx.fillStyle = '#0F172A'
-  ctx.fillText(order.serviceDescription, 48, y + 37)
+  ctx.fillText(order.serviceDescription || 'Serviço / Manutenção', 48, y + 37)
 
   y += 62
 
@@ -283,7 +283,7 @@ export async function generateOsCanvas(
 
     ctx.font = '12px sans-serif'
     ctx.fillStyle = '#0F172A'
-    ctx.fillText(it.serviceDescription, 48, y + 23)
+    ctx.fillText(it.serviceDescription || 'Serviço / Peça', 48, y + 23)
 
     ctx.textAlign = 'right'
     ctx.font = '12px monospace'

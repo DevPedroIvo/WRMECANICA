@@ -108,7 +108,7 @@ export const DashboardView: React.FC = () => {
     orders.forEach(o => {
       if (o.items && o.items.length > 0) {
         o.items.forEach(it => {
-          const name = it.serviceDescription.trim()
+          const name = (it?.serviceDescription || '').trim()
           if (name) {
             if (!counts[name]) counts[name] = { count: 0, totalValue: 0 }
             counts[name].count += 1
@@ -116,7 +116,7 @@ export const DashboardView: React.FC = () => {
           }
         })
       } else if (o.serviceDescription) {
-        const name = o.serviceDescription.trim()
+        const name = (o.serviceDescription || '').trim()
         if (!counts[name]) counts[name] = { count: 0, totalValue: 0 }
         counts[name].count += 1
         counts[name].totalValue += o.totalAmount || 0

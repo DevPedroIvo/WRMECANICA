@@ -274,6 +274,27 @@ const STORAGE_KEYS = {
   cashShiftsHistory: 'wr_cash_shifts_v7',
 } as const
 
+const normalizeOrder = (o: ServiceOrder): ServiceOrder => ({
+  ...o,
+  number: o.number || 'OS',
+  clientName: o.clientName || 'Cliente',
+  clientPhone: o.clientPhone || '',
+  vehicleModel: o.vehicleModel || '',
+  vehiclePlate: o.vehiclePlate || '',
+  serviceDescription: o.serviceDescription || '',
+  mechanicAssigned: o.mechanicAssigned || 'Oficina Geral',
+  observations: o.observations || '',
+  items: Array.isArray(o.items)
+    ? o.items.filter(Boolean).map(it => ({
+        ...it,
+        serviceDescription: it.serviceDescription || '',
+        partsCost: Number(it.partsCost) || 0,
+        laborCost: Number(it.laborCost) || 0,
+        total: Number(it.total) || (Number(it.partsCost) || 0) + (Number(it.laborCost) || 0),
+      }))
+    : [],
+})
+
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -300,7 +321,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadLocalSafe(STORAGE_KEYS.stock, [])
   )
   const [orders, setOrders] = useState<ServiceOrder[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.orders, [])
+    loadLocalSafe<ServiceOrder[]>(STORAGE_KEYS.orders, []).map(normalizeOrder)
   )
   const [financial, setFinancial] = useState<FinancialRecord[]>(() =>
     loadLocalSafe(STORAGE_KEYS.financial, [])
@@ -432,7 +453,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!active) return
       if (c && c.length > 0) setClients(c)
       if (v && v.length > 0) setVehicles(v)
-      if (o && o.length > 0) setOrders(o)
+      if (o && o.length > 0) setOrders(o.map(normalizeOrder))
       if (d && d.length > 0) setDeferredPayments(d)
       if (s && s.length > 0) setStock(s)
       if (f && f.length > 0) setFinancial(f)
@@ -1744,7 +1765,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       let count = 0
       if (c && c.length > 0) { setClients(c); count += c.length }
       if (v && v.length > 0) { setVehicles(v); count += v.length }
-      if (o && o.length > 0) { setOrders(o); count += o.length }
+      if (o && o.length > 0) { setOrders(o.map(normalizeOrder)); count += o.length }
       if (d && d.length > 0) { setDeferredPayments(d); count += d.length }
       if (s && s.length > 0) { setStock(s); count += s.length }
       if (f && f.length > 0) { setFinancial(f); count += f.length }

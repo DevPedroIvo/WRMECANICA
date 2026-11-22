@@ -129,14 +129,14 @@ export const ClientsView: React.FC = () => {
     return clients.filter(c => {
       const clientVehicles = vehiclesByClient.get(c.id) || []
       const matchesClient =
-        c.name.toLowerCase().includes(q) ||
-        c.phone.toLowerCase().includes(q) ||
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.phone || '').toLowerCase().includes(q) ||
         (c.cpfCnpj || '').toLowerCase().includes(q)
       const matchesVehicle = clientVehicles.some(
         v =>
-          v.plate.toLowerCase().includes(q) ||
-          v.model.toLowerCase().includes(q) ||
-          v.brand.toLowerCase().includes(q)
+          (v.plate || '').toLowerCase().includes(q) ||
+          (v.model || '').toLowerCase().includes(q) ||
+          (v.brand || '').toLowerCase().includes(q)
       )
       return matchesClient || matchesVehicle
     })
@@ -370,8 +370,10 @@ export const ClientsView: React.FC = () => {
     sendWhatsApp(selectedClient.phone, msg)
   }
 
-  const getInitials = (name: string) => {
-    const parts = name.trim().split(/\s+/)
+  const getInitials = (name?: string) => {
+    const safe = (name || 'CL').trim()
+    if (!safe) return 'CL'
+    const parts = safe.split(/\s+/)
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
     return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
   }
