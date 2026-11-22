@@ -1656,7 +1656,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return prev.filter(d => d.orderId !== id)
       })
 
-      showToast('Ordem de Serviço excluída com sucesso.', 'info')
+      // Remove também qualquer movimentação desta OS no Caixa Diário aberto
+      setActiveShift(prev =>
+        prev
+          ? {
+              ...prev,
+              movements: prev.movements.filter(m => m.orderId !== id),
+            }
+          : null
+      )
+
+      showToast('Ordem de Serviço apagada de todo o sistema.', 'info')
     },
     [showToast]
   )

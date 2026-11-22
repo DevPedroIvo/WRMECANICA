@@ -170,6 +170,7 @@ export const OrdersView: React.FC = () => {
   const [whatsAppModalOrder, setWhatsAppModalOrder] = useState<ServiceOrder | null>(null)
   const [danfseModalOrder, setDanfseModalOrder] = useState<ServiceOrder | null>(null)
   const [pdfModalOrder, setPdfModalOrder] = useState<ServiceOrder | null>(null)
+  const [deletingOrder, setDeletingOrder] = useState<ServiceOrder | null>(null)
 
   // Stepper / Assistente em 5 etapas para Criação de OS
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5>(1)
@@ -642,16 +643,27 @@ export const OrdersView: React.FC = () => {
   }, [selectedClientId, vehicles])
 
   const handleDeleteOrderConfirm = (order: ServiceOrder) => {
-    if (
-      window.confirm(
-        `Deseja realmente excluir a ${order.number} (${order.clientName} - ${order.vehicleModel})?\nOs lançamentos financeiros e a prazo vinculados também serão removidos.`
-      )
-    ) {
-      deleteOrder(order.id)
-      if (selectedOrderDetails && selectedOrderDetails.id === order.id) {
-        setSelectedOrderDetails(null)
-      }
+    setDeletingOrder(order)
+  }
+
+  const handleExecuteDeleteOrder = () => {
+    if (!deletingOrder) return
+    const targetId = deletingOrder.id
+    deleteOrder(targetId)
+    if (selectedOrderDetails && selectedOrderDetails.id === targetId) {
+      setSelectedOrderDetails(null)
     }
+    if (editingOrder && editingOrder.id === targetId) {
+      setEditingOrder(null)
+      setIsNewOrderModalOpen(false)
+    }
+    if (editingValuesOrder && editingValuesOrder.id === targetId) {
+      setEditingValuesOrder(null)
+    }
+    if (finalizingOrder && finalizingOrder.id === targetId) {
+      setFinalizingOrder(null)
+    }
+    setDeletingOrder(null)
   }
 
   // Garante que um item digitado na Etapa 4 não seja perdido se o usuário clicar direto em "Avançar" ou "Salvar"
@@ -1845,10 +1857,11 @@ export const OrdersView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleDeleteOrderConfirm(selectedOrderDetails)}
-                    className="p-3.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-colors"
-                    title="Excluir esta Ordem de Serviço"
+                    className="px-4 py-3.5 rounded-2xl border border-rose-500/35 bg-rose-500/10 text-rose-500 hover:bg-rose-600 hover:text-white font-bold text-xs uppercase flex items-center gap-1.5 transition-colors"
+                    title="Apagar esta Ordem de Serviço de todo o sistema"
                   >
                     <Trash2 className="h-4 w-4" />
+                    <span>Apagar OS</span>
                   </button>
 
                   <button
@@ -3484,6 +3497,81 @@ export const OrdersView: React.FC = () => {
               <div className="pt-6 border-t border-slate-200 text-[10px] text-slate-500 text-center">
                 Documento de conferência de Ordem de Serviço &bull; Garantia de 90 dias conforme Art. 26 do CDC
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== MODAL: CONFIRMAR EXCLUSÃO DA OS DE TODO O SISTEMA ===================== */}
+      {deletingOrder && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="relative w-full max-w-md rounded-[32px] border border-rose-500/40 bg-wr-surface p-6 sm:p-7 shadow-elevated space-y-5 text-wr-text">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-2xl bg-rose-500/15 border border-rose-500/35 flex items-center justify-center text-rose-500 shrink-0">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-wr-text">
+                    Tem certeza que quer apagar esta OS?
+                  </h3>
+                  <p className="text-xs text-wr-muted mt-0.5">
+                    Exclusão permanente em todo o sistema
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeletingOrder(null)}
+                className="rounded-xl p-1.5 text-wr-muted hover:text-wr-text hover:bg-wr-elevated transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border space-y-1.5 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono font-black text-wr-orange">{deletingOrder.number}</span>
+                <span className="font-mono font-bold text-wr-text">
+                  {formatCurrency(deletingOrder.totalAmount || 0)}
+                </span>
+              </div>
+              <p className="font-bold text-wr-text">{deletingOrder.clientName}</p>
+              <p className="text-wr-muted">
+                {deletingOrder.vehicleModel} {deletingOrder.vehiclePlate ? `• ${deletingOrder.vehiclePlate}` : ''}
+              </p>
+              {deletingOrder.serviceDescription && (
+                <p className="text-[11px] text-wr-muted pt-1 border-t border-wr-border/60 truncate">
+                  {deletingOrder.serviceDescription}
+                </p>
+              )}
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-400 flex items-start gap-2.5">
+              <Trash2 className="h-4 w-4 shrink-0 mt-0.5" />
+              <p>
+                Ao confirmar, esta Ordem de Serviço será apagada definitivamente de <strong>todo o sistema</strong>{' '}
+                (Ordens de Serviço, Financeiro, Pagar Depois, Caixa Diário, Relatórios e nuvem). Esta ação não pode ser
+                desfeita.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setDeletingOrder(null)}
+                className="flex-1 py-3 px-4 rounded-2xl bg-wr-elevated border border-wr-border text-wr-text hover:border-wr-borderHover font-bold text-xs uppercase transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteDeleteOrder}
+                className="flex-1 py-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Sim, Apagar OS</span>
+              </button>
             </div>
           </div>
         </div>
