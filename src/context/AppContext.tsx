@@ -274,6 +274,71 @@ const STORAGE_KEYS = {
   cashShiftsHistory: 'wr_cash_shifts_v7',
 } as const
 
+const normalizeClient = (c: Client): Client => ({
+  ...c,
+  name: c.name || 'Cliente',
+  phone: c.phone || '',
+  createdAt: c.createdAt || '',
+})
+
+const normalizeVehicle = (v: Vehicle): Vehicle => ({
+  ...v,
+  brand: v.brand || '',
+  model: v.model || '',
+  plate: v.plate || '',
+  year: Number(v.year) || new Date().getFullYear(),
+  currentMileage: Number(v.currentMileage) || 0,
+})
+
+const normalizeStockItem = (s: StockItem): StockItem => ({
+  ...s,
+  code: s.code || '',
+  name: s.name || '',
+  category: s.category || 'Geral',
+  quantity: Number(s.quantity) || 0,
+  minQuantity: Number(s.minQuantity) || 0,
+  costPrice: Number(s.costPrice) || 0,
+  sellingPrice: Number(s.sellingPrice) || 0,
+  status: s.status === 'Baixo' || (Number(s.quantity) || 0) <= (Number(s.minQuantity) || 0) ? 'Baixo' : 'OK',
+})
+
+const normalizeFinancial = (f: FinancialRecord): FinancialRecord => ({
+  ...f,
+  type: f.type === 'despesa' ? 'despesa' : 'receita',
+  category: f.category || 'Geral',
+  description: f.description || '',
+  amount: Number(f.amount) || 0,
+  entityName: f.entityName || '',
+  dueDate: f.dueDate || '',
+  status: f.status === 'pago' ? 'pago' : 'pendente',
+})
+
+const normalizeDeferred = (d: DeferredPayment): DeferredPayment => ({
+  ...d,
+  clientName: d.clientName || 'Cliente',
+  clientPhone: d.clientPhone || '',
+  description: d.description || '',
+  totalAmount: Number(d.totalAmount) || 0,
+  paidAmount: Number(d.paidAmount) || 0,
+  createdAt: d.createdAt || '',
+  dueDate: d.dueDate || new Date().toISOString().slice(0, 10),
+  payments: Array.isArray(d.payments) ? d.payments.filter(Boolean) : [],
+})
+
+const normalizeAppointment = (a: Appointment): Appointment => ({
+  ...a,
+  time: a.time || '09:00',
+  date: a.date || '',
+  clientName: a.clientName || 'Cliente',
+  clientPhone: a.clientPhone || '',
+  vehicleModel: a.vehicleModel || '',
+  vehiclePlate: a.vehiclePlate || '',
+  serviceDescription: a.serviceDescription || '',
+  mechanicName: a.mechanicName || 'Oficina Geral',
+  box: a.box || 'Box 01',
+  estimatedDuration: a.estimatedDuration || '1h',
+})
+
 const normalizeOrder = (o: ServiceOrder): ServiceOrder => ({
   ...o,
   number: o.number || 'OS',
@@ -281,9 +346,15 @@ const normalizeOrder = (o: ServiceOrder): ServiceOrder => ({
   clientPhone: o.clientPhone || '',
   vehicleModel: o.vehicleModel || '',
   vehiclePlate: o.vehiclePlate || '',
+  mileage: Number(o.mileage) || 0,
+  fuelLevel: o.fuelLevel || 'medio',
   serviceDescription: o.serviceDescription || '',
   mechanicAssigned: o.mechanicAssigned || 'Oficina Geral',
   observations: o.observations || '',
+  date: o.date || '',
+  partsTotal: Number(o.partsTotal) || 0,
+  laborTotal: Number(o.laborTotal) || 0,
+  totalAmount: Number(o.totalAmount) || 0,
   items: Array.isArray(o.items)
     ? o.items.filter(Boolean).map(it => ({
         ...it,
@@ -293,6 +364,7 @@ const normalizeOrder = (o: ServiceOrder): ServiceOrder => ({
         total: Number(it.total) || (Number(it.partsCost) || 0) + (Number(it.laborCost) || 0),
       }))
     : [],
+  payments: Array.isArray(o.payments) ? o.payments.filter(Boolean) : [],
 })
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -312,25 +384,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
   const [clients, setClients] = useState<Client[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.clients, [])
+    loadLocalSafe<Client[]>(STORAGE_KEYS.clients, []).map(normalizeClient)
   )
   const [vehicles, setVehicles] = useState<Vehicle[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.vehicles, [])
+    loadLocalSafe<Vehicle[]>(STORAGE_KEYS.vehicles, []).map(normalizeVehicle)
   )
   const [stock, setStock] = useState<StockItem[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.stock, [])
+    loadLocalSafe<StockItem[]>(STORAGE_KEYS.stock, []).map(normalizeStockItem)
   )
   const [orders, setOrders] = useState<ServiceOrder[]>(() =>
     loadLocalSafe<ServiceOrder[]>(STORAGE_KEYS.orders, []).map(normalizeOrder)
   )
   const [financial, setFinancial] = useState<FinancialRecord[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.financial, [])
+    loadLocalSafe<FinancialRecord[]>(STORAGE_KEYS.financial, []).map(normalizeFinancial)
   )
   const [appointments, setAppointments] = useState<Appointment[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.appointments, [])
+    loadLocalSafe<Appointment[]>(STORAGE_KEYS.appointments, []).map(normalizeAppointment)
   )
   const [deferredPayments, setDeferredPayments] = useState<DeferredPayment[]>(() =>
-    loadLocalSafe(STORAGE_KEYS.deferred, [])
+    loadLocalSafe<DeferredPayment[]>(STORAGE_KEYS.deferred, []).map(normalizeDeferred)
   )
   const [fiscalSettings, setFiscalSettings] = useState<FiscalSettings>(() =>
     loadLocalSafe(STORAGE_KEYS.fiscal, DEFAULT_FISCAL_SETTINGS)
@@ -451,14 +523,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fetchTableCached<FiscalSettings>('fiscal_settings', { limit: 1 }),
     ]).then(([c, v, o, d, s, f, a, fs]) => {
       if (!active) return
-      if (c && c.length > 0) setClients(c)
-      if (v && v.length > 0) setVehicles(v)
+      if (c && c.length > 0) setClients(c.map(normalizeClient))
+      if (v && v.length > 0) setVehicles(v.map(normalizeVehicle))
       if (o && o.length > 0) setOrders(o.map(normalizeOrder))
-      if (d && d.length > 0) setDeferredPayments(d)
-      if (s && s.length > 0) setStock(s)
-      if (f && f.length > 0) setFinancial(f)
-      if (a && a.length > 0) setAppointments(a)
-      if (fs && fs.length > 0) setFiscalSettings(fs[0])
+      if (d && d.length > 0) setDeferredPayments(d.map(normalizeDeferred))
+      if (s && s.length > 0) setStock(s.map(normalizeStockItem))
+      if (f && f.length > 0) setFinancial(f.map(normalizeFinancial))
+      if (a && a.length > 0) setAppointments(a.map(normalizeAppointment))
+      if (fs && fs.length > 0) setFiscalSettings({ ...DEFAULT_FISCAL_SETTINGS, ...fs[0] })
     })
     return () => {
       active = false
@@ -721,7 +793,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   )
 
   const sendWhatsApp = useCallback((phone: string, text: string) => {
-    const cleanNumber = phone.replace(/\D/g, '')
+    const cleanNumber = (phone || '').replace(/\D/g, '')
+    if (!cleanNumber) return
     const fullNumber = cleanNumber.startsWith('55') ? cleanNumber : `55${cleanNumber}`
     const url = `https://wa.me/${fullNumber}?text=${encodeURIComponent(text)}`
     window.open(url, '_blank')
@@ -771,7 +844,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ...f,
               amount: targetAmount,
               description: updated.serviceDescription
-                ? `${f.description.split(' - ')[0]} - ${updated.serviceDescription}`
+                ? `${(f.description || '').split(' - ')[0]} - ${updated.serviceDescription}`
                 : f.description,
             }
             void upsertDeltaRow('financial_records', f.id, nextFin, {
@@ -1763,14 +1836,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ])
 
       let count = 0
-      if (c && c.length > 0) { setClients(c); count += c.length }
-      if (v && v.length > 0) { setVehicles(v); count += v.length }
+      if (c && c.length > 0) { setClients(c.map(normalizeClient)); count += c.length }
+      if (v && v.length > 0) { setVehicles(v.map(normalizeVehicle)); count += v.length }
       if (o && o.length > 0) { setOrders(o.map(normalizeOrder)); count += o.length }
-      if (d && d.length > 0) { setDeferredPayments(d); count += d.length }
-      if (s && s.length > 0) { setStock(s); count += s.length }
-      if (f && f.length > 0) { setFinancial(f); count += f.length }
-      if (a && a.length > 0) { setAppointments(a); count += a.length }
-      if (fs && fs.length > 0) { setFiscalSettings(fs[0]); count += 1 }
+      if (d && d.length > 0) { setDeferredPayments(d.map(normalizeDeferred)); count += d.length }
+      if (s && s.length > 0) { setStock(s.map(normalizeStockItem)); count += s.length }
+      if (f && f.length > 0) { setFinancial(f.map(normalizeFinancial)); count += f.length }
+      if (a && a.length > 0) { setAppointments(a.map(normalizeAppointment)); count += a.length }
+      if (fs && fs.length > 0) { setFiscalSettings({ ...DEFAULT_FISCAL_SETTINGS, ...fs[0] }); count += 1 }
 
       showToast(`Dados recuperados do Supabase! ${count} registros restaurados.`, 'success')
       return { success: true, message: `${count} registros baixados com sucesso.` }

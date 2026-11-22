@@ -107,7 +107,7 @@ export function compactPayload<T>(data: T): T {
   if (data && typeof data === 'object') {
     const out: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-      if (value === undefined || value === null || value === '') continue
+      if (value === undefined || value === null) continue
       if (typeof value === 'string' && value.startsWith('data:image/')) {
         // Proteção contra estourar 500MB/5GB do Supabase com imagens base64
         continue

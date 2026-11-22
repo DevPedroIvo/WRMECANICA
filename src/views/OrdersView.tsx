@@ -868,7 +868,7 @@ export const OrdersView: React.FC = () => {
         // fallback
       }
     }
-    const cleanNumber = whatsAppModalOrder.clientPhone.replace(/\D/g, '')
+    const cleanNumber = (whatsAppModalOrder.clientPhone || '').replace(/\D/g, '')
     const fullNumber = cleanNumber.startsWith('55') ? cleanNumber : `55${cleanNumber}`
     window.open(`https://wa.me/${fullNumber}`, '_blank')
   }
@@ -1133,7 +1133,7 @@ export const OrdersView: React.FC = () => {
                         {order.mileage ? (
                           <span className="flex items-center gap-1 font-mono">
                             <Gauge className="h-3.5 w-3.5 text-wr-orange" />
-                            {order.mileage.toLocaleString('pt-BR')} km
+                            {Number(order.mileage || 0).toLocaleString('pt-BR')} km
                           </span>
                         ) : null}
                         <span className="flex items-center gap-1 capitalize">
@@ -1480,7 +1480,7 @@ export const OrdersView: React.FC = () => {
                     <div className="p-3 rounded-2xl bg-wr-surface border border-wr-border text-center">
                       <span className="text-[10px] uppercase font-bold text-wr-muted block">KM</span>
                       <p className="font-mono font-bold text-wr-text">
-                        {selectedOrderDetails.mileage ? `${selectedOrderDetails.mileage.toLocaleString('pt-BR')} km` : '—'}
+                        {selectedOrderDetails.mileage ? `${Number(selectedOrderDetails.mileage).toLocaleString('pt-BR')} km` : '—'}
                       </p>
                     </div>
                   </div>

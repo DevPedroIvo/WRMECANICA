@@ -44,8 +44,8 @@ export const VehicleAutocomplete: React.FC<VehicleAutocompleteProps> = ({
     }
 
     return availableVehicles.filter(v => {
-      const matchModel = qModel ? `${v.brand} ${v.model}`.toLowerCase().includes(qModel) : true
-      const matchPlate = qPlate ? v.plate.toLowerCase().replace(/[^a-z0-9]/g, '').includes(qPlate) : true
+      const matchModel = qModel ? `${v.brand || ''} ${v.model || ''}`.toLowerCase().includes(qModel) : true
+      const matchPlate = qPlate ? (v.plate || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(qPlate) : true
       return matchModel && matchPlate
     }).slice(0, 6)
   }, [availableVehicles, modelValue, plateValue])

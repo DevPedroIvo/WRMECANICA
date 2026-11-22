@@ -62,9 +62,9 @@ export const StockView: React.FC = () => {
     const q = searchTerm.toLowerCase()
     return (
       !q ||
-      item.name.toLowerCase().includes(q) ||
-      item.code.toLowerCase().includes(q) ||
-      item.category.toLowerCase().includes(q)
+      (item.name || '').toLowerCase().includes(q) ||
+      (item.code || '').toLowerCase().includes(q) ||
+      (item.category || '').toLowerCase().includes(q)
     )
   })
 
@@ -72,7 +72,7 @@ export const StockView: React.FC = () => {
     const q = searchTerm.toLowerCase()
     return (
       !q ||
-      preset.name.toLowerCase().includes(q) ||
+      (preset.name || '').toLowerCase().includes(q) ||
       (preset.category && preset.category.toLowerCase().includes(q))
     )
   })

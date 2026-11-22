@@ -35,7 +35,7 @@ export const ClientAutocomplete: React.FC<ClientAutocompleteProps> = ({
       return []
     }
     return clients.filter(c =>
-      c.name.toLowerCase().includes(q) ||
+      (c.name || '').toLowerCase().includes(q) ||
       (c.phone && c.phone.replace(/\D/g, '').includes(q.replace(/\D/g, ''))) ||
       (c.cpfCnpj && c.cpfCnpj.includes(q))
     ).slice(0, 8)
@@ -64,7 +64,7 @@ export const ClientAutocomplete: React.FC<ClientAutocompleteProps> = ({
     if (e.key === 'Enter') {
       e.preventDefault()
       // Se tiver apenas 1 cliente correspondente exato ou parcial, pode selecioná-lo
-      if (filteredClients.length === 1 && value.trim().toLowerCase() === filteredClients[0].name.toLowerCase()) {
+      if (filteredClients.length === 1 && value.trim().toLowerCase() === (filteredClients[0].name || '').toLowerCase()) {
         handleSelect(filteredClients[0])
       }
       setIsOpen(false)
@@ -101,7 +101,7 @@ export const ClientAutocomplete: React.FC<ClientAutocompleteProps> = ({
         <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl border border-wr-border bg-wr-surface shadow-2xl max-h-60 overflow-y-auto p-1.5 space-y-1 animate-fadeIn">
           {filteredClients.map(c => {
             const clientVehicles = vehicles.filter(v => v.clientId === c.id)
-            const isSelected = c.name.toLowerCase() === value.trim().toLowerCase()
+            const isSelected = (c.name || '').toLowerCase() === value.trim().toLowerCase()
 
             return (
               <button

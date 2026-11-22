@@ -48,9 +48,9 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
       : 'PIX'
 
   const defaultInvoice = {
-    invoiceNumber: `${new Date().getFullYear()}${String(order.number.replace(/\D/g, '') || '1001').padStart(7, '0')}`,
+    invoiceNumber: `${new Date().getFullYear()}${String((order.number || '').replace(/\D/g, '') || '1001').padStart(7, '0')}`,
     series: '1',
-    rpsNumber: String(order.number.replace(/\D/g, '') || '1001'),
+    rpsNumber: String((order.number || '').replace(/\D/g, '') || '1001'),
     rpsSeries: '1',
     issuedAt: `${order.date || new Date().toLocaleDateString('pt-BR')} às 10:00`,
     verificationCode: `PRTO-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
@@ -166,9 +166,9 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
       </TomadorServico>
       <Servico>
         <Valores>
-          <ValorServicos>${order.laborTotal.toFixed(2)}</ValorServicos>
-          <ValorPecas>${(order.partsTotal || 0).toFixed(2)}</ValorPecas>
-          <ValorLiquidoNfse>${order.totalAmount.toFixed(2)}</ValorLiquidoNfse>
+          <ValorServicos>${(Number(order.laborTotal) || 0).toFixed(2)}</ValorServicos>
+          <ValorPecas>${(Number(order.partsTotal) || 0).toFixed(2)}</ValorPecas>
+          <ValorLiquidoNfse>${(Number(order.totalAmount) || 0).toFixed(2)}</ValorLiquidoNfse>
         </Valores>
         <ItemListaServico>${invoice.serviceCode}</ItemListaServico>
       </Servico>
