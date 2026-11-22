@@ -179,6 +179,7 @@ interface AppContextType {
 
   addOrder: (order: Omit<ServiceOrder, 'id' | 'number'>) => ServiceOrder
   updateOrder: (id: string, updated: Partial<ServiceOrder>) => void
+  deleteOrder: (id: string) => void
   updateOrderStatus: (id: string, status: ServiceOrder['status']) => void
 
   addDeferredPayment: (data: Omit<DeferredPayment, 'id' | 'createdAt' | 'payments'>) => DeferredPayment
@@ -1631,6 +1632,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [orders, showToast]
   )
 
+  const deleteOrder = useCallback(
+    (id: string) => {
+      setOrders(prev => prev.filter(o => o.id !== id))
+      void deleteDeltaRow('service_orders', id)
+      setSelectedOrderForModal(prev => (prev && prev.id === id ? null : prev))
+
+      setFinancial(prev => {
+        prev.forEach(f => {
+          if (f.orderId === id) void deleteDeltaRow('financial_records', f.id)
+        })
+        return prev.filter(f => f.orderId !== id)
+      })
+
+      setDeferredPayments(prev => {
+        prev.forEach(d => {
+          if (d.orderId === id) void deleteDeltaRow('deferred_payments', d.id)
+        })
+        return prev.filter(d => d.orderId !== id)
+      })
+
+      showToast('Ordem de Serviço excluída com sucesso.', 'info')
+    },
+    [showToast]
+  )
+
   const updateOrderStatus = useCallback(
     (id: string, status: ServiceOrder['status']) => {
       updateOrder(id, { status })
@@ -1897,6 +1923,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteVehicle,
         addOrder,
         updateOrder,
+        deleteOrder,
         updateOrderStatus,
         addDeferredPayment,
         registerDeferredPayment,

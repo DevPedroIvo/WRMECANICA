@@ -120,6 +120,7 @@ export const OrdersView: React.FC = () => {
     addVehicle,
     addOrder,
     updateOrder,
+    deleteOrder,
     updateOrderStatus,
     finishOrder,
     issueFiscalInvoice,
@@ -307,7 +308,27 @@ export const OrdersView: React.FC = () => {
       setServiceDescription(editingOrder.serviceDescription)
       setMechanicAssigned(editingOrder.mechanicAssigned)
       setObservations(editingOrder.observations || '')
-      setItems(editingOrder.items || [])
+      if (editingOrder.items && editingOrder.items.length > 0) {
+        setItems(editingOrder.items)
+      } else if (
+        (editingOrder.partsTotal || 0) > 0 ||
+        (editingOrder.laborTotal || 0) > 0 ||
+        (editingOrder.totalAmount || 0) > 0
+      ) {
+        const p = Number(editingOrder.partsTotal) || 0
+        const l = Number(editingOrder.laborTotal) || (p === 0 ? Number(editingOrder.totalAmount) || 0 : 0)
+        setItems([
+          {
+            id: `item-${Date.now()}`,
+            serviceDescription: editingOrder.serviceDescription || 'Serviço Geral',
+            partsCost: p,
+            laborCost: l,
+            total: Number((p + l).toFixed(2)),
+          },
+        ])
+      } else {
+        setItems([])
+      }
       setWizardStep(1)
       setIsNewOrderModalOpen(true)
     }
@@ -614,8 +635,63 @@ export const OrdersView: React.FC = () => {
     return vehicles.filter(v => v.clientId === selectedClientId)
   }, [selectedClientId, vehicles])
 
+  const handleDeleteOrderConfirm = (order: ServiceOrder) => {
+    if (
+      window.confirm(
+        `Deseja realmente excluir a ${order.number} (${order.clientName} - ${order.vehicleModel})?\nOs lançamentos financeiros e a prazo vinculados também serão removidos.`
+      )
+    ) {
+      deleteOrder(order.id)
+      if (selectedOrderDetails && selectedOrderDetails.id === order.id) {
+        setSelectedOrderDetails(null)
+      }
+    }
+  }
+
+  // Garante que um item digitado na Etapa 4 não seja perdido se o usuário clicar direto em "Avançar" ou "Salvar"
+  const flushPendingWizardItem = (): OrderItem[] => {
+    const hasPending =
+      newItemDesc.trim().length > 0 || (Number(newItemParts) || 0) > 0 || (Number(newItemLabor) || 0) > 0
+    if (!hasPending) return items
+
+    const pCost = Number(newItemParts) || 0
+    const lCost = Number(newItemLabor) || 0
+    const desc = newItemDesc.trim() || serviceDescription.trim() || 'Serviço / Peça'
+    const itemTotal = Number((pCost + lCost).toFixed(2))
+
+    let nextItems: OrderItem[]
+    if (editingItemIndex !== null) {
+      nextItems = items.map((it, idx) =>
+        idx === editingItemIndex
+          ? { ...it, serviceDescription: desc, partsCost: pCost, laborCost: lCost, total: itemTotal }
+          : it
+      )
+    } else {
+      nextItems = [
+        ...items,
+        {
+          id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          serviceDescription: desc,
+          partsCost: pCost,
+          laborCost: lCost,
+          total: itemTotal,
+        },
+      ]
+    }
+    setItems(nextItems)
+    setEditingItemIndex(null)
+    setNewItemDesc('')
+    setNewItemParts(0)
+    setNewItemLabor(0)
+    return nextItems
+  }
+
   // Salvar Ordem de Serviço
   const handleSaveOrder = () => {
+    const finalItems = flushPendingWizardItem()
+    const finalPartsTotal = Number(finalItems.reduce((sum, it) => sum + (Number(it.partsCost) || 0), 0).toFixed(2))
+    const finalLaborTotal = Number(finalItems.reduce((sum, it) => sum + (Number(it.laborCost) || 0), 0).toFixed(2))
+
     if (!clientName.trim()) {
       showToast('Por favor, informe o nome do cliente.', 'warning')
       setWizardStep(1)
@@ -655,7 +731,7 @@ export const OrdersView: React.FC = () => {
     }
 
     if (editingOrder) {
-      const subtotal = Number((partsTotal + laborTotal).toFixed(2))
+      const subtotal = Number((finalPartsTotal + finalLaborTotal).toFixed(2))
       const existingDiscount = Math.min(Math.max(0, editingOrder.discount || 0), subtotal)
       const newTotal = Number(Math.max(0, subtotal - existingDiscount).toFixed(2))
       const { paid } = getOrderPaymentSummary(editingOrder)
@@ -676,12 +752,12 @@ export const OrdersView: React.FC = () => {
         vehiclePlate: vehiclePlate.toUpperCase().trim(),
         mileage,
         fuelLevel,
-        serviceDescription: serviceDescription.trim() || (items[0]?.serviceDescription || 'Revisão Geral'),
+        serviceDescription: serviceDescription.trim() || (finalItems[0]?.serviceDescription || 'Revisão Geral'),
         mechanicAssigned: mechanicAssigned || mechanics[0] || 'Oficina Geral',
         observations: observations.trim() || '',
-        items,
-        partsTotal,
-        laborTotal,
+        items: finalItems,
+        partsTotal: finalPartsTotal,
+        laborTotal: finalLaborTotal,
         discount: existingDiscount > 0 ? existingDiscount : undefined,
         totalAmount: newTotal,
         paidAmount: paid,
@@ -708,19 +784,19 @@ export const OrdersView: React.FC = () => {
       vehiclePlate: vehiclePlate.toUpperCase().trim(),
       mileage,
       fuelLevel,
-      serviceDescription: serviceDescription.trim() || (items[0]?.serviceDescription || 'Revisão Geral'),
+      serviceDescription: serviceDescription.trim() || (finalItems[0]?.serviceDescription || 'Revisão Geral'),
       mechanicAssigned: mechanicAssigned || mechanics[0] || 'Oficina Geral',
       observations: observations.trim() || '',
-      items,
+      items: finalItems,
       warranty: {
         days: 90,
         expirationDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
         coverage: '90 dias de garantia legal para mão de obra conforme Art. 26 do CDC.',
         status: 'vigente',
       },
-      partsTotal,
-      laborTotal,
-      totalAmount: partsTotal + laborTotal,
+      partsTotal: finalPartsTotal,
+      laborTotal: finalLaborTotal,
+      totalAmount: Number((finalPartsTotal + finalLaborTotal).toFixed(2)),
     })
 
     setIsNewOrderModalOpen(false)
@@ -1278,6 +1354,16 @@ export const OrdersView: React.FC = () => {
                       >
                         <Edit2 className="h-4 w-4" />
                       </button>
+
+                      {/* Botão Excluir OS */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteOrderConfirm(order)}
+                        className="p-2 rounded-xl bg-wr-elevated text-wr-muted hover:text-rose-500 border border-wr-border hover:border-rose-500/40 transition-colors"
+                        title="Excluir Ordem de Serviço"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -1739,6 +1825,15 @@ export const OrdersView: React.FC = () => {
                   >
                     <Edit2 className="h-4 w-4 text-wr-orange" />
                     <span>Editar</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteOrderConfirm(selectedOrderDetails)}
+                    className="p-3.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-colors"
+                    title="Excluir esta Ordem de Serviço"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </button>
 
                   <button
@@ -2322,7 +2417,10 @@ export const OrdersView: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => setWizardStep(5)}
+                      onClick={() => {
+                        flushPendingWizardItem()
+                        setWizardStep(5)
+                      }}
                       className="px-6 py-3 rounded-2xl bg-wr-orange hover:bg-wr-orangeDark text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-sm"
                     >
                       <span>Avançar para Revisão</span>
