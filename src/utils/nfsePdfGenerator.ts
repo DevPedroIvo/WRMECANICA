@@ -429,6 +429,53 @@ export async function renderNfseToCanvas(
   ctx.fillText(`Protocolo de Autorização: ${invoice.protocolNumber}   •   Página 1 de 1`, 70, keyY + 90)
   ctx.fillText('Documento emitido por ME ou EPP optante pelo Simples Nacional.', width - 480, keyY + 90)
 
+  // 7. Observações / Descrição Personalizada (se preenchida)
+  const customNotes = (order.invoiceNotes || order.observations || '').trim()
+  if (customNotes) {
+    const notesY = 1325
+    const maxLineW = tableW - 40
+    ctx.font = '14px sans-serif'
+
+    const wrappedLines: string[] = []
+    customNotes.split(/\r?\n/).forEach(paragraph => {
+      const words = paragraph.trim().split(/\s+/).filter(Boolean)
+      if (words.length === 0) {
+        wrappedLines.push('')
+        return
+      }
+      let current = ''
+      for (const w of words) {
+        const test = current ? `${current} ${w}` : w
+        if (ctx.measureText(test).width > maxLineW && current) {
+          wrappedLines.push(current)
+          current = w
+        } else {
+          current = test
+        }
+      }
+      if (current) wrappedLines.push(current)
+    })
+
+    const visibleLines = wrappedLines.slice(0, 14)
+    const notesH = Math.max(84, 48 + visibleLines.length * 22)
+
+    ctx.fillStyle = '#F8FAFC'
+    ctx.fillRect(50, notesY, tableW, notesH)
+    ctx.strokeStyle = '#CBD5E1'
+    ctx.lineWidth = 1
+    ctx.strokeRect(50, notesY, tableW, notesH)
+
+    ctx.fillStyle = '#64748B'
+    ctx.font = 'bold 11px sans-serif'
+    ctx.fillText('OBSERVAÇÕES / DESCRIÇÃO ADICIONAL', 70, notesY + 26)
+
+    ctx.fillStyle = '#1E293B'
+    ctx.font = '14px sans-serif'
+    visibleLines.forEach((line, idx) => {
+      ctx.fillText(line, 70, notesY + 52 + idx * 22)
+    })
+  }
+
   return canvas
 }
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { ServiceOrder, FiscalSettings } from '../types'
+import { useApp } from '../context/AppContext'
 import { WrLogo } from './WrLogo'
 import {
   Printer,
@@ -13,6 +14,7 @@ import {
   FileText,
   Loader2,
   Share2,
+  Save,
 } from 'lucide-react'
 import { generateNfsePdfBlob, shareNfsePdf } from '../utils/nfsePdfGenerator'
 
@@ -33,9 +35,21 @@ const PAYMENT_LABELS: Record<string, string> = {
 }
 
 export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClose }) => {
+  const { updateOrder, showToast } = useApp()
   const [copiedKey, setCopiedKey] = useState(false)
   const [isProcessingPdf, setIsProcessingPdf] = useState(false)
   const [pdfFeedback, setPdfFeedback] = useState<string | null>(null)
+  const [notesInput, setNotesInput] = useState<string>(order.invoiceNotes || order.observations || '')
+
+  const effectiveOrder: ServiceOrder = {
+    ...order,
+    invoiceNotes: notesInput.trim(),
+  }
+
+  const handleSaveNotes = () => {
+    updateOrder(order.id, { invoiceNotes: notesInput.trim() })
+    showToast('Descrição da Nota Fiscal salva na OS!', 'success')
+  }
 
   const installmentsSuffix =
     order.paymentInstallments && order.paymentInstallments > 1
@@ -94,7 +108,7 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
       setIsProcessingPdf(true)
       setPdfFeedback('Gerando arquivo PDF oficial da Nota Fiscal...')
 
-      const result = await shareNfsePdf(order, settings, invoice, paymentDesc)
+      const result = await shareNfsePdf(effectiveOrder, settings, invoice, paymentDesc)
 
       if (result.sharedDirectly) {
         setPdfFeedback('PDF compartilhado com sucesso via WhatsApp!')
@@ -117,7 +131,7 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
     try {
       setIsProcessingPdf(true)
       setPdfFeedback('Compilando PDF da NFS-e...')
-      const { blob, fileName } = await generateNfsePdfBlob(order, settings, invoice, paymentDesc)
+      const { blob, fileName } = await generateNfsePdfBlob(effectiveOrder, settings, invoice, paymentDesc)
 
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -290,6 +304,30 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
             </button>
           </div>
         )}
+
+        {/* Campo Editável: Descrição / Observações na Nota Fiscal (não imprime) */}
+        <div className="no-print rounded-2xl border border-wr-border bg-wr-elevated p-3.5 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-wr-orange">
+              Descrição / Observações da Nota Fiscal (opcional)
+            </label>
+            <button
+              type="button"
+              onClick={handleSaveNotes}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-wr-orange hover:bg-wr-orangeDark px-3 py-1.5 text-[11px] font-bold text-white transition-colors"
+            >
+              <Save className="h-3.5 w-3.5" />
+              <span>Salvar Descrição</span>
+            </button>
+          </div>
+          <textarea
+            rows={2}
+            value={notesInput}
+            onChange={e => setNotesInput(e.target.value)}
+            placeholder="Digite aqui qualquer observação, condição de garantia ou descrição adicional para aparecer na Nota Fiscal..."
+            className="wr-input bg-wr-surface text-xs leading-relaxed"
+          />
+        </div>
 
         {/* ============================================================== */}
         {/* DOCUMENTO FISCAL LIMPO, PROFISSIONAL E EXECUTIVO (A4 / TELA) */}
@@ -485,6 +523,18 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
               </div>
             </div>
           </div>
+
+          {/* 4.5. DESCRIÇÃO / OBSERVAÇÕES PERSONALIZADAS (se preenchidas) */}
+          {notesInput.trim() && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-1 text-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                Observações / Descrição Adicional
+              </span>
+              <p className="text-slate-800 whitespace-pre-line leading-relaxed">
+                {notesInput.trim()}
+              </p>
+            </div>
+          )}
 
           {/* 5. TRIBUTAÇÃO MUNICIPAL (ISSQN) - SÓBRIA E DIRETA */}
           <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-3 text-[11px] text-slate-600 flex flex-wrap items-center justify-between gap-3">

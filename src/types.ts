@@ -188,6 +188,7 @@ export interface ServiceOrder {
   serviceDescription: string
   items: OrderItem[]
   observations: string
+  invoiceNotes?: string // Descrição / observações personalizadas exibidas na Nota Fiscal
   date: string
   time?: string
   status: OrderStatus

@@ -201,6 +201,7 @@ export const OrdersView: React.FC = () => {
   const [mechanicAssigned, setMechanicAssigned] = useState('')
   const [orderTime, setOrderTime] = useState<string>(() => getCurrentTimeHHMM())
   const [observations, setObservations] = useState('')
+  const [invoiceNotes, setInvoiceNotes] = useState('')
 
   // Itens de Serviço
   const [items, setItems] = useState<OrderItem[]>([])
@@ -288,6 +289,7 @@ export const OrdersView: React.FC = () => {
     setMechanicAssigned(mechanics[0] || 'Oficina Geral')
     setOrderTime(getCurrentTimeHHMM())
     setObservations('')
+    setInvoiceNotes('')
     setItems([])
     setNewItemDesc('')
     setNewItemParts(0)
@@ -315,6 +317,7 @@ export const OrdersView: React.FC = () => {
       setMechanicAssigned(editingOrder.mechanicAssigned)
       setOrderTime(editingOrder.time || getCurrentTimeHHMM())
       setObservations(editingOrder.observations || '')
+      setInvoiceNotes(editingOrder.invoiceNotes || '')
       if (editingOrder.items && editingOrder.items.length > 0) {
         setItems(editingOrder.items)
       } else if (
@@ -774,6 +777,7 @@ export const OrdersView: React.FC = () => {
         mechanicAssigned: mechanicAssigned || mechanics[0] || 'Oficina Geral',
         time: orderTime || editingOrder.time || getCurrentTimeHHMM(),
         observations: observations.trim() || '',
+        invoiceNotes: invoiceNotes.trim() || '',
         items: finalItems,
         partsTotal: finalPartsTotal,
         laborTotal: finalLaborTotal,
@@ -807,13 +811,8 @@ export const OrdersView: React.FC = () => {
       serviceDescription: serviceDescription.trim() || (finalItems[0]?.serviceDescription || 'Revisão Geral'),
       mechanicAssigned: mechanicAssigned || mechanics[0] || 'Oficina Geral',
       observations: observations.trim() || '',
+      invoiceNotes: invoiceNotes.trim() || '',
       items: finalItems,
-      warranty: {
-        days: 90,
-        expirationDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
-        coverage: '90 dias de garantia legal para mão de obra conforme Art. 26 do CDC.',
-        status: 'vigente',
-      },
       partsTotal: finalPartsTotal,
       laborTotal: finalLaborTotal,
       totalAmount: Number((finalPartsTotal + finalLaborTotal).toFixed(2)),
@@ -1533,7 +1532,7 @@ export const OrdersView: React.FC = () => {
                     </div>
                     <p className="text-xs text-wr-muted mt-0.5">
                       Aberta em {selectedOrderDetails.date}
-                      {selectedOrderDetails.time ? ` às ${selectedOrderDetails.time}` : ''} &bull; Garantia CDC 90 dias
+                      {selectedOrderDetails.time ? ` às ${selectedOrderDetails.time}` : ''}
                     </p>
                   </div>
                 </div>
@@ -2538,6 +2537,20 @@ export const OrdersView: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Descrição / Observações personalizadas para a Nota Fiscal */}
+                  <div className="p-3.5 rounded-2xl bg-wr-elevated border border-wr-border space-y-2 text-xs">
+                    <label className="block text-xs font-bold text-wr-orange">
+                      Descrição / Observações para a Nota Fiscal (opcional):
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={invoiceNotes}
+                      onChange={e => setInvoiceNotes(e.target.value)}
+                      placeholder="Ex: Condições de garantia combinadas, observações do serviço ou informações extras que devem sair na Nota Fiscal..."
+                      className="w-full p-3 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none leading-relaxed"
+                    />
+                  </div>
+
                   {/* Status Inicial da OS */}
                   <div className="p-3.5 rounded-2xl bg-wr-elevated border border-wr-border space-y-2">
                     <label className="block text-xs font-bold text-wr-muted">Status Inicial da OS:</label>
@@ -3514,8 +3527,19 @@ export const OrdersView: React.FC = () => {
                 </div>
               </div>
 
+              {(pdfModalOrder.invoiceNotes || pdfModalOrder.observations) && (
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-1 text-xs">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">
+                    Observações / Descrição Adicional
+                  </span>
+                  <p className="text-slate-800 whitespace-pre-line">
+                    {pdfModalOrder.invoiceNotes || pdfModalOrder.observations}
+                  </p>
+                </div>
+              )}
+
               <div className="pt-6 border-t border-slate-200 text-[10px] text-slate-500 text-center">
-                Documento de conferência de Ordem de Serviço &bull; Garantia de 90 dias conforme Art. 26 do CDC
+                Documento de conferência de Ordem de Serviço &bull; WR Mecânica &amp; Cia
               </div>
             </div>
           </div>
@@ -3600,7 +3624,7 @@ export const OrdersView: React.FC = () => {
       {/* ===================== MODAL: DANFSE OFICIAL (NFS-E) ===================== */}
       {danfseModalOrder && (
         <DanfseModal
-          order={danfseModalOrder}
+          order={orders.find(o => o.id === danfseModalOrder.id) || danfseModalOrder}
           settings={fiscalSettings}
           onClose={() => setDanfseModalOrder(null)}
         />

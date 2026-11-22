@@ -352,6 +352,7 @@ const normalizeOrder = (o: ServiceOrder): ServiceOrder => ({
   serviceDescription: o.serviceDescription || '',
   mechanicAssigned: o.mechanicAssigned || 'Oficina Geral',
   observations: o.observations || '',
+  invoiceNotes: o.invoiceNotes || '',
   date: o.date || '',
   time: o.time || '',
   partsTotal: Number(o.partsTotal) || 0,

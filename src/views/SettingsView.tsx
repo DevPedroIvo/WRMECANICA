@@ -170,7 +170,7 @@ export const SettingsView: React.FC = () => {
       warrantyTerms,
     })
     setSavedSuccess(true)
-    showToast('Configurações da oficina e termos de garantia salvos!')
+    showToast('Configurações da oficina salvas!')
     setTimeout(() => setSavedSuccess(false), 3000)
   }
 
@@ -703,60 +703,6 @@ export const SettingsView: React.FC = () => {
                 className="wr-input font-mono max-w-sm"
               />
             </div>
-          </div>
-        </div>
-
-        {/* Card 2: Prazos e Termos de Garantia da Oficina */}
-        <div className="wr-card p-5 space-y-4 text-xs">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-wr-orange flex items-center gap-2 border-b border-wr-border pb-3">
-            <ShieldCheck className="h-4 w-4 text-wr-orange" /> Prazos e Termos de Garantia da Oficina
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-wr-muted font-semibold mb-1">
-                Garantia de Mão de Obra / Serviços (Dias)
-              </label>
-              <input
-                type="number"
-                value={warrantyDaysLabor}
-                onChange={e => setWarrantyDaysLabor(Number(e.target.value))}
-                className="wr-input font-mono font-bold"
-                placeholder="90"
-              />
-              <span className="text-[10px] text-wr-muted block mt-0.5">
-                Padrão legal: 90 dias conforme Art. 26 do CDC
-              </span>
-            </div>
-
-            <div>
-              <label className="block text-wr-muted font-semibold mb-1">
-                Garantia de Peças Novas (Dias)
-              </label>
-              <input
-                type="number"
-                value={warrantyDaysParts}
-                onChange={e => setWarrantyDaysParts(Number(e.target.value))}
-                className="wr-input font-mono font-bold"
-                placeholder="90"
-              />
-              <span className="text-[10px] text-wr-muted block mt-0.5">
-                Garantia fornecida pelo fabricante da peça
-              </span>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-wr-muted font-semibold mb-1">
-              Termos de Garantia (Texto impresso na Ordem de Serviço)
-            </label>
-            <textarea
-              rows={3}
-              value={warrantyTerms}
-              onChange={e => setWarrantyTerms(e.target.value)}
-              className="wr-input leading-relaxed"
-              placeholder="Descreva os termos legais de garantia da oficina..."
-            />
           </div>
         </div>
 

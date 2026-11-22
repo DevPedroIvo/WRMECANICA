@@ -414,20 +414,19 @@ export async function generateOsCanvas(
     y += 64
   }
 
-  // Garantia e Observações
+  // Observações / Descrição Adicional
+  const obsText = (order.invoiceNotes || order.observations || '').trim()
   ctx.fillStyle = '#F8FAFC'
   ctx.fillRect(30, y, width - 60, 56)
   ctx.strokeStyle = '#E2E8F0'
   ctx.strokeRect(30, y, width - 60, 56)
 
-  ctx.font = '10px sans-serif'
-  ctx.fillStyle = '#475569'
-  ctx.fillText(`Observações: ${order.observations || 'Nenhuma observação informada.'}`, 48, y + 22)
-  ctx.fillText(
-    `Garantia: ${order.warranty ? `${order.warranty.days} dias de garantia legal (Art. 26 CDC) - ${order.warranty.coverage}` : info.warranty}`,
-    48,
-    y + 42
-  )
+  ctx.font = 'bold 10px sans-serif'
+  ctx.fillStyle = '#64748B'
+  ctx.fillText('OBSERVAÇÕES / DESCRIÇÃO:', 48, y + 20)
+  ctx.font = '11px sans-serif'
+  ctx.fillStyle = '#334155'
+  ctx.fillText(obsText || 'Nenhuma observação informada.', 48, y + 40)
 
   y += 70
 
