@@ -724,7 +724,7 @@ export const DashboardView: React.FC = () => {
                           {order.number}
                         </span>
                         <span className="text-[10px] font-mono text-wr-muted font-medium">
-                          {order.date}
+                          {order.date}{order.time ? ` • ${order.time}` : ''}
                         </span>
                       </div>
 

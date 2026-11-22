@@ -353,6 +353,7 @@ const normalizeOrder = (o: ServiceOrder): ServiceOrder => ({
   mechanicAssigned: o.mechanicAssigned || 'Oficina Geral',
   observations: o.observations || '',
   date: o.date || '',
+  time: o.time || '',
   partsTotal: Number(o.partsTotal) || 0,
   laborTotal: Number(o.laborTotal) || 0,
   totalAmount: Number(o.totalAmount) || 0,
@@ -1561,6 +1562,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         orderData.paymentMethod !== 'pendente'
       const newOrder: ServiceOrder = {
         ...orderData,
+        time:
+          orderData.time ||
+          new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         paidAmount: orderData.paidAmount ?? (isPaidAtCreation ? orderData.totalAmount : 0),
         remainingAmount:
           orderData.remainingAmount ?? (isPaidAtCreation ? 0 : orderData.totalAmount),

@@ -52,7 +52,7 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
     series: '1',
     rpsNumber: String((order.number || '').replace(/\D/g, '') || '1001'),
     rpsSeries: '1',
-    issuedAt: `${order.date || new Date().toLocaleDateString('pt-BR')} às 10:00`,
+    issuedAt: `${order.date || new Date().toLocaleDateString('pt-BR')} às ${order.time || '10:00'}`,
     verificationCode: `PRTO-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
     accessKey: `1718204${new Date().getFullYear().toString().slice(-2)}0000000000010000000011987654321`,
     status: 'autorizada' as const,

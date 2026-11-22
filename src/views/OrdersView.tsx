@@ -193,8 +193,12 @@ export const OrdersView: React.FC = () => {
   const [mileage, setMileage] = useState<number>(0)
   const [fuelLevel, setFuelLevel] = useState<FuelStatus>('medio')
 
+  const getCurrentTimeHHMM = () =>
+    new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+
   const [serviceDescription, setServiceDescription] = useState('')
   const [mechanicAssigned, setMechanicAssigned] = useState('')
+  const [orderTime, setOrderTime] = useState<string>(() => getCurrentTimeHHMM())
   const [observations, setObservations] = useState('')
 
   // Itens de Serviço
@@ -281,6 +285,7 @@ export const OrdersView: React.FC = () => {
     setFuelLevel('medio')
     setServiceDescription('')
     setMechanicAssigned(mechanics[0] || 'Oficina Geral')
+    setOrderTime(getCurrentTimeHHMM())
     setObservations('')
     setItems([])
     setNewItemDesc('')
@@ -307,6 +312,7 @@ export const OrdersView: React.FC = () => {
       setFuelLevel(editingOrder.fuelLevel || 'medio')
       setServiceDescription(editingOrder.serviceDescription)
       setMechanicAssigned(editingOrder.mechanicAssigned)
+      setOrderTime(editingOrder.time || getCurrentTimeHHMM())
       setObservations(editingOrder.observations || '')
       if (editingOrder.items && editingOrder.items.length > 0) {
         setItems(editingOrder.items)
@@ -754,6 +760,7 @@ export const OrdersView: React.FC = () => {
         fuelLevel,
         serviceDescription: serviceDescription.trim() || (finalItems[0]?.serviceDescription || 'Revisão Geral'),
         mechanicAssigned: mechanicAssigned || mechanics[0] || 'Oficina Geral',
+        time: orderTime || editingOrder.time || getCurrentTimeHHMM(),
         observations: observations.trim() || '',
         items: finalItems,
         partsTotal: finalPartsTotal,
@@ -776,6 +783,7 @@ export const OrdersView: React.FC = () => {
     addOrder({
       status: formStatus,
       date: new Date().toLocaleDateString('pt-BR'),
+      time: orderTime || getCurrentTimeHHMM(),
       clientId: finalClientId || `cli-${Date.now()}`,
       clientName: clientName.trim(),
       clientPhone: clientPhone.trim() || '(63) 99999-0000',
@@ -1166,9 +1174,15 @@ export const OrdersView: React.FC = () => {
                       <span className="font-mono text-sm font-black text-wr-orange px-3 py-1 rounded-xl bg-wr-orange/10 border border-wr-orange/30">
                         {order.number}
                       </span>
-                      <span className="text-xs font-semibold text-wr-muted">
-                        {order.date}
-                      </span>
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-wr-muted">
+                        <span>{order.date}</span>
+                        {order.time && (
+                          <span className="inline-flex items-center gap-1 font-mono text-[11px] px-1.5 py-0.5 rounded-md bg-wr-elevated border border-wr-border text-wr-text">
+                            <Clock className="h-3 w-3 text-wr-orange" />
+                            {order.time}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -1486,7 +1500,8 @@ export const OrdersView: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-xs text-wr-muted mt-0.5">
-                      Aberta em {selectedOrderDetails.date} &bull; Garantia CDC 90 dias
+                      Aberta em {selectedOrderDetails.date}
+                      {selectedOrderDetails.time ? ` às ${selectedOrderDetails.time}` : ''} &bull; Garantia CDC 90 dias
                     </p>
                   </div>
                 </div>
@@ -2180,21 +2195,35 @@ export const OrdersView: React.FC = () => {
                         />
                       </div>
 
-                      <div>
-                        <label className="block text-[11px] font-bold text-wr-muted mb-1">
-                          Mecânico Responsável Atribuído
-                        </label>
-                        <select
-                          value={mechanicAssigned}
-                          onChange={e => setMechanicAssigned(e.target.value)}
-                          className="w-full p-3 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-bold"
-                        >
-                          {(mechanics.length > 0 ? mechanics : ['Oficina Geral']).map(m => (
-                            <option key={m} value={m} className="bg-wr-surface text-wr-text">
-                              {m}
-                            </option>
-                          ))}
-                        </select>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-wr-muted mb-1">
+                            Mecânico Responsável Atribuído
+                          </label>
+                          <select
+                            value={mechanicAssigned}
+                            onChange={e => setMechanicAssigned(e.target.value)}
+                            className="w-full p-3 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-bold"
+                          >
+                            {(mechanics.length > 0 ? mechanics : ['Oficina Geral']).map(m => (
+                              <option key={m} value={m} className="bg-wr-surface text-wr-text">
+                                {m}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-wr-muted mb-1">
+                            Horário da OS
+                          </label>
+                          <input
+                            type="time"
+                            value={orderTime}
+                            onChange={e => setOrderTime(e.target.value)}
+                            className="w-full p-3 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-mono font-bold"
+                          />
+                        </div>
                       </div>
 
                       <div>
@@ -2452,9 +2481,15 @@ export const OrdersView: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-wr-border">
-                      <span className="text-[10px] text-wr-muted uppercase font-bold block">Mecânico Atribuído</span>
-                      <p className="font-bold text-wr-text">{mechanicAssigned || 'Oficina Geral'}</p>
+                    <div className="pt-2 border-t border-wr-border grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-wr-muted uppercase font-bold block">Mecânico Atribuído</span>
+                        <p className="font-bold text-wr-text">{mechanicAssigned || 'Oficina Geral'}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-wr-muted uppercase font-bold block">Horário da OS</span>
+                        <p className="font-mono font-bold text-wr-orange">{orderTime || getCurrentTimeHHMM()}</p>
+                      </div>
                     </div>
 
                     <div className="pt-2 border-t border-wr-border flex justify-between font-mono text-xs">
@@ -3352,7 +3387,9 @@ export const OrdersView: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <span className="font-mono text-xl font-black text-wr-orange block">OS #{pdfModalOrder.number}</span>
-                  <span className="text-[11px] text-slate-500">Data: {pdfModalOrder.date}</span>
+                  <span className="text-[11px] text-slate-500 block">
+                    Data: {pdfModalOrder.date}{pdfModalOrder.time ? ` • Horário: ${pdfModalOrder.time}` : ''}
+                  </span>
                 </div>
               </div>
 

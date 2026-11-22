@@ -124,7 +124,7 @@ export async function generateOsCanvas(
 
   ctx.font = '11px sans-serif'
   ctx.fillStyle = '#475569'
-  ctx.fillText(`Data: ${order.date}`, width - 55, 90)
+  ctx.fillText(`Data: ${order.date}${order.time ? ` • ${order.time}` : ''}`, width - 55, 90)
 
   const statusText =
     order.status === 'pago'
