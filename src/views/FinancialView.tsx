@@ -281,7 +281,7 @@ export const FinancialView: React.FC = () => {
             onClick={() => setSelectedMonth(selectedMonth === 'todos' ? currentMonthKey : 'todos')}
             className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors ${
               selectedMonth === 'todos'
-                ? 'border-wr-orange bg-wr-orange text-white dark:text-[#0B0C10]'
+                ? 'border-wr-orange bg-wr-orange text-white'
                 : 'border-wr-border bg-wr-elevated text-wr-muted hover:text-wr-text'
             }`}
           >
@@ -366,7 +366,7 @@ export const FinancialView: React.FC = () => {
             onClick={() => setSubTab('receitas')}
             className={`flex-1 sm:flex-initial rounded-lg px-5 py-2 text-xs font-bold transition-all flex items-center justify-center gap-2 ${
               subTab === 'receitas'
-                ? 'bg-wr-orange text-white dark:text-[#0B0C10] shadow-sm'
+                ? 'bg-wr-orange text-white shadow-sm'
                 : 'text-wr-muted hover:text-wr-text'
             }`}
           >
@@ -515,7 +515,7 @@ export const FinancialView: React.FC = () => {
                         isPaid
                           ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
                           : isReceita
-                          ? 'bg-wr-orange/15 text-wr-orange border-wr-orange/30 hover:bg-wr-orange hover:text-white dark:hover:text-[#0B0C10]'
+                          ? 'bg-wr-orange/15 text-wr-orange border-wr-orange/30 hover:bg-wr-orange hover:text-white'
                           : 'bg-rose-500/15 text-rose-500 border-rose-500/30 hover:bg-rose-500 hover:text-white'
                       }`}
                     >

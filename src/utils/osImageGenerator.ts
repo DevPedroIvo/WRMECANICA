@@ -60,11 +60,11 @@ export async function generateOsCanvas(
   ctx.lineWidth = 3
   ctx.strokeRect(12, 12, width - 24, height - 24)
 
-  // Faixa superior Laranja WR Oficial
+  // Faixa superior Laranja WR Oficial (#F04D07 / #891A06)
   const topGrad = ctx.createLinearGradient(30, 16, width - 30, 16)
-  topGrad.addColorStop(0, '#EA580C')
-  topGrad.addColorStop(0.5, '#F97316')
-  topGrad.addColorStop(1, '#EA580C')
+  topGrad.addColorStop(0, '#891A06')
+  topGrad.addColorStop(0.5, '#F04D07')
+  topGrad.addColorStop(1, '#891A06')
   ctx.strokeStyle = topGrad
   ctx.lineWidth = 5
   ctx.beginPath()
@@ -87,12 +87,12 @@ export async function generateOsCanvas(
       ctx.drawImage(logoImg, 38, 38, 175, 68)
     } else {
       ctx.font = 'bold 36px sans-serif'
-      ctx.fillStyle = '#F97316'
+      ctx.fillStyle = '#F04D07'
       ctx.fillText('WR', 42, 85)
     }
   } catch {
     ctx.font = 'bold 36px sans-serif'
-    ctx.fillStyle = '#F97316'
+    ctx.fillStyle = '#F04D07'
     ctx.fillText('WR', 42, 85)
   }
 
@@ -102,7 +102,7 @@ export async function generateOsCanvas(
   ctx.fillText(info.name, 230, 62)
 
   ctx.font = 'bold 12px sans-serif'
-  ctx.fillStyle = '#EA580C'
+  ctx.fillStyle = '#F04D07'
   ctx.fillText(info.slogan, 230, 82)
 
   ctx.font = '11px sans-serif'
@@ -118,7 +118,7 @@ export async function generateOsCanvas(
   ctx.strokeRect(width - 235, 38, 195, 96)
 
   ctx.font = 'bold 19px monospace'
-  ctx.fillStyle = '#EA580C'
+  ctx.fillStyle = '#F04D07'
   ctx.textAlign = 'right'
   ctx.fillText(order.number, width - 55, 68)
 
@@ -142,8 +142,8 @@ export async function generateOsCanvas(
       : order.status === 'parcial'
       ? '#D97706'
       : order.status === 'andamento'
-      ? '#EA580C'
-      : '#F97316'
+      ? '#F04D07'
+      : '#F04D07'
   ctx.font = 'bold 11px sans-serif'
   ctx.fillText(statusText, width - 55, 114)
   ctx.textAlign = 'left'
@@ -159,7 +159,7 @@ export async function generateOsCanvas(
 
   // Lado do Cliente
   ctx.font = 'bold 10px sans-serif'
-  ctx.fillStyle = '#EA580C'
+  ctx.fillStyle = '#F04D07'
   ctx.fillText('DADOS DO CLIENTE', 48, y + 24)
 
   ctx.font = 'bold 15px sans-serif'
@@ -173,7 +173,7 @@ export async function generateOsCanvas(
   // Lado do Veículo
   const vX = width / 2 + 15
   ctx.font = 'bold 10px sans-serif'
-  ctx.fillStyle = '#EA580C'
+  ctx.fillStyle = '#F04D07'
   ctx.fillText('DADOS DO VEÍCULO', vX, y + 24)
 
   ctx.font = 'bold 15px sans-serif'
@@ -199,7 +199,7 @@ export async function generateOsCanvas(
   ctx.font = '11px sans-serif'
   ctx.fillStyle = '#64748B'
   ctx.fillText('Nível Combustível:', 48, y + 27)
-  ctx.fillStyle = '#EA580C'
+  ctx.fillStyle = '#F04D07'
   ctx.font = 'bold 11px sans-serif'
   ctx.fillText((order.fuelLevel || 'médio').toUpperCase(), 160, y + 27)
 
@@ -221,7 +221,7 @@ export async function generateOsCanvas(
         order.inspection.bumpers === 'avaria' ? 'Para-choques' : '',
       ].filter(Boolean)
     : []
-  ctx.fillStyle = visualIssues.length === 0 ? '#16A34A' : '#EA580C'
+  ctx.fillStyle = visualIssues.length === 0 ? '#16A34A' : '#F04D07'
   ctx.font = 'bold 11px sans-serif'
   ctx.fillText(
     visualIssues.length === 0 ? 'FARÓIS, PINTURA E PNEUS OK ✓' : `OBS: ${visualIssues.join(', ')}`,
@@ -316,7 +316,7 @@ export async function generateOsCanvas(
   const boxHeight = (hasDiscount ? 98 : 82) + (hasPartialBalance ? 44 : 0)
   ctx.fillStyle = '#F8FAFC'
   ctx.fillRect(30, y, width - 60, boxHeight)
-  ctx.strokeStyle = '#EA580C'
+  ctx.strokeStyle = '#F04D07'
   ctx.lineWidth = 1.5
   ctx.strokeRect(30, y, width - 60, boxHeight)
 
@@ -337,7 +337,7 @@ export async function generateOsCanvas(
   // Total à direita
   ctx.textAlign = 'right'
   ctx.font = 'bold 12px sans-serif'
-  ctx.fillStyle = '#EA580C'
+  ctx.fillStyle = '#F04D07'
   ctx.fillText('VALOR TOTAL DA OS:', width - 48, y + 28)
 
   ctx.font = 'bold 26px monospace'
@@ -439,7 +439,7 @@ export async function generateOsCanvas(
   ctx.strokeRect(30, y - 6, width - 60, 38)
 
   ctx.font = 'bold 11px sans-serif'
-  ctx.fillStyle = '#EA580C'
+  ctx.fillStyle = '#F04D07'
   ctx.textAlign = 'center'
   ctx.fillText(
     'DOCUMENTO DE ORDEM DE SERVIÇO — ENVIADO PARA CONFERÊNCIA E AUTORIZAÇÃO DO CLIENTE',

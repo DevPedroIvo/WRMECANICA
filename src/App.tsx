@@ -140,22 +140,22 @@ class AppErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#0B0F19] text-slate-100 flex items-center justify-center p-6">
-          <div className="max-w-md w-full rounded-3xl border border-slate-700 bg-[#121B2A] p-6 space-y-4 text-center shadow-2xl">
-            <div className="h-12 w-12 rounded-2xl bg-orange-500/20 text-orange-400 flex items-center justify-center mx-auto">
+        <div className="min-h-screen bg-[#1F1B1E] text-neutral-100 flex items-center justify-center p-6">
+          <div className="max-w-md w-full rounded-3xl border border-[#423A40] bg-[#282327] p-6 space-y-4 text-center shadow-2xl">
+            <div className="h-12 w-12 rounded-2xl bg-[#F04D07]/20 text-[#F04D07] flex items-center justify-center mx-auto">
               <AlertTriangle className="h-6 w-6" />
             </div>
             <h2 className="text-lg font-extrabold text-white">
               Ocorreu um erro ao carregar o sistema
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[#989999]">
               {this.state.errorMessage}
             </p>
             <div className="flex flex-col gap-2 pt-2">
               <button
                 type="button"
                 onClick={this.handleClearAndReload}
-                className="w-full py-3 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs uppercase tracking-wider transition-colors"
+                className="w-full py-3 px-4 rounded-xl bg-[#F04D07] hover:bg-[#891A06] text-white font-bold text-xs uppercase tracking-wider transition-colors"
               >
                 Limpar Cache e Recarregar
               </button>

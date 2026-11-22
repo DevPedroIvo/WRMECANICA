@@ -37,15 +37,15 @@ export const LoginModal: React.FC = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#07080b]/90 backdrop-blur-xl p-4 sm:p-6 animate-fadeIn select-none overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#141113]/92 backdrop-blur-xl p-4 sm:p-6 animate-fadeIn select-none overflow-y-auto">
       {/* Luz ambiente de fundo estética automotiva */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-orange-500/15 rounded-full blur-[120px]" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-orange-600/15 rounded-full blur-[140px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-orange-600/10 rounded-full blur-[150px]" />
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#F04D07]/15 rounded-full blur-[120px]" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#891A06]/20 rounded-full blur-[140px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#F04D07]/10 rounded-full blur-[150px]" />
       </div>
 
-      <div className="relative w-full max-w-md rounded-[32px] border border-white/10 dark:border-white/10 bg-[#12141c]/95 p-6 sm:p-8 shadow-[0_25px_80px_rgba(0,0,0,0.85)] space-y-6 overflow-hidden">
+      <div className="relative w-full max-w-md rounded-[32px] border border-white/10 dark:border-white/10 bg-[#1F1B1E]/95 p-6 sm:p-8 shadow-[0_25px_80px_rgba(0,0,0,0.85)] space-y-6 overflow-hidden">
         {/* Barra superior de brilho laranja */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-wr-orange to-transparent opacity-80" />
 
@@ -72,8 +72,8 @@ export const LoginModal: React.FC = () => {
               onClick={() => handleRoleSelect('dono')}
               className={`group relative p-4 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between gap-3 ${
                 selectedRole === 'dono'
-                  ? 'border-wr-orange bg-gradient-to-b from-wr-orange/20 via-wr-orange/10 to-transparent shadow-[0_0_25px_rgba(249,115,22,0.25)] ring-2 ring-wr-orange/50 text-white'
-                  : 'border-white/5 bg-[#171923]/60 hover:bg-[#1c1f2c] hover:border-white/15 text-neutral-400'
+                  ? 'border-wr-orange bg-gradient-to-b from-wr-orange/20 via-wr-orange/10 to-transparent shadow-[0_0_25px_rgba(240,77,7,0.28)] ring-2 ring-wr-orange/50 text-white'
+                  : 'border-white/5 bg-[#282327]/70 hover:bg-[#322C31] hover:border-white/15 text-[#989999]'
               }`}
             >
               <div className="flex items-center justify-between w-full">
@@ -113,8 +113,8 @@ export const LoginModal: React.FC = () => {
               onClick={() => handleRoleSelect('funcionario')}
               className={`group relative p-4 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between gap-3 ${
                 selectedRole === 'funcionario'
-                  ? 'border-wr-orange bg-gradient-to-b from-wr-orange/20 via-wr-orange/10 to-transparent shadow-[0_0_25px_rgba(249,115,22,0.25)] ring-2 ring-wr-orange/50 text-white'
-                  : 'border-white/5 bg-[#171923]/60 hover:bg-[#1c1f2c] hover:border-white/15 text-neutral-400'
+                  ? 'border-wr-orange bg-gradient-to-b from-wr-orange/20 via-wr-orange/10 to-transparent shadow-[0_0_25px_rgba(240,77,7,0.28)] ring-2 ring-wr-orange/50 text-white'
+                  : 'border-white/5 bg-[#282327]/70 hover:bg-[#322C31] hover:border-white/15 text-[#989999]'
               }`}
             >
               <div className="flex items-center justify-between w-full">
@@ -177,7 +177,7 @@ export const LoginModal: React.FC = () => {
                   setErrorMsg('')
                 }}
                 placeholder={`Digite a senha de ${roleSubtitle}...`}
-                className="w-full bg-[#181a24] text-white placeholder-neutral-500 text-sm font-mono tracking-wider pl-10 pr-11 py-3.5 rounded-2xl border border-white/10 focus:border-wr-orange focus:ring-2 focus:ring-wr-orange/30 outline-none transition-all shadow-inner"
+                className="w-full bg-[#282327] text-white placeholder-[#989999] text-sm font-mono tracking-wider pl-10 pr-11 py-3.5 rounded-2xl border border-white/10 focus:border-wr-orange focus:ring-2 focus:ring-wr-orange/30 outline-none transition-all shadow-inner"
               />
               <button
                 type="button"
@@ -198,7 +198,7 @@ export const LoginModal: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-[0_10px_25px_-5px_rgba(249,115,22,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(249,115,22,0.6)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-[#F04D07] to-[#891A06] hover:brightness-110 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl shadow-[0_10px_25px_-5px_rgba(240,77,7,0.45)] hover:shadow-[0_15px_30px_-5px_rgba(240,77,7,0.65)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
           >
             <span>Entrar no Sistema</span>
             <ArrowRight className="h-4 w-4 stroke-[2.5]" />

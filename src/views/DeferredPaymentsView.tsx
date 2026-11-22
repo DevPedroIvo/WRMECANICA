@@ -305,7 +305,7 @@ export const DeferredPaymentsView: React.FC = () => {
               onClick={() => setStatusFilter(tab.id as typeof statusFilter)}
               className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all ${
                 statusFilter === tab.id
-                  ? 'bg-wr-orange text-white dark:text-[#0B0C10]'
+                  ? 'bg-wr-orange text-white'
                   : 'text-wr-muted hover:text-wr-text'
               }`}
             >

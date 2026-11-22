@@ -214,7 +214,7 @@ export const AppointmentsView: React.FC = () => {
             onClick={() => setFilterStatus(tab.id)}
             className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
               filterStatus === tab.id
-                ? 'bg-wr-orange text-white dark:text-[#0B0C10]'
+                ? 'bg-wr-orange text-white'
                 : 'text-wr-muted hover:text-wr-text'
             }`}
           >

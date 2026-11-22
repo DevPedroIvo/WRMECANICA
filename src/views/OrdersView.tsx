@@ -1206,7 +1206,7 @@ export const OrdersView: React.FC = () => {
                   {/* Linha 2: Veículo (Placa Padrão Mercosul + Modelo e KM) */}
                   <div className="flex items-center gap-4">
                     {/* Placa Padrão Mercosul Autêntica */}
-                    <div className="inline-flex flex-col items-center rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0D131E] shadow-xs overflow-hidden shrink-0">
+                    <div className="inline-flex flex-col items-center rounded-xl border border-slate-300 dark:border-[#423A40] bg-white dark:bg-[#1F1B1E] shadow-xs overflow-hidden shrink-0">
                       <div className="w-full bg-[#003399] px-2 py-0.5 text-[7px] font-black text-white text-center tracking-widest uppercase">
                         BRASIL
                       </div>

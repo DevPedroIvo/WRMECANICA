@@ -118,16 +118,16 @@ export const Sidebar: React.FC = () => {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-[#1F2E47] bg-[#111B2B] text-slate-100 select-none transition-transform duration-200 ease-out lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-[#332D32] bg-[#1F1B1E] text-neutral-100 select-none transition-transform duration-200 ease-out lg:translate-x-0 ${
           mobileMenuOpen ? 'translate-x-0 shadow-elevated' : '-translate-x-full'
         }`}
       >
         {/* Logo */}
-        <div className="relative flex flex-col items-center justify-center border-b border-[#1F2E47] py-5 px-4">
+        <div className="relative flex flex-col items-center justify-center border-b border-[#332D32] py-5 px-4">
           <WrLogo size="md" variant="dark" showSubtitle={true} />
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white lg:hidden"
+            className="absolute right-3 top-3 rounded-lg p-1.5 text-[#989999] hover:bg-white/10 hover:text-white lg:hidden"
             aria-label="Fechar menu"
           >
             <X className="h-4 w-4" />
@@ -144,7 +144,7 @@ export const Sidebar: React.FC = () => {
             .filter(group => group.items.length > 0)
             .map(group => (
               <div key={group.label} className="space-y-1.5">
-                <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400/80">
+                <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-[#989999]/80">
                   {group.label}
                 </span>
                 <div className="space-y-1 pt-0.5">
@@ -157,8 +157,8 @@ export const Sidebar: React.FC = () => {
                         onClick={() => handleNavClick(item.id)}
                         className={`group relative flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
                           isActive
-                            ? 'bg-[#F97316] text-white font-bold shadow-sm shadow-[#F97316]/25'
-                            : 'text-slate-300 hover:bg-[#1B2738] hover:text-white'
+                            ? 'bg-[#F04D07] text-white font-bold shadow-sm shadow-[#F04D07]/25'
+                            : 'text-neutral-300 hover:bg-[#2B262A] hover:text-white'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -166,7 +166,7 @@ export const Sidebar: React.FC = () => {
                             className={`h-4 w-4 transition-colors ${
                               isActive
                                 ? 'text-white'
-                                : 'text-slate-400 group-hover:text-[#F97316]'
+                                : 'text-[#989999] group-hover:text-[#F04D07]'
                             }`}
                             strokeWidth={isActive ? 2.25 : 1.75}
                           />
@@ -180,7 +180,7 @@ export const Sidebar: React.FC = () => {
                                 ? 'bg-black/20 text-white'
                                 : item.badgeDanger
                                 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                                : 'bg-[#F97316]/20 text-[#F97316] border border-[#F97316]/30'
+                                : 'bg-[#F04D07]/20 text-[#F04D07] border border-[#F04D07]/30'
                             }`}
                           >
                             {item.badge}
@@ -202,20 +202,20 @@ export const Sidebar: React.FC = () => {
 
         {/* Operador Ativo */}
         {currentUserRole && (
-          <div className="p-3 mx-3 mb-2 rounded-2xl bg-[#1B2738] border border-[#212E43]">
+          <div className="p-3 mx-3 mb-2 rounded-2xl bg-[#282327] border border-[#3B3439]">
             <div className="flex items-center justify-between gap-2.5 min-w-0">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#F97316]/20 border border-[#F97316]/30 text-white font-bold text-xs">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#F04D07]/20 border border-[#F04D07]/30 text-white font-bold text-xs">
                   {currentUserRole === 'dono' ? 'AD' : 'EQ'}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-bold text-white uppercase tracking-wider truncate">
                     {currentUserRole === 'dono' ? 'Administrador' : 'Equipe WR'}
                   </p>
-                  <p className="text-[10px] text-slate-400 flex items-center gap-1.5 truncate">
+                  <p className="text-[10px] text-[#989999] flex items-center gap-1.5 truncate">
                     <span
                       className={`inline-block h-1.5 w-1.5 rounded-full ${
-                        activeShift ? 'bg-emerald-400' : 'bg-slate-500'
+                        activeShift ? 'bg-emerald-400' : 'bg-[#989999]'
                       }`}
                     />
                     {activeShift ? 'Caixa Aberto' : 'Caixa Fechado'}
@@ -225,7 +225,7 @@ export const Sidebar: React.FC = () => {
               <button
                 onClick={logout}
                 title="Sair / Trocar de Usuário"
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+                className="rounded-lg p-1.5 text-[#989999] hover:bg-white/10 hover:text-white transition-colors"
               >
                 <LogOut className="h-4 w-4" />
               </button>
@@ -234,11 +234,11 @@ export const Sidebar: React.FC = () => {
         )}
 
         {/* Rodapé institucional limpo */}
-        <div className="p-3.5 border-t border-[#1F2E47] text-center">
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+        <div className="p-3.5 border-t border-[#332D32] text-center">
+          <p className="text-[10px] font-semibold text-[#989999] uppercase tracking-wider">
             WR Mecânica &amp; Cia
           </p>
-          <p className="text-[9px] text-slate-500">
+          <p className="text-[9px] text-[#989999]/70">
             Luzimangues • Porto Nacional/TO
           </p>
         </div>

@@ -461,7 +461,7 @@ export const ClientsView: React.FC = () => {
                       <div
                         className={`h-11 w-11 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${
                           isSelected
-                            ? 'bg-wr-orange text-white dark:text-[#0B0C10]'
+                            ? 'bg-wr-orange text-white'
                             : 'bg-wr-elevated text-wr-orange border border-wr-border'
                         }`}
                       >
@@ -699,7 +699,7 @@ export const ClientsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={openAddReminderModal}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-wr-orange/15 hover:bg-wr-orange text-wr-orange hover:text-white dark:hover:text-[#0B0C10] px-3.5 py-1.5 text-xs font-bold transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-wr-orange/15 hover:bg-wr-orange text-wr-orange hover:text-white px-3.5 py-1.5 text-xs font-bold transition-colors"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Agendar Lembrete de Óleo / Revisão
@@ -880,7 +880,7 @@ export const ClientsView: React.FC = () => {
                               vehicleId: vehicle.id,
                             })
                           }
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-wr-orange/15 hover:bg-wr-orange text-wr-orange hover:text-white dark:hover:text-[#0B0C10] py-2 text-[11px] font-bold transition-colors"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-wr-orange/15 hover:bg-wr-orange text-wr-orange hover:text-white py-2 text-[11px] font-bold transition-colors"
                         >
                           <Wrench className="h-3.5 w-3.5" />
                           Abrir OS

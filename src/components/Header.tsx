@@ -317,7 +317,7 @@ export const Header: React.FC = () => {
         >
           {theme === 'dark' ? (
             <>
-              <Sun className="h-4 w-4 text-[#F97316]" strokeWidth={2} />
+              <Sun className="h-4 w-4 text-[#F04D07]" strokeWidth={2} />
               <span className="hidden xl:inline">Claro</span>
             </>
           ) : (
@@ -361,7 +361,7 @@ export const Header: React.FC = () => {
           >
             <Bell className="h-4 w-4 text-wr-orange" strokeWidth={1.85} />
             {notifCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-wr-orange text-[9px] font-bold text-white dark:text-[#0B0C10]">
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-wr-orange text-[9px] font-bold text-white">
                 {notifCount}
               </span>
             )}

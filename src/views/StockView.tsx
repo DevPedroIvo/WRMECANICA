@@ -180,7 +180,7 @@ export const StockView: React.FC = () => {
           }}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
             activeSubTab === 'produtos'
-              ? 'bg-wr-orange text-white dark:text-[#0B0C10] shadow-sm'
+              ? 'bg-wr-orange text-white shadow-sm'
               : 'bg-wr-surface text-wr-muted hover:text-wr-text border border-wr-border'
           }`}
         >
@@ -196,7 +196,7 @@ export const StockView: React.FC = () => {
           }}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
             activeSubTab === 'servicos'
-              ? 'bg-wr-orange text-white dark:text-[#0B0C10] shadow-sm'
+              ? 'bg-wr-orange text-white shadow-sm'
               : 'bg-wr-surface text-wr-muted hover:text-wr-text border border-wr-border'
           }`}
         >

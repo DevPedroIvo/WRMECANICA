@@ -25,16 +25,16 @@ export function buildWrLogoSvg({
 
   const wrMonogram =
     variant === 'dark'
-      ? ['#FFFFFF', '#FFEDD5', '#F97316', '#EA580C']
-      : ['#1E293B', '#EA580C', '#F97316', '#C2410C']
+      ? ['#FFFFFF', '#FFE4D6', '#F04D07', '#891A06']
+      : ['#1F1B1E', '#F04D07', '#C93E05', '#891A06']
   const orange =
-    variant === 'dark' ? ['#FB923C', '#F97316', '#EA580C'] : ['#F97316', '#EA580C', '#C2410C']
-  const highlight = variant === 'dark' ? '#FFF7ED' : '#FFEDD5'
+    variant === 'dark' ? ['#FF6A2B', '#F04D07', '#891A06'] : ['#F04D07', '#C93E05', '#891A06']
+  const highlight = variant === 'dark' ? '#FFF5F0' : '#FFE4D6'
 
   const ray =
     variant === 'dark'
       ? `<path d="M6 54 Q160 44 314 54" stroke="url(#${p}-brand)" stroke-width="1.2" stroke-opacity="0.55" fill="none"/>
-         <ellipse cx="250" cy="50" rx="34" ry="1.6" fill="#F97316" opacity="0.45"/>`
+         <ellipse cx="250" cy="50" rx="34" ry="1.6" fill="#F04D07" opacity="0.5"/>`
       : ''
 
   const subtitle = showSubtitle
