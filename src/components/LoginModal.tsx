@@ -37,15 +37,8 @@ export const LoginModal: React.FC = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#141113]/92 backdrop-blur-xl p-4 sm:p-6 animate-fadeIn select-none overflow-y-auto">
-      {/* Luz ambiente de fundo estética automotiva */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#F04D07]/15 rounded-full blur-[120px]" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#891A06]/20 rounded-full blur-[140px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#F04D07]/10 rounded-full blur-[150px]" />
-      </div>
-
-      <div className="relative w-full max-w-md rounded-[32px] border border-white/10 dark:border-white/10 bg-[#1F1B1E]/95 p-6 sm:p-8 shadow-[0_25px_80px_rgba(0,0,0,0.85)] space-y-6 overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0A0A0C]/95 backdrop-blur-xl p-4 sm:p-6 animate-fadeIn select-none overflow-y-auto">
+      <div className="relative w-full max-w-md rounded-[32px] border border-white/10 bg-[#141315]/95 p-6 sm:p-8 shadow-[0_25px_80px_rgba(0,0,0,0.9)] space-y-6 overflow-hidden">
         {/* Barra superior de brilho laranja */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-wr-orange to-transparent opacity-80" />
 

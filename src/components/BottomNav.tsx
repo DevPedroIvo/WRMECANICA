@@ -72,7 +72,7 @@ export const BottomNav: React.FC = () => {
                   className={`flex flex-col items-center gap-1 rounded-xl p-2.5 text-[11px] font-semibold transition-colors ${
                     active
                       ? 'bg-[#F04D07] text-white font-bold shadow-md'
-                      : 'bg-[#282327] border border-[#3B3439] text-neutral-300 hover:text-white'
+                      : 'bg-[#161517] border border-[#2C2A2E] text-neutral-300 hover:text-white'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -104,7 +104,7 @@ export const BottomNav: React.FC = () => {
         </div>
       )}
 
-      <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-[#332D32] bg-[#1F1B1E]/95 backdrop-blur-md py-2 px-1 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden shadow-lg">
+      <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-[#242327] bg-[#0C0C0E]/95 backdrop-blur-md py-2 px-1 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden shadow-lg">
         {accessibleMain.map(tab => {
           const Icon = tab.icon
           const active = activeTab === tab.id

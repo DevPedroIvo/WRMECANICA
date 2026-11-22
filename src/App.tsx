@@ -140,8 +140,8 @@ class AppErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#1F1B1E] text-neutral-100 flex items-center justify-center p-6">
-          <div className="max-w-md w-full rounded-3xl border border-[#423A40] bg-[#282327] p-6 space-y-4 text-center shadow-2xl">
+        <div className="min-h-screen bg-[#0E0E10] text-neutral-100 flex items-center justify-center p-6">
+          <div className="max-w-md w-full rounded-3xl border border-[#2C2A2E] bg-[#161517] p-6 space-y-4 text-center shadow-2xl">
             <div className="h-12 w-12 rounded-2xl bg-[#F04D07]/20 text-[#F04D07] flex items-center justify-center mx-auto">
               <AlertTriangle className="h-6 w-6" />
             </div>

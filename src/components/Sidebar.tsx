@@ -118,12 +118,12 @@ export const Sidebar: React.FC = () => {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-[#332D32] bg-[#1F1B1E] text-neutral-100 select-none transition-transform duration-200 ease-out lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-[#242327] bg-[#0C0C0E] text-neutral-100 select-none transition-transform duration-200 ease-out lg:translate-x-0 ${
           mobileMenuOpen ? 'translate-x-0 shadow-elevated' : '-translate-x-full'
         }`}
       >
         {/* Logo */}
-        <div className="relative flex flex-col items-center justify-center border-b border-[#332D32] py-5 px-4">
+        <div className="relative flex flex-col items-center justify-center border-b border-[#242327] py-5 px-4">
           <WrLogo size="md" variant="dark" showSubtitle={true} />
           <button
             onClick={() => setMobileMenuOpen(false)}
@@ -158,7 +158,7 @@ export const Sidebar: React.FC = () => {
                         className={`group relative flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
                           isActive
                             ? 'bg-[#F04D07] text-white font-bold shadow-sm shadow-[#F04D07]/25'
-                            : 'text-neutral-300 hover:bg-[#2B262A] hover:text-white'
+                            : 'text-neutral-300 hover:bg-[#1C1A1D] hover:text-white'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -202,7 +202,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Operador Ativo */}
         {currentUserRole && (
-          <div className="p-3 mx-3 mb-2 rounded-2xl bg-[#282327] border border-[#3B3439]">
+          <div className="p-3 mx-3 mb-2 rounded-2xl bg-[#161517] border border-[#2C2A2E]">
             <div className="flex items-center justify-between gap-2.5 min-w-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#F04D07]/20 border border-[#F04D07]/30 text-white font-bold text-xs">
@@ -234,7 +234,7 @@ export const Sidebar: React.FC = () => {
         )}
 
         {/* Rodapé institucional limpo */}
-        <div className="p-3.5 border-t border-[#332D32] text-center">
+        <div className="p-3.5 border-t border-[#242327] text-center">
           <p className="text-[10px] font-semibold text-[#989999] uppercase tracking-wider">
             WR Mecânica &amp; Cia
           </p>

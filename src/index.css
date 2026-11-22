@@ -35,24 +35,24 @@
   .dark,
   .theme-dark,
   [data-theme="dark"] {
-    --wr-bg: 31 27 30;              /* #1F1B1E - Preto carvão da paleta */
-    --wr-surface: 40 35 39;         /* #282327 - Painéis e cards */
-    --wr-surface-dark: 24 21 23;    /* #181517 - Superfícies mais profundas */
-    --wr-elevated: 50 44 49;        /* #322C31 - Superfícies secundárias / inputs */
-    --wr-sidebar: 25 22 24;         /* #191618 - Menu lateral escuro */
-    --wr-border: 66 58 64;          /* #423A40 - Bordas sutis carvão */
-    --wr-border-hover: 92 81 89;    /* #5C5159 - Bordas ativas */
+    --wr-bg: 14 14 16;              /* #0E0E10 - Preto profundo limpo (sem tom alaranjado) */
+    --wr-surface: 22 21 23;         /* #161517 - Painéis e cards em preto fosco */
+    --wr-surface-dark: 10 10 12;    /* #0A0A0C - Superfícies mais profundas */
+    --wr-elevated: 31 27 30;        /* #1F1B1E - Inputs e blocos internos (preto da paleta) */
+    --wr-sidebar: 12 12 14;         /* #0C0C0E - Menu lateral preto profundo */
+    --wr-border: 44 42 46;          /* #2C2A2E - Bordas sutis grafite */
+    --wr-border-hover: 68 65 70;    /* #444146 - Bordas ativas */
     --wr-text: 248 248 248;         /* #F8F8F8 - Branco nítido */
     --wr-muted: 152 153 153;        /* #989999 - Cinza da paleta */
     --wr-orange: 240 77 7;          /* #F04D07 - Laranja vibrante principal */
     --wr-orange-dark: 137 26 6;     /* #891A06 - Laranja escuro intenso */
     --wr-orange-light: 255 106 43;  /* #FF6A2B - Laranja claro */
-    --wr-orange-soft: 56 22 14;     /* #38160E - Fundo sutil laranja escuro */
+    --wr-orange-soft: 38 18 14;     /* #26120E - Fundo sutil laranja escuro */
     --wr-success: 16 185 129;       /* #10B981 */
     --wr-error: 239 68 68;          /* #EF4444 */
     --wr-alert: 245 158 11;         /* #F59E0B */
     --wr-gold: 240 77 7;
-    --wr-logo-cutout: #282327;
+    --wr-logo-cutout: #161517;
     --wr-shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.45), 0 2px 6px -1px rgba(0, 0, 0, 0.35);
     --wr-shadow-elevated: 0 16px 36px -4px rgba(0, 0, 0, 0.65), 0 8px 16px -4px rgba(0, 0, 0, 0.45);
     color-scheme: dark;
@@ -77,10 +77,7 @@
   }
 
   .dark body {
-    background-image:
-      radial-gradient(circle at 85% 5%, rgba(240, 77, 7, 0.07) 0px, transparent 600px),
-      radial-gradient(circle at 10% 90%, rgba(137, 26, 6, 0.06) 0px, transparent 500px);
-    background-attachment: fixed;
+    background-image: none;
   }
 
   .light body {

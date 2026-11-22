@@ -200,10 +200,7 @@ export const DashboardView: React.FC = () => {
   return (
     <div className="space-y-6 select-none animate-fadeIn pb-14">
       {/* 🌟 1. HERO BANNER PRINCIPAL */}
-      <div className="relative rounded-3xl border border-wr-border bg-gradient-to-br from-wr-surface via-wr-elevated/80 to-wr-surface p-6 sm:p-7 shadow-card overflow-hidden">
-        {/* Glow de fundo automotivo */}
-        <div className="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-wr-orange/10 blur-3xl pointer-events-none" />
-        <div className="absolute -left-16 -bottom-16 w-80 h-80 rounded-full bg-wr-orangeDark/5 blur-3xl pointer-events-none" />
+      <div className="relative rounded-3xl border border-wr-border bg-wr-surface p-6 sm:p-7 shadow-card overflow-hidden">
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           {/* Logo Oficial + Dados da Oficina */}

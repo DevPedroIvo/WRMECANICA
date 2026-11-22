@@ -1018,7 +1018,6 @@ export const OrdersView: React.FC = () => {
     <div className="space-y-6 select-none pb-14 animate-fadeIn">
       {/* ===================== TOPO EXECUTIVO: GESTÃO VISUAL DE CARDS ===================== */}
       <div className="relative rounded-3xl border border-wr-border bg-wr-surface p-5 sm:p-6 shadow-card overflow-hidden transition-colors">
-        <div className="absolute top-0 right-0 w-80 h-full bg-gradient-to-l from-wr-orange/10 to-transparent pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-1.5">
