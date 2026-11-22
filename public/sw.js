@@ -1,29 +1,25 @@
-// Service Worker para WR Mecânica & Cia (PWA & Offline & Notificações)
-const CACHE_NAME = 'wr-mecanica-v1'
+// Service Worker para WR Mecânica & Cia (PWA & Notificações — Cache Seguro sem Tela Preta)
+const CACHE_NAME = 'wr-mecanica-v3'
 
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/assets/icon-192.png',
   '/assets/icon-512.png',
-  '/assets/wr-logo.jpg',
-  '/assets/real-logo.jpg',
 ]
 
-// Instalação do Service Worker
+// Instalação: assume imediatamente sem manter versão antiga presa
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return cache.addAll(STATIC_ASSETS).catch(err => {
-        console.warn('Falha ao adicionar recursos ao cache:', err)
+        console.warn('Falha ao adicionar ícones ao cache:', err)
       })
     })
   )
   self.skipWaiting()
 })
 
-// Ativação e limpeza de caches antigos
+// Ativação: remove TODOS os caches antigos (elimina index.html/JS quebrados de deploys anteriores)
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
@@ -32,6 +28,7 @@ self.addEventListener('activate', event => {
           if (key !== CACHE_NAME) {
             return caches.delete(key)
           }
+          return Promise.resolve()
         })
       )
     })
@@ -39,37 +36,35 @@ self.addEventListener('activate', event => {
   self.clients.claim()
 })
 
-// Estratégia de Fetch: Network-first com fallback para Cache
+// Estratégia de Fetch: nunca cacheia JS/CSS/HTML de build antigo (evita tela preta pós-deploy na Vercel)
 self.addEventListener('fetch', event => {
-  // Ignora requisições de API ou métodos não-GET
   if (event.request.method !== 'GET') return
   const url = new URL(event.request.url)
 
-  // Ignora esquemas como chrome-extension
   if (!url.protocol.startsWith('http')) return
+  // Só intercepta recursos do mesmo domínio
+  if (url.origin !== self.location.origin) return
 
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        // Se a resposta for válida, armazena no cache para uso offline
-        if (response.status === 200 && response.type === 'basic') {
-          const responseClone = response.clone()
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseClone).catch(() => {})
-          })
-        }
-        return response
+  // Nunca intercepta bundles JS/CSS nem sw.js: sempre deixa ir direto para a rede/CDN da Vercel
+  if (
+    url.pathname.startsWith('/assets/') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname === '/sw.js'
+  ) {
+    return
+  }
+
+  // Para navegações (HTML), sempre busca da rede (sem cachear HTML velho)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' }).catch(async () => {
+        const cached = await caches.match('/index.html')
+        return cached || new Response('Sem conexão com a internet.', { status: 503 })
       })
-      .catch(async () => {
-        const cachedResponse = await caches.match(event.request)
-        if (cachedResponse) return cachedResponse
-        // Se for navegação de página e estiver offline, retorna index.html
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html')
-        }
-        return new Response('Offline', { status: 503, statusText: 'Offline' })
-      })
-  )
+    )
+    return
+  }
 })
 
 // Clique na notificação abre o app

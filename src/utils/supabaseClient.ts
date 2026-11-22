@@ -144,7 +144,14 @@ export function loadLocalSafe<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key)
     if (!raw) return fallback
-    return JSON.parse(raw) as T
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(fallback)) {
+      return (Array.isArray(parsed) ? parsed.filter(item => item !== null && item !== undefined) : fallback) as T
+    }
+    if (fallback !== null && typeof fallback === 'object') {
+      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? { ...fallback, ...parsed } : fallback) as T
+    }
+    return parsed as T
   } catch {
     return fallback
   }
@@ -254,9 +261,12 @@ export async function fetchTableCached<T>(
       if (!res.ok) return null
       const text = await res.text()
       sessionBytesTransferred += text.length
-      const rows = JSON.parse(text) as Array<{ payload: T }>
+      const rows = JSON.parse(text) as Array<{ payload?: T }>
+      if (!Array.isArray(rows)) return null
       cacheTimestamps.set(table, Date.now())
-      return rows.map(r => r.payload)
+      return rows
+        .map(r => r?.payload)
+        .filter((p): p is T => Boolean(p && typeof p === 'object'))
     })
     .catch(() => null)
     .finally(() => {

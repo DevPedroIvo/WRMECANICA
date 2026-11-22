@@ -4,6 +4,7 @@ import {
   Vehicle,
   ServiceOrder,
   OrderStatus,
+  OrderPayment,
   StockItem,
   FinancialRecord,
   Appointment,
@@ -736,14 +737,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     )
     setSelectedOrderForModal(prev => (prev && prev.id === id ? { ...prev, ...updated } : prev))
 
-    // Se o valor total ou descrição da OS foram alterados, sincroniza com o registro financeiro vinculado
-    if (updated.totalAmount !== undefined) {
+    // Sincroniza apenas registros financeiros PENDENTES vinculados à OS (nunca sobrescreve recebimentos já pagos)
+    if (updated.totalAmount !== undefined || updated.remainingAmount !== undefined) {
       setFinancial(prev =>
         prev.map(f => {
-          if (f.orderId === id) {
+          if (f.orderId === id && f.status === 'pendente') {
+            const targetAmount =
+              updated.remainingAmount !== undefined
+                ? updated.remainingAmount
+                : updated.totalAmount!
             const nextFin = {
               ...f,
-              amount: updated.totalAmount!,
+              amount: targetAmount,
               description: updated.serviceDescription
                 ? `${f.description.split(' - ')[0]} - ${updated.serviceDescription}`
                 : f.description,
@@ -758,7 +763,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })
       )
     }
-  }, [])
+
+    // Sincroniza alterações de valor ou pagamento com eventual conta vinculada em "Pagar Depois"
+    if (
+      updated.totalAmount !== undefined ||
+      updated.paidAmount !== undefined ||
+      updated.serviceDescription !== undefined
+    ) {
+      setDeferredPayments(prev =>
+        prev.map(d => {
+          if (d.orderId !== id) return d
+          const nextTotal = updated.totalAmount !== undefined ? updated.totalAmount : d.totalAmount
+          const nextPaid = updated.paidAmount !== undefined ? updated.paidAmount : d.paidAmount
+          const nextRemaining = Math.max(0, Number((nextTotal - nextPaid).toFixed(2)))
+          const nextDef: DeferredPayment = {
+            ...d,
+            totalAmount: nextTotal,
+            paidAmount: nextPaid,
+            description:
+              updated.serviceDescription && d.orderNumber
+                ? `${d.orderNumber} - ${updated.serviceDescription}`
+                : d.description,
+            notes:
+              nextRemaining > 0.01
+                ? `${d.orderNumber || 'OS'} - Saldo restante a pagar: ${formatCurrency(nextRemaining)}`
+                : `${d.orderNumber || 'OS'} - Conta quitada.`,
+          }
+          void upsertDeltaRow('deferred_payments', nextDef.id, nextDef, {
+            client_id: nextDef.clientId,
+            due_date: nextDef.dueDate,
+          })
+          return nextDef
+        })
+      )
+    }
+  }, [formatCurrency])
 
   const issueFiscalInvoice = useCallback(
     (orderId: string, orderOverride?: ServiceOrder): FiscalInvoice | null => {
@@ -911,40 +950,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const { paymentMethod, installments, discount = 0, emitNfse, dueDate, amountToPay, notes } = options
       const rawSubtotal = (order.partsTotal || 0) + (order.laborTotal || 0)
       const validDiscount = Math.min(Math.max(0, Number(discount) || 0), rawSubtotal)
-      const finalTotal = Math.max(0, rawSubtotal - validDiscount)
-      const previouslyPaid = order.paidAmount || 0
-      const currentRemaining = Math.max(0, finalTotal - previouslyPaid)
+      const finalTotal = Number(Math.max(0, rawSubtotal - validDiscount).toFixed(2))
+      const previouslyPaid =
+        order.paidAmount !== undefined
+          ? order.paidAmount
+          : order.status === 'pago'
+          ? order.totalAmount || 0
+          : 0
+      const currentRemaining = Number(Math.max(0, finalTotal - previouslyPaid).toFixed(2))
 
-      // Calcula o valor sendo pago agora (permite pagamento parcial / entrada)
+      // Calcula o valor sendo pago agora (permite pagamento integral ou personalizado/parcial)
       let payingNow = 0
-      if (amountToPay !== undefined) {
-        payingNow = Math.min(Math.max(0, Number(amountToPay) || 0), currentRemaining)
-      } else if (paymentMethod === 'pagar_depois') {
+      if (paymentMethod === 'pagar_depois') {
         payingNow = 0
+      } else if (amountToPay !== undefined) {
+        payingNow = Number(Math.min(Math.max(0, Number(amountToPay) || 0), currentRemaining).toFixed(2))
       } else {
         payingNow = currentRemaining
       }
 
-      const newPaidAmount = previouslyPaid + payingNow
-      const newRemainingAmount = Math.max(0, finalTotal - newPaidAmount)
-      const isFullyPaid = newRemainingAmount === 0 && finalTotal > 0
+      const newPaidAmount = Number((previouslyPaid + payingNow).toFixed(2))
+      const newRemainingAmount = Number(Math.max(0, finalTotal - newPaidAmount).toFixed(2))
+      const isFullyPaid = newRemainingAmount <= 0.01 && finalTotal >= 0 && (finalTotal === 0 || newPaidAmount >= finalTotal - 0.01)
 
       const paymentDesc = describePayment(paymentMethod, installments)
 
-      const newPaymentEntry = payingNow > 0 ? {
-        id: `pay-${Date.now()}`,
-        date: new Date().toLocaleDateString('pt-BR'),
-        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        amount: payingNow,
-        method: paymentMethod,
-        notes: notes || (newRemainingAmount > 0 ? `Pagamento parcial / entrada. Faltam: ${formatCurrency(newRemainingAmount)}` : 'Pagamento total da OS'),
-      } : null
+      const newPaymentEntry: OrderPayment | null =
+        payingNow > 0
+          ? {
+              id: `pay-${Date.now()}`,
+              date: new Date().toLocaleDateString('pt-BR'),
+              time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+              amount: payingNow,
+              method: paymentMethod,
+              notes:
+                notes ||
+                (newRemainingAmount > 0.01
+                  ? `Pagamento parcial. Falta pagar: ${formatCurrency(newRemainingAmount)}`
+                  : 'Quitação integral da OS'),
+            }
+          : null
 
-      const updatedPayments = newPaymentEntry ? [...(order.payments || []), newPaymentEntry] : (order.payments || [])
+      const updatedPayments = newPaymentEntry
+        ? [...(order.payments || []), newPaymentEntry]
+        : order.payments || []
 
-      const nextStatus: OrderStatus = isFullyPaid 
-        ? 'pago' 
-        : (newPaidAmount > 0 ? 'parcial' : (paymentMethod === 'pagar_depois' ? 'parcial' : (order.status || 'andamento')))
+      const nextStatus: OrderStatus = isFullyPaid
+        ? 'pago'
+        : newPaidAmount > 0 || paymentMethod === 'pagar_depois'
+        ? 'parcial'
+        : order.status || 'andamento'
 
       const updatedOrder: Partial<ServiceOrder> = {
         status: nextStatus,
@@ -953,9 +1008,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         discount: validDiscount > 0 ? validDiscount : undefined,
         totalAmount: finalTotal,
         paidAmount: newPaidAmount,
-        remainingAmount: newRemainingAmount,
+        remainingAmount: isFullyPaid ? 0 : newRemainingAmount,
         payments: updatedPayments,
-        paymentDueDate: (paymentMethod === 'pagar_depois' || newRemainingAmount > 0) ? dueDate : undefined,
+        paymentDueDate: paymentMethod === 'pagar_depois' || newRemainingAmount > 0.01 ? dueDate : undefined,
         date: order.date || new Date().toLocaleDateString('pt-BR'),
       }
 
@@ -966,13 +1021,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ...updatedOrder,
       }
 
-      // Registra no financeiro apenas o valor EFETIVAMENTE PAGO agora
+      // Registra no financeiro apenas o valor EFETIVAMENTE PAGO agora e atualiza/remove o lançamento pendente
       if (payingNow > 0 && paymentMethod !== 'pagar_depois') {
         const finRecord: FinancialRecord = {
           id: `fin-${Date.now()}`,
           type: 'receita',
           category: 'Serviços & Peças',
-          description: `${order.number} (${paymentDesc}) - ${order.vehicleModel} [Recebido: ${formatCurrency(payingNow)}${newRemainingAmount > 0 ? ` | Faltam: ${formatCurrency(newRemainingAmount)}` : ''}]`,
+          description: `${order.number} (${paymentDesc}) - ${order.vehicleModel} [Recebido: ${formatCurrency(payingNow)}${newRemainingAmount > 0.01 ? ` | Falta: ${formatCurrency(newRemainingAmount)}` : ''}]`,
           amount: payingNow,
           entityName: order.clientName,
           dueDate: new Date().toLocaleDateString('pt-BR'),
@@ -980,7 +1035,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           status: 'pago',
           orderId: order.id,
         }
-        setFinancial(prev => [finRecord, ...prev])
+        setFinancial(prev => {
+          const updatedExisting = prev
+            .map(f => {
+              if (f.orderId === order.id && f.status === 'pendente') {
+                if (newRemainingAmount <= 0.01) {
+                  void deleteDeltaRow('financial_records', f.id)
+                  return null
+                }
+                const nextPending = { ...f, amount: newRemainingAmount }
+                void upsertDeltaRow('financial_records', f.id, nextPending, {
+                  type: nextPending.type,
+                  status: nextPending.status,
+                })
+                return nextPending
+              }
+              return f
+            })
+            .filter((f): f is FinancialRecord => f !== null)
+          return [finRecord, ...updatedExisting]
+        })
         void upsertDeltaRow('financial_records', finRecord.id, finRecord, {
           type: finRecord.type,
           status: finRecord.status,
@@ -991,7 +1065,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (activeShift && payingNow > 0 && paymentMethod !== 'pagar_depois') {
         addCashMovement({
           type: 'entrada_os',
-          description: `Recebimento ${order.number} - ${order.clientName} (${paymentDesc})${newRemainingAmount > 0 ? ` [Parcial: ${formatCurrency(payingNow)} de ${formatCurrency(finalTotal)}]` : ''}`,
+          description: `Recebimento ${order.number} - ${order.clientName} (${paymentDesc})${newRemainingAmount > 0.01 ? ` [Parcial: ${formatCurrency(payingNow)} | Falta: ${formatCurrency(newRemainingAmount)}]` : ''}`,
           amount: payingNow,
           paymentMethod,
           orderId: order.id,
@@ -999,12 +1073,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })
       }
 
-      // Se ainda restou saldo devedor (newRemainingAmount > 0) ou se foi a prazo:
-      if (newRemainingAmount > 0 || paymentMethod === 'pagar_depois') {
-        const defaultDue = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .slice(0, 10)
-        
+      // Sincroniza "Pagar Depois": cria/atualiza se restar saldo, ou quita se já existia e foi 100% pago
+      const defaultDue = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10)
+      const mappedDeferredPayments: DeferredPaymentEntry[] = updatedPayments.map(p => ({
+        id: p.id,
+        date: p.date,
+        amount: p.amount,
+        method:
+          p.method === 'cartao_credito' ||
+          p.method === 'cartao_debito' ||
+          p.method === 'dinheiro' ||
+          p.method === 'pix'
+            ? p.method
+            : 'pix',
+        note: p.notes,
+      }))
+
+      if (newRemainingAmount > 0.01 || paymentMethod === 'pagar_depois') {
         setDeferredPayments(prev => {
           const existing = prev.find(d => d.orderId === order.id)
           if (existing) {
@@ -1013,20 +1100,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               totalAmount: finalTotal,
               paidAmount: newPaidAmount,
               dueDate: dueDate || existing.dueDate,
-              notes: `OS ${order.number} - Saldo restante a pagar: ${formatCurrency(newRemainingAmount)}`,
-              payments: updatedPayments.map(p => ({
-                id: p.id,
-                date: p.date,
-                amount: p.amount,
-                method: (p.method === 'cartao_credito' || p.method === 'cartao_debito' || p.method === 'dinheiro' || p.method === 'pix') ? p.method : 'pix',
-                note: p.notes,
-              })),
+              description: `${order.number} - ${order.serviceDescription || 'Saldo pendente'}`,
+              notes: `OS ${order.number} - Total: ${formatCurrency(finalTotal)} | Pago: ${formatCurrency(newPaidAmount)} | Falta pagar: ${formatCurrency(newRemainingAmount)}`,
+              payments: mappedDeferredPayments,
             }
             void upsertDeltaRow('deferred_payments', nextDef.id, nextDef, {
               client_id: nextDef.clientId,
               due_date: nextDef.dueDate,
             })
-            return prev.map(d => d.id === existing.id ? nextDef : d)
+            return prev.map(d => (d.id === existing.id ? nextDef : d))
           } else {
             const deferred: DeferredPayment = {
               id: `def-${Date.now() + 1}`,
@@ -1036,19 +1118,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               vehicleInfo: `${order.vehicleModel} • ${order.vehiclePlate}`,
               orderId: order.id,
               orderNumber: order.number,
-              description: `${order.number} - Saldo devedor de ${formatCurrency(newRemainingAmount)}`,
+              description: `${order.number} - ${order.serviceDescription || 'Saldo pendente'}`,
               totalAmount: finalTotal,
               paidAmount: newPaidAmount,
               createdAt: new Date().toLocaleDateString('pt-BR'),
               dueDate: dueDate || order.paymentDueDate || defaultDue,
-              payments: updatedPayments.map(p => ({
-                id: p.id,
-                date: p.date,
-                amount: p.amount,
-                method: (p.method === 'cartao_credito' || p.method === 'cartao_debito' || p.method === 'dinheiro' || p.method === 'pix') ? p.method : 'pix',
-                note: p.notes,
-              })),
-              notes: `OS ${order.number} com saldo restante de ${formatCurrency(newRemainingAmount)} (Total: ${formatCurrency(finalTotal)}, Pago: ${formatCurrency(newPaidAmount)}).`,
+              payments: mappedDeferredPayments,
+              notes: `OS ${order.number} - Total: ${formatCurrency(finalTotal)} | Pago: ${formatCurrency(newPaidAmount)} | Falta pagar: ${formatCurrency(newRemainingAmount)}`,
             }
             void upsertDeltaRow('deferred_payments', deferred.id, deferred, {
               client_id: deferred.clientId,
@@ -1056,6 +1132,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             })
             return [deferred, ...prev]
           }
+        })
+      } else if (isFullyPaid) {
+        // Se existia registro em "Pagar Depois" para esta OS, marca como quitado
+        setDeferredPayments(prev => {
+          const existing = prev.find(d => d.orderId === order.id)
+          if (!existing) return prev
+          const nextDef: DeferredPayment = {
+            ...existing,
+            totalAmount: finalTotal,
+            paidAmount: finalTotal,
+            payments: mappedDeferredPayments,
+            notes: `OS ${order.number} - Quitada integralmente (${formatCurrency(finalTotal)}).`,
+          }
+          void upsertDeltaRow('deferred_payments', nextDef.id, nextDef, {
+            client_id: nextDef.clientId,
+            due_date: nextDef.dueDate,
+          })
+          return prev.map(d => (d.id === existing.id ? nextDef : d))
         })
       }
 
@@ -1068,7 +1162,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const feedbackMsg = isFullyPaid
         ? `${order.number} quitada com sucesso! Total pago: ${formatCurrency(finalTotal)}`
-        : `${order.number}: Recebido ${formatCurrency(payingNow)}. Faltam pagar ${formatCurrency(newRemainingAmount)}!`
+        : paymentMethod === 'pagar_depois'
+        ? `${order.number} lançada a prazo. Falta pagar: ${formatCurrency(newRemainingAmount)}`
+        : `${order.number}: Recebido ${formatCurrency(payingNow)}. Falta pagar: ${formatCurrency(newRemainingAmount)}!`
 
       showToast(feedbackMsg, isFullyPaid ? 'success' : 'info')
     },
@@ -1217,62 +1313,135 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const value = Number(amount)
       if (!value || value <= 0) return
 
+      const targetItem = deferredPayments.find(d => d.id === id)
+      if (!targetItem) return
+
       const todayStr = new Date().toLocaleDateString('pt-BR')
-      let targetForFinance: DeferredPayment | null = null
+      const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      const remainingBefore = Math.max(0, Number((targetItem.totalAmount - targetItem.paidAmount).toFixed(2)))
+      const applied = Number(Math.min(value, remainingBefore).toFixed(2))
+      if (applied <= 0) return
 
-      setDeferredPayments(prev =>
-        prev.map(item => {
-          if (item.id !== id) return item
-          const remaining = Math.max(0, item.totalAmount - item.paidAmount)
-          const applied = Math.min(value, remaining)
-          const entry: DeferredPaymentEntry = {
-            id: `pay-${Date.now()}`,
-            date: todayStr,
-            amount: applied,
-            method,
-            note,
-          }
-          const next: DeferredPayment = {
-            ...item,
-            paidAmount: Number((item.paidAmount + applied).toFixed(2)),
-            payments: [entry, ...item.payments],
-          }
-          targetForFinance = next
-          void upsertDeltaRow('deferred_payments', id, next, {
-            client_id: next.clientId,
-            due_date: next.dueDate,
-          })
-          return next
-        })
-      )
+      const newPaid = Number((targetItem.paidAmount + applied).toFixed(2))
+      const newRemaining = Number(Math.max(0, targetItem.totalAmount - newPaid).toFixed(2))
+      const isQuitado = newRemaining <= 0.01
 
-      if (targetForFinance) {
-        const ref = targetForFinance as DeferredPayment
-        const finRec: FinancialRecord = {
-          id: `fin-def-${Date.now()}`,
-          type: 'receita',
-          category: 'Recebimento a Prazo',
-          description: `Pagamento (${method.replace('_', ' ').toUpperCase()}) - ${ref.description}`,
-          amount: value,
-          entityName: ref.clientName,
-          dueDate: todayStr,
-          paymentDate: todayStr,
-          status: 'pago',
-          deferredId: ref.id,
-        }
-        setFinancial(prev => [finRec, ...prev])
-        void upsertDeltaRow('financial_records', finRec.id, finRec, {
-          type: finRec.type,
-          status: finRec.status,
-        })
-        showToast(
-          ref.paidAmount >= ref.totalAmount
-            ? `Conta de ${ref.clientName} quitada com sucesso!`
-            : `Pagamento parcial de ${formatCurrency(value)} registrado!`
-        )
+      const entry: DeferredPaymentEntry = {
+        id: `pay-${Date.now()}`,
+        date: todayStr,
+        amount: applied,
+        method,
+        note: note || (isQuitado ? 'Quitação integral' : `Pagamento parcial. Falta: ${formatCurrency(newRemaining)}`),
       }
+
+      const nextDeferred: DeferredPayment = {
+        ...targetItem,
+        paidAmount: isQuitado ? targetItem.totalAmount : newPaid,
+        payments: [entry, ...targetItem.payments],
+        notes: isQuitado
+          ? `Conta quitada integralmente em ${todayStr}.`
+          : `Pago ${formatCurrency(newPaid)} de ${formatCurrency(targetItem.totalAmount)} | Falta pagar: ${formatCurrency(newRemaining)}`,
+      }
+
+      setDeferredPayments(prev => prev.map(item => (item.id === id ? nextDeferred : item)))
+      void upsertDeltaRow('deferred_payments', id, nextDeferred, {
+        client_id: nextDeferred.clientId,
+        due_date: nextDeferred.dueDate,
+      })
+
+      // Sincroniza de volta com a Ordem de Serviço vinculada, se houver
+      if (targetItem.orderId) {
+        const linkedOrder = orders.find(o => o.id === targetItem.orderId)
+        if (linkedOrder) {
+          const orderMethod: PaymentMethod =
+            method === 'transferencia' ? 'pix' : method
+          const orderPayEntry: OrderPayment = {
+            id: entry.id,
+            date: todayStr,
+            time: timeStr,
+            amount: applied,
+            method: orderMethod,
+            notes: entry.note,
+          }
+          const updatedOrderObj: ServiceOrder = {
+            ...linkedOrder,
+            paidAmount: isQuitado ? linkedOrder.totalAmount : newPaid,
+            remainingAmount: isQuitado ? 0 : newRemaining,
+            status: isQuitado ? 'pago' : 'parcial',
+            paymentMethod: orderMethod,
+            payments: [...(linkedOrder.payments || []), orderPayEntry],
+          }
+          setOrders(prev => prev.map(o => (o.id === linkedOrder.id ? updatedOrderObj : o)))
+          void upsertDeltaRow('service_orders', linkedOrder.id, updatedOrderObj, {
+            client_id: updatedOrderObj.clientId,
+            status: updatedOrderObj.status,
+          })
+          setSelectedOrderForModal(prev => (prev && prev.id === linkedOrder.id ? updatedOrderObj : prev))
+        }
+      }
+
+      // Registra no Financeiro
+      const finRec: FinancialRecord = {
+        id: `fin-def-${Date.now()}`,
+        type: 'receita',
+        category: 'Recebimento a Prazo',
+        description: `Pagamento (${method.replace('_', ' ').toUpperCase()}) - ${targetItem.description}${!isQuitado ? ` [Falta: ${formatCurrency(newRemaining)}]` : ''}`,
+        amount: applied,
+        entityName: targetItem.clientName,
+        dueDate: todayStr,
+        paymentDate: todayStr,
+        status: 'pago',
+        deferredId: targetItem.id,
+        orderId: targetItem.orderId,
+      }
+      setFinancial(prev => {
+        const cleaned = targetItem.orderId
+          ? prev
+              .map(f => {
+                if (f.orderId === targetItem.orderId && f.status === 'pendente') {
+                  if (isQuitado) {
+                    void deleteDeltaRow('financial_records', f.id)
+                    return null
+                  }
+                  const upd = { ...f, amount: newRemaining }
+                  void upsertDeltaRow('financial_records', f.id, upd, {
+                    type: upd.type,
+                    status: upd.status,
+                  })
+                  return upd
+                }
+                return f
+              })
+              .filter((f): f is FinancialRecord => f !== null)
+          : prev
+        return [finRec, ...cleaned]
+      })
+      void upsertDeltaRow('financial_records', finRec.id, finRec, {
+        type: finRec.type,
+        status: finRec.status,
+      })
+
+      // Se o caixa diário estiver aberto, lança a entrada no turno
+      if (activeShift) {
+        const cashMethod: PaymentMethod = method === 'transferencia' ? 'pix' : method
+        addCashMovement({
+          type: 'entrada_os',
+          description: `Recebimento Pagar Depois - ${targetItem.clientName}${!isQuitado ? ` [Parcial | Falta: ${formatCurrency(newRemaining)}]` : ' [Quitação]'}`,
+          amount: applied,
+          paymentMethod: cashMethod,
+          orderId: targetItem.orderId,
+          orderNumber: targetItem.orderNumber,
+        })
+      }
+
+      showToast(
+        isQuitado
+          ? `Conta de ${targetItem.clientName} quitada com sucesso!`
+          : `Recebido ${formatCurrency(applied)} de ${targetItem.clientName}. Ainda falta pagar ${formatCurrency(newRemaining)}.`,
+        isQuitado ? 'success' : 'info'
+      )
     },
-    [formatCurrency, showToast]
+    [deferredPayments, orders, activeShift, addCashMovement, formatCurrency, showToast]
   )
 
   const deleteDeferredPayment = useCallback(
@@ -1291,8 +1460,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return Number.isNaN(parsed) ? acc : Math.max(acc, parsed)
       }, 0)
       const nextNumber = `OS #${maxNum > 0 ? maxNum + 1 : 1001}`
+      const isPaidAtCreation =
+        Boolean(orderData.paymentMethod) &&
+        orderData.paymentMethod !== 'pagar_depois' &&
+        orderData.paymentMethod !== 'pendente'
       const newOrder: ServiceOrder = {
         ...orderData,
+        paidAmount: orderData.paidAmount ?? (isPaidAtCreation ? orderData.totalAmount : 0),
+        remainingAmount:
+          orderData.remainingAmount ?? (isPaidAtCreation ? 0 : orderData.totalAmount),
+        payments: orderData.payments ?? [],
         id: `os-${Date.now()}`,
         number: nextNumber,
       }
@@ -1314,11 +1491,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         amount: orderData.totalAmount,
         entityName: orderData.clientName,
         dueDate: orderData.date,
-        status: orderData.paymentMethod === 'pagar_depois' || orderData.paymentMethod === 'pendente' ? 'pendente' : 'pago',
-        paymentDate:
-          orderData.paymentMethod === 'pagar_depois' || orderData.paymentMethod === 'pendente'
-            ? undefined
-            : orderData.date,
+        status: isPaidAtCreation ? 'pago' : 'pendente',
+        paymentDate: isPaidAtCreation ? orderData.date : undefined,
         orderId: newOrder.id,
       }
       setFinancial(prev => [finRecord, ...prev])

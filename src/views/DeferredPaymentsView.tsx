@@ -68,8 +68,9 @@ export const DeferredPaymentsView: React.FC = () => {
   )
   const [notes, setNotes] = useState('')
 
-  // Modal Registrar Pagamento (Parcial ou Total)
+  // Modal Registrar Pagamento (Valor Inteiro ou Personalizado)
   const [payingItem, setPayingItem] = useState<DeferredPayment | null>(null)
+  const [payMode, setPayMode] = useState<'integral' | 'personalizado'>('integral')
   const [payAmount, setPayAmount] = useState<number>(0)
   const [payMethod, setPayMethod] = useState<DeferredPaymentEntry['method']>('pix')
   const [payNote, setPayNote] = useState('')
@@ -176,6 +177,7 @@ export const DeferredPaymentsView: React.FC = () => {
   const openPayModal = (item: DeferredPayment) => {
     const remaining = Math.max(0, Number((item.totalAmount - item.paidAmount).toFixed(2)))
     setPayingItem(item)
+    setPayMode('integral')
     setPayAmount(remaining)
     setPayMethod('pix')
     setPayNote('')
@@ -183,8 +185,14 @@ export const DeferredPaymentsView: React.FC = () => {
 
   const handleConfirmPayment = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!payingItem || payAmount <= 0) return
-    registerDeferredPayment(payingItem.id, payAmount, payMethod, payNote.trim() || undefined)
+    if (!payingItem) return
+    const remaining = Math.max(0, Number((payingItem.totalAmount - payingItem.paidAmount).toFixed(2)))
+    const finalAmount =
+      payMode === 'integral'
+        ? remaining
+        : Number(Math.min(Math.max(0, Number(payAmount) || 0), remaining).toFixed(2))
+    if (finalAmount <= 0) return
+    registerDeferredPayment(payingItem.id, finalAmount, payMethod, payNote.trim() || undefined)
     setPayingItem(null)
   }
 
@@ -660,39 +668,173 @@ export const DeferredPaymentsView: React.FC = () => {
             </div>
 
             <form onSubmit={handleConfirmPayment} className="mt-4 space-y-4 text-xs">
-              <div className="wr-surface-muted p-3.5 flex items-center justify-between">
-                <span className="text-wr-muted">Saldo restante:</span>
-                <span className="font-mono text-base font-extrabold text-wr-orange">
-                  {formatCurrency(Math.max(0, payingItem.totalAmount - payingItem.paidAmount))}
-                </span>
-              </div>
+              {(() => {
+                const currentRemaining = Math.max(
+                  0,
+                  Number((payingItem.totalAmount - payingItem.paidAmount).toFixed(2))
+                )
+                const effectivePayingNow =
+                  payMode === 'integral'
+                    ? currentRemaining
+                    : Number(Math.min(Math.max(0, Number(payAmount) || 0), currentRemaining).toFixed(2))
+                const willRemainAfter = Math.max(
+                  0,
+                  Number((currentRemaining - effectivePayingNow).toFixed(2))
+                )
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-wr-muted font-semibold">Valor Recebido (R$) *</label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setPayAmount(
-                        Number(Math.max(0, payingItem.totalAmount - payingItem.paidAmount).toFixed(2))
-                      )
-                    }
-                    className="text-[11px] font-bold text-wr-orange hover:underline"
-                  >
-                    Quitar tudo
-                  </button>
-                </div>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  max={Number((payingItem.totalAmount - payingItem.paidAmount).toFixed(2))}
-                  required
-                  value={payAmount || ''}
-                  onChange={e => setPayAmount(Number(e.target.value))}
-                  className="wr-input font-mono text-sm font-bold"
-                />
-              </div>
+                return (
+                  <>
+                    <div className="wr-surface-muted p-3.5 space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px] text-wr-muted">
+                        <span>Total da conta:</span>
+                        <span className="font-mono font-bold text-wr-text">
+                          {formatCurrency(payingItem.totalAmount)}
+                        </span>
+                      </div>
+                      {payingItem.paidAmount > 0 && (
+                        <div className="flex items-center justify-between text-[11px] text-emerald-500 font-semibold">
+                          <span>Já pago anteriormente:</span>
+                          <span className="font-mono">{formatCurrency(payingItem.paidAmount)}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between pt-1.5 border-t border-wr-border">
+                        <span className="text-wr-muted font-bold">Saldo restante atual:</span>
+                        <span className="font-mono text-base font-extrabold text-wr-orange">
+                          {formatCurrency(currentRemaining)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Seletor explícito: Valor Inteiro vs Outro Valor Personalizado */}
+                    <div className="space-y-2">
+                      <label className="block text-wr-muted font-semibold">
+                        Tipo de Pagamento *
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPayMode('integral')
+                            setPayAmount(currentRemaining)
+                          }}
+                          className={`p-3 rounded-xl border text-left transition-all ${
+                            payMode === 'integral'
+                              ? 'bg-emerald-500/15 border-emerald-500 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                              : 'bg-wr-elevated border-wr-border text-wr-muted hover:text-wr-text'
+                          }`}
+                        >
+                          <span className="font-black text-xs block">Valor Inteiro</span>
+                          <span className="font-mono text-[11px] font-bold block mt-0.5">
+                            {formatCurrency(currentRemaining)}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPayMode('personalizado')
+                            if (payAmount >= currentRemaining) {
+                              setPayAmount(0)
+                            }
+                          }}
+                          className={`p-3 rounded-xl border text-left transition-all ${
+                            payMode === 'personalizado'
+                              ? 'bg-wr-orange/15 border-wr-orange text-wr-orange shadow-xs'
+                              : 'bg-wr-elevated border-wr-border text-wr-muted hover:text-wr-text'
+                          }`}
+                        >
+                          <span className="font-black text-xs block">Outro Valor</span>
+                          <span className="text-[11px] block mt-0.5">
+                            Pagamento parcial
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {payMode === 'personalizado' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-wr-muted font-semibold">
+                            Valor Personalizado Recebido (R$) *
+                          </label>
+                          <span className="text-[10px] font-mono text-wr-muted">
+                            Máx: {formatCurrency(currentRemaining)}
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          max={currentRemaining}
+                          required
+                          autoFocus
+                          value={payAmount || ''}
+                          onChange={e => setPayAmount(Number(e.target.value))}
+                          placeholder="Informe quanto o cliente está pagando..."
+                          className="wr-input font-mono text-base font-black text-emerald-500"
+                        />
+                        {currentRemaining > 10 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPayAmount(Number((currentRemaining / 2).toFixed(2)))
+                              }
+                              className="px-2.5 py-1 rounded-lg bg-wr-elevated border border-wr-border text-[11px] font-bold text-wr-text hover:border-wr-orange transition-colors"
+                            >
+                              50% ({formatCurrency(Number((currentRemaining / 2).toFixed(2)))})
+                            </button>
+                            {[50, 100, 200, 500].map(
+                              preset =>
+                                preset < currentRemaining && (
+                                  <button
+                                    key={preset}
+                                    type="button"
+                                    onClick={() => setPayAmount(preset)}
+                                    className="px-2.5 py-1 rounded-lg bg-wr-elevated border border-wr-border text-[11px] font-bold text-wr-muted hover:text-wr-text transition-colors"
+                                  >
+                                    R$ {preset}
+                                  </button>
+                                )
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Resumo claro: Pagando agora vs Quanto falta pagar */}
+                    <div
+                      className={`p-3.5 rounded-xl border grid grid-cols-2 gap-3 font-mono ${
+                        willRemainAfter > 0.01
+                          ? 'bg-amber-500/10 border-amber-500/35'
+                          : 'bg-emerald-500/10 border-emerald-500/35'
+                      }`}
+                    >
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-wr-muted block">
+                          Pagando Agora
+                        </span>
+                        <span className="text-sm font-black text-emerald-500">
+                          {formatCurrency(effectivePayingNow)}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] uppercase font-bold text-wr-muted block">
+                          Falta Pagar Depois
+                        </span>
+                        <span
+                          className={`text-sm font-black ${
+                            willRemainAfter > 0.01 ? 'text-rose-500' : 'text-emerald-500'
+                          }`}
+                        >
+                          {willRemainAfter > 0.01
+                            ? formatCurrency(willRemainAfter)
+                            : 'R$ 0,00 (Quitado)'}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )
+              })()}
 
               <div>
                 <label className="block text-wr-muted font-semibold mb-1">Forma de Pagamento</label>

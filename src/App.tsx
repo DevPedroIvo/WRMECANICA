@@ -100,11 +100,81 @@ const MainAppContent: React.FC = () => {
   )
 }
 
+interface ErrorBoundaryState {
+  hasError: boolean
+  errorMessage: string
+}
+
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  ErrorBoundaryState
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false, errorMessage: '' }
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return {
+      hasError: true,
+      errorMessage: error?.message || 'Erro inesperado ao carregar a interface.',
+    }
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[WR App ErrorBoundary]', error, info)
+  }
+
+  handleClearAndReload = () => {
+    try {
+      if ('caches' in window) {
+        caches.keys().then(keys => keys.forEach(k => caches.delete(k)))
+      }
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()))
+      }
+    } catch {}
+    window.location.reload()
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#0B0F19] text-slate-100 flex items-center justify-center p-6">
+          <div className="max-w-md w-full rounded-3xl border border-slate-700 bg-[#121B2A] p-6 space-y-4 text-center shadow-2xl">
+            <div className="h-12 w-12 rounded-2xl bg-orange-500/20 text-orange-400 flex items-center justify-center mx-auto">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <h2 className="text-lg font-extrabold text-white">
+              Ocorreu um erro ao carregar o sistema
+            </h2>
+            <p className="text-xs text-slate-400">
+              {this.state.errorMessage}
+            </p>
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                type="button"
+                onClick={this.handleClearAndReload}
+                className="w-full py-3 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs uppercase tracking-wider transition-colors"
+              >
+                Limpar Cache e Recarregar
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 export function App() {
   return (
-    <AppProvider>
-      <MainAppContent />
-    </AppProvider>
+    <AppErrorBoundary>
+      <AppProvider>
+        <MainAppContent />
+      </AppProvider>
+    </AppErrorBoundary>
   )
 }
 

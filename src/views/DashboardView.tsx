@@ -678,6 +678,8 @@ export const DashboardView: React.FC = () => {
                   const statusColor =
                     order.status === 'pago'
                       ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                      : order.status === 'parcial'
+                      ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
                       : order.status === 'pronto'
                       ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30'
                       : order.status === 'andamento'
@@ -687,11 +689,24 @@ export const DashboardView: React.FC = () => {
                   const statusText =
                     order.status === 'pago'
                       ? 'Quitada'
+                      : order.status === 'parcial'
+                      ? 'Pago Parcial'
                       : order.status === 'pronto'
                       ? 'Pronta'
                       : order.status === 'andamento'
                       ? 'Em Andamento'
                       : 'Aguardando'
+
+                  const orderPaid =
+                    order.paidAmount !== undefined
+                      ? order.paidAmount
+                      : order.status === 'pago'
+                      ? order.totalAmount || 0
+                      : 0
+                  const orderRemaining = Math.max(
+                    0,
+                    Number(((order.totalAmount || 0) - orderPaid).toFixed(2))
+                  )
 
                   return (
                     <button
@@ -741,9 +756,16 @@ export const DashboardView: React.FC = () => {
                         >
                           {statusText}
                         </span>
-                        <span className="font-mono font-black text-sm text-wr-text group-hover:text-wr-orange transition-colors">
-                          {formatCurrency(order.totalAmount)}
-                        </span>
+                        <div className="text-right">
+                          <span className="font-mono font-black text-sm text-wr-text group-hover:text-wr-orange transition-colors block">
+                            {formatCurrency(order.totalAmount)}
+                          </span>
+                          {order.status === 'parcial' && orderRemaining > 0.01 && (
+                            <span className="font-mono text-[10px] font-bold text-rose-500 block">
+                              Falta {formatCurrency(orderRemaining)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </button>
                   )

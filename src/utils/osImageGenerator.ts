@@ -30,7 +30,23 @@ export async function generateOsCanvas(
   const itemsCount = Math.max(order.items?.length || 1, 2)
   const hasFiscal = order.fiscalInvoice?.status === 'autorizada'
   const hasDiscount = (order.discount || 0) > 0
-  const height = 940 + itemsCount * 38 + (hasFiscal ? 64 : 0) + (hasDiscount ? 26 : 0)
+  const effectivePaid =
+    order.paidAmount !== undefined
+      ? order.paidAmount
+      : order.status === 'pago'
+      ? order.totalAmount || 0
+      : 0
+  const effectiveRemaining = Math.max(0, Number(((order.totalAmount || 0) - effectivePaid).toFixed(2)))
+  const hasPartialBalance =
+    (effectivePaid > 0 && effectiveRemaining > 0.01) ||
+    order.status === 'parcial' ||
+    (order.paymentMethod === 'pagar_depois' && effectiveRemaining > 0.01)
+  const height =
+    940 +
+    itemsCount * 38 +
+    (hasFiscal ? 64 : 0) +
+    (hasDiscount ? 26 : 0) +
+    (hasPartialBalance ? 46 : 0)
 
   canvas.width = width
   canvas.height = height
@@ -113,13 +129,21 @@ export async function generateOsCanvas(
   const statusText =
     order.status === 'pago'
       ? 'PAGO / CONCLUÍDO'
+      : order.status === 'parcial'
+      ? 'PAGO PARCIAL (SALDO)'
       : order.status === 'pronto'
       ? 'PRONTO P/ RETIRADA'
       : order.status === 'andamento'
       ? 'EM ANDAMENTO'
       : 'ORÇAMENTO / AGUARDANDO'
   ctx.fillStyle =
-    order.status === 'pago' || order.status === 'pronto' ? '#16A34A' : order.status === 'andamento' ? '#EA580C' : '#F97316'
+    order.status === 'pago' || order.status === 'pronto'
+      ? '#16A34A'
+      : order.status === 'parcial'
+      ? '#D97706'
+      : order.status === 'andamento'
+      ? '#EA580C'
+      : '#F97316'
   ctx.font = 'bold 11px sans-serif'
   ctx.fillText(statusText, width - 55, 114)
   ctx.textAlign = 'left'
@@ -289,34 +313,25 @@ export async function generateOsCanvas(
 
   // Box de Totais & Forma de Pagamento
   y += 14
-  const boxHeight = hasDiscount ? 98 : 82
+  const boxHeight = (hasDiscount ? 98 : 82) + (hasPartialBalance ? 44 : 0)
   ctx.fillStyle = '#F8FAFC'
   ctx.fillRect(30, y, width - 60, boxHeight)
   ctx.strokeStyle = '#EA580C'
   ctx.lineWidth = 1.5
   ctx.strokeRect(30, y, width - 60, boxHeight)
 
+  const fmtBRL = (v: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
+
   ctx.font = '11px sans-serif'
   ctx.fillStyle = '#475569'
-  ctx.fillText(
-    `Peças: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.partsTotal || 0)}`,
-    48,
-    y + 28
-  )
-  ctx.fillText(
-    `Mão de Obra: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.laborTotal || 0)}`,
-    48,
-    y + 48
-  )
+  ctx.fillText(`Peças: ${fmtBRL(order.partsTotal || 0)}`, 48, y + 28)
+  ctx.fillText(`Mão de Obra: ${fmtBRL(order.laborTotal || 0)}`, 48, y + 48)
 
   if (hasDiscount) {
     ctx.fillStyle = '#DC2626'
     ctx.font = 'bold 11px sans-serif'
-    ctx.fillText(
-      `Desconto Concedido: - ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.discount || 0)}`,
-      48,
-      y + 68
-    )
+    ctx.fillText(`Desconto Concedido: - ${fmtBRL(order.discount || 0)}`, 48, y + 68)
   }
 
   // Total à direita
@@ -327,15 +342,11 @@ export async function generateOsCanvas(
 
   ctx.font = 'bold 26px monospace'
   ctx.fillStyle = '#0F172A'
-  ctx.fillText(
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.totalAmount),
-    width - 48,
-    y + 58
-  )
+  ctx.fillText(fmtBRL(order.totalAmount), width - 48, y + 58)
 
   if (order.paymentMethod) {
     ctx.font = 'bold 11px sans-serif'
-    ctx.fillStyle = '#16A34A'
+    ctx.fillStyle = hasPartialBalance ? '#D97706' : '#16A34A'
     const installmentText =
       order.paymentMethod === 'cartao_credito' && (order.paymentInstallments || 1) > 1
         ? ` (${order.paymentInstallments}x)`
@@ -345,6 +356,26 @@ export async function generateOsCanvas(
       width - 48,
       y + (hasDiscount ? 84 : 76)
     )
+  }
+
+  if (hasPartialBalance) {
+    const partialLineY = y + boxHeight - 36
+    ctx.strokeStyle = '#E2E8F0'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(46, partialLineY)
+    ctx.lineTo(width - 46, partialLineY)
+    ctx.stroke()
+
+    ctx.textAlign = 'left'
+    ctx.font = 'bold 13px monospace'
+    ctx.fillStyle = '#16A34A'
+    ctx.fillText(`VALOR JÁ PAGO: ${fmtBRL(effectivePaid)}`, 48, partialLineY + 23)
+
+    ctx.textAlign = 'right'
+    ctx.font = 'bold 14px monospace'
+    ctx.fillStyle = '#DC2626'
+    ctx.fillText(`FALTA PAGAR: ${fmtBRL(effectiveRemaining)}`, width - 48, partialLineY + 23)
   }
   ctx.textAlign = 'left'
 
