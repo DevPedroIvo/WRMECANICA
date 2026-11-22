@@ -525,13 +525,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fetchTableCached<FiscalSettings>('fiscal_settings', { limit: 1 }),
     ]).then(([c, v, o, d, s, f, a, fs]) => {
       if (!active) return
-      if (c && c.length > 0) setClients(c.map(normalizeClient))
-      if (v && v.length > 0) setVehicles(v.map(normalizeVehicle))
-      if (o && o.length > 0) setOrders(o.map(normalizeOrder))
-      if (d && d.length > 0) setDeferredPayments(d.map(normalizeDeferred))
-      if (s && s.length > 0) setStock(s.map(normalizeStockItem))
-      if (f && f.length > 0) setFinancial(f.map(normalizeFinancial))
-      if (a && a.length > 0) setAppointments(a.map(normalizeAppointment))
+      if (c !== null) setClients(c.map(normalizeClient))
+      if (v !== null) setVehicles(v.map(normalizeVehicle))
+      if (o !== null) setOrders(o.map(normalizeOrder))
+      if (d !== null) setDeferredPayments(d.map(normalizeDeferred))
+      if (s !== null) setStock(s.map(normalizeStockItem))
+      if (f !== null) setFinancial(f.map(normalizeFinancial))
+      if (a !== null) setAppointments(a.map(normalizeAppointment))
       if (fs && fs.length > 0) setFiscalSettings({ ...DEFAULT_FISCAL_SETTINGS, ...fs[0] })
     })
     return () => {
@@ -1866,13 +1866,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ])
 
       let count = 0
-      if (c && c.length > 0) { setClients(c.map(normalizeClient)); count += c.length }
-      if (v && v.length > 0) { setVehicles(v.map(normalizeVehicle)); count += v.length }
-      if (o && o.length > 0) { setOrders(o.map(normalizeOrder)); count += o.length }
-      if (d && d.length > 0) { setDeferredPayments(d.map(normalizeDeferred)); count += d.length }
-      if (s && s.length > 0) { setStock(s.map(normalizeStockItem)); count += s.length }
-      if (f && f.length > 0) { setFinancial(f.map(normalizeFinancial)); count += f.length }
-      if (a && a.length > 0) { setAppointments(a.map(normalizeAppointment)); count += a.length }
+      if (c !== null) { setClients(c.map(normalizeClient)); count += c.length }
+      if (v !== null) { setVehicles(v.map(normalizeVehicle)); count += v.length }
+      if (o !== null) { setOrders(o.map(normalizeOrder)); count += o.length }
+      if (d !== null) { setDeferredPayments(d.map(normalizeDeferred)); count += d.length }
+      if (s !== null) { setStock(s.map(normalizeStockItem)); count += s.length }
+      if (f !== null) { setFinancial(f.map(normalizeFinancial)); count += f.length }
+      if (a !== null) { setAppointments(a.map(normalizeAppointment)); count += a.length }
       if (fs && fs.length > 0) { setFiscalSettings({ ...DEFAULT_FISCAL_SETTINGS, ...fs[0] }); count += 1 }
 
       showToast(`Dados recuperados do Supabase! ${count} registros restaurados.`, 'success')
