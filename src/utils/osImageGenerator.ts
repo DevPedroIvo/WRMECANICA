@@ -29,7 +29,6 @@ export async function generateOsCanvas(
   const width = 850
   const itemsCount = Math.max(order.items?.length || 1, 2)
   const hasFiscal = order.fiscalInvoice?.status === 'autorizada'
-  const hasTravelFee = (order.travelFee || 0) > 0
   const hasDiscount = (order.discount || 0) > 0
   const effectivePaid =
     order.paidAmount !== undefined
@@ -46,7 +45,6 @@ export async function generateOsCanvas(
     940 +
     itemsCount * 38 +
     (hasFiscal ? 64 : 0) +
-    (hasTravelFee ? 22 : 0) +
     (hasDiscount ? 26 : 0) +
     (hasPartialBalance ? 46 : 0)
 
@@ -315,8 +313,7 @@ export async function generateOsCanvas(
 
   // Box de Totais & Forma de Pagamento
   y += 14
-  const extraLines = (hasTravelFee ? 20 : 0) + (hasDiscount ? 20 : 0)
-  const boxHeight = 82 + extraLines + (hasPartialBalance ? 44 : 0)
+  const boxHeight = (hasDiscount ? 98 : 82) + (hasPartialBalance ? 44 : 0)
   ctx.fillStyle = '#F8FAFC'
   ctx.fillRect(30, y, width - 60, boxHeight)
   ctx.strokeStyle = '#F04D07'
@@ -326,25 +323,15 @@ export async function generateOsCanvas(
   const fmtBRL = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
 
-  let leftInfoY = y + 28
   ctx.font = '11px sans-serif'
   ctx.fillStyle = '#475569'
-  ctx.fillText(`Peças: ${fmtBRL(order.partsTotal || 0)}`, 48, leftInfoY)
-  leftInfoY += 20
-  ctx.fillText(`Mão de Obra: ${fmtBRL(order.laborTotal || 0)}`, 48, leftInfoY)
-
-  if (hasTravelFee) {
-    leftInfoY += 20
-    ctx.fillStyle = '#0F172A'
-    ctx.font = 'bold 11px sans-serif'
-    ctx.fillText(`Taxa de Deslocamento: ${fmtBRL(order.travelFee || 0)}`, 48, leftInfoY)
-  }
+  ctx.fillText(`Peças: ${fmtBRL(order.partsTotal || 0)}`, 48, y + 28)
+  ctx.fillText(`Mão de Obra: ${fmtBRL(order.laborTotal || 0)}`, 48, y + 48)
 
   if (hasDiscount) {
-    leftInfoY += 20
     ctx.fillStyle = '#DC2626'
     ctx.font = 'bold 11px sans-serif'
-    ctx.fillText(`Desconto Concedido: - ${fmtBRL(order.discount || 0)}`, 48, leftInfoY)
+    ctx.fillText(`Desconto Concedido: - ${fmtBRL(order.discount || 0)}`, 48, y + 68)
   }
 
   // Total à direita
@@ -367,7 +354,7 @@ export async function generateOsCanvas(
     ctx.fillText(
       `Forma: ${order.paymentMethod.replace('_', ' ').toUpperCase()}${installmentText}`,
       width - 48,
-      y + (extraLines > 0 ? 84 : 76)
+      y + (hasDiscount ? 84 : 76)
     )
   }
 

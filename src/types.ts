@@ -199,9 +199,8 @@ export interface ServiceOrder {
   fiscalInvoice?: FiscalInvoice
   partsTotal: number
   laborTotal: number
-  travelFee?: number // Taxa de deslocamento / atendimento externo (R$)
   discount?: number // Desconto concedido na finalização (R$)
-  totalAmount: number // Valor final (peças + mão de obra + taxa de deslocamento - desconto)
+  totalAmount: number // Valor final (peças + mão de obra - desconto)
   paidAmount?: number // Valor total já pago/amortizado (ex: R$ 1.000 em uma OS de R$ 2.000)
   remainingAmount?: number // Saldo devedor restante (ex: R$ 1.000)
   payments?: OrderPayment[] // Histórico detalhado de pagamentos/amortizações

@@ -208,7 +208,6 @@ export const OrdersView: React.FC = () => {
   const [newItemDesc, setNewItemDesc] = useState('')
   const [newItemParts, setNewItemParts] = useState<number>(0)
   const [newItemLabor, setNewItemLabor] = useState<number>(0)
-  const [travelFee, setTravelFee] = useState<number>(0)
 
   // Desconto e Pagamento (para finalização)
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<PaymentMethod>('pix')
@@ -230,7 +229,6 @@ export const OrdersView: React.FC = () => {
   const [editingValuesOrder, setEditingValuesOrder] = useState<ServiceOrder | null>(null)
   const [editableServiceDesc, setEditableServiceDesc] = useState<string>('')
   const [editableItems, setEditableItems] = useState<OrderItem[]>([])
-  const [editableTravelFee, setEditableTravelFee] = useState<number>(0)
   const [editableDiscount, setEditableDiscount] = useState<number>(0)
 
   // Abre automaticamente a gaveta de detalhes quando vindo do Dashboard ou Clientes
@@ -296,7 +294,6 @@ export const OrdersView: React.FC = () => {
     setNewItemDesc('')
     setNewItemParts(0)
     setNewItemLabor(0)
-    setTravelFee(0)
     setWizardStep(1)
     setShowClientSelector(false)
     setClientSearchQuery('')
@@ -321,7 +318,6 @@ export const OrdersView: React.FC = () => {
       setOrderTime(editingOrder.time || getCurrentTimeHHMM())
       setObservations(editingOrder.observations || '')
       setInvoiceNotes(editingOrder.invoiceNotes || '')
-      setTravelFee(Number(editingOrder.travelFee) || 0)
       if (editingOrder.items && editingOrder.items.length > 0) {
         setItems(editingOrder.items)
       } else if (
@@ -491,7 +487,6 @@ export const OrdersView: React.FC = () => {
             },
           ]
     )
-    setEditableTravelFee(Number(order.travelFee) || 0)
     setEditableDiscount(order.discount || 0)
   }
 
@@ -565,8 +560,7 @@ export const OrdersView: React.FC = () => {
 
     const pTotal = Number(cleanedItems.reduce((acc, it) => acc + it.partsCost, 0).toFixed(2))
     const lTotal = Number(cleanedItems.reduce((acc, it) => acc + it.laborCost, 0).toFixed(2))
-    const tFee = Number(Math.max(0, Number(editableTravelFee) || 0).toFixed(2))
-    const subtotal = Number((pTotal + lTotal + tFee).toFixed(2))
+    const subtotal = Number((pTotal + lTotal).toFixed(2))
     const discount = Number(Math.min(Math.max(0, Number(editableDiscount) || 0), subtotal).toFixed(2))
     const newTotal = Number(Math.max(0, subtotal - discount).toFixed(2))
 
@@ -590,7 +584,6 @@ export const OrdersView: React.FC = () => {
       items: cleanedItems,
       partsTotal: pTotal,
       laborTotal: lTotal,
-      travelFee: tFee,
       discount: discount > 0 ? discount : undefined,
       totalAmount: newTotal,
       paidAmount: paid,
@@ -617,8 +610,7 @@ export const OrdersView: React.FC = () => {
 
   const partsTotal = items.reduce((sum, it) => sum + (it.partsCost || 0), 0)
   const laborTotal = items.reduce((sum, it) => sum + (it.laborCost || 0), 0)
-  const normalizedTravelFee = Number(Math.max(0, Number(travelFee) || 0).toFixed(2))
-  const itemsGrandTotal = Number((partsTotal + laborTotal + normalizedTravelFee).toFixed(2))
+  const itemsGrandTotal = partsTotal + laborTotal
 
   const filteredExistingClients = useMemo(() => {
     if (!clientSearchQuery.trim()) return clients.slice(0, 8)
@@ -720,7 +712,6 @@ export const OrdersView: React.FC = () => {
     const finalItems = flushPendingWizardItem()
     const finalPartsTotal = Number(finalItems.reduce((sum, it) => sum + (Number(it.partsCost) || 0), 0).toFixed(2))
     const finalLaborTotal = Number(finalItems.reduce((sum, it) => sum + (Number(it.laborCost) || 0), 0).toFixed(2))
-    const finalTravelFee = Number(Math.max(0, Number(travelFee) || 0).toFixed(2))
 
     if (!clientName.trim()) {
       showToast('Por favor, informe o nome do cliente.', 'warning')
@@ -761,7 +752,7 @@ export const OrdersView: React.FC = () => {
     }
 
     if (editingOrder) {
-      const subtotal = Number((finalPartsTotal + finalLaborTotal + finalTravelFee).toFixed(2))
+      const subtotal = Number((finalPartsTotal + finalLaborTotal).toFixed(2))
       const existingDiscount = Math.min(Math.max(0, editingOrder.discount || 0), subtotal)
       const newTotal = Number(Math.max(0, subtotal - existingDiscount).toFixed(2))
       const { paid } = getOrderPaymentSummary(editingOrder)
@@ -790,7 +781,6 @@ export const OrdersView: React.FC = () => {
         items: finalItems,
         partsTotal: finalPartsTotal,
         laborTotal: finalLaborTotal,
-        travelFee: finalTravelFee,
         discount: existingDiscount > 0 ? existingDiscount : undefined,
         totalAmount: newTotal,
         paidAmount: paid,
@@ -825,8 +815,7 @@ export const OrdersView: React.FC = () => {
       items: finalItems,
       partsTotal: finalPartsTotal,
       laborTotal: finalLaborTotal,
-      travelFee: finalTravelFee,
-      totalAmount: Number((finalPartsTotal + finalLaborTotal + finalTravelFee).toFixed(2)),
+      totalAmount: Number((finalPartsTotal + finalLaborTotal).toFixed(2)),
     })
 
     setIsNewOrderModalOpen(false)
@@ -860,9 +849,7 @@ export const OrdersView: React.FC = () => {
 
   const handleConfirmCheckout = () => {
     if (!finalizingOrder) return
-    const baseSubtotal = Number(
-      ((finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0) + (finalizingOrder.travelFee || 0)).toFixed(2)
-    )
+    const baseSubtotal = Number(((finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0)).toFixed(2))
     const discount = Number(Math.min(Math.max(0, Number(checkoutDiscount) || 0), baseSubtotal).toFixed(2))
     const finalTotal = Number(Math.max(0, baseSubtotal - discount).toFixed(2))
     const { paid: previouslyPaid } = getOrderPaymentSummary(finalizingOrder)
@@ -1297,9 +1284,9 @@ export const OrdersView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Linha 5: Detalhamento Financeiro (Peças, Mão de Obra, Deslocamento e Total) */}
-                  <div className="p-3.5 rounded-2xl bg-wr-elevated/70 border border-wr-border flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-wr-muted">
+                  {/* Linha 5: Detalhamento Financeiro (Peças, Mão de Obra e Total) */}
+                  <div className="p-3.5 rounded-2xl bg-wr-elevated/70 border border-wr-border flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-xs font-mono text-wr-muted">
                       <div>
                         <span className="text-[10px] block uppercase font-bold">Peças</span>
                         <span className="font-bold text-wr-text">{formatCurrency(order.partsTotal || 0)}</span>
@@ -1309,15 +1296,6 @@ export const OrdersView: React.FC = () => {
                         <span className="text-[10px] block uppercase font-bold">Mão de Obra</span>
                         <span className="font-bold text-wr-text">{formatCurrency(order.laborTotal || 0)}</span>
                       </div>
-                      {(order.travelFee || 0) > 0 && (
-                        <>
-                          <div className="h-6 w-px bg-wr-border" />
-                          <div>
-                            <span className="text-[10px] block uppercase font-bold text-wr-orange">Deslocamento</span>
-                            <span className="font-bold text-wr-text">{formatCurrency(order.travelFee || 0)}</span>
-                          </div>
-                        </>
-                      )}
                     </div>
 
                     <div className="text-right">
@@ -1720,12 +1698,6 @@ export const OrdersView: React.FC = () => {
                     <span>Subtotal Mão de Obra:</span>
                     <span>{formatCurrency(selectedOrderDetails.laborTotal || 0)}</span>
                   </div>
-                  {(selectedOrderDetails.travelFee || 0) > 0 && (
-                    <div className="flex justify-between text-xs font-mono text-wr-text font-semibold">
-                      <span>Taxa de Deslocamento:</span>
-                      <span>+ {formatCurrency(selectedOrderDetails.travelFee || 0)}</span>
-                    </div>
-                  )}
                   {selectedOrderDetails.discount ? (
                     <div className="flex justify-between text-xs font-mono text-rose-500">
                       <span>Desconto Aplicado:</span>
@@ -2494,43 +2466,6 @@ export const OrdersView: React.FC = () => {
                     </table>
                   </div>
 
-                  {/* Taxa de Deslocamento (Opcional — somada automaticamente ao total da OS) */}
-                  <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                    <div>
-                      <label className="block font-black text-wr-orange uppercase tracking-wider text-[11px]">
-                        Taxa de Deslocamento (R$)
-                      </label>
-                      <span className="text-[11px] text-wr-muted">
-                        Opcional — atendimento externo, socorro ou busca/entrega somado ao valor total da OS
-                      </span>
-                    </div>
-                    <div className="w-full sm:w-44">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={travelFee || ''}
-                        onChange={e => setTravelFee(Math.max(0, Number(e.target.value) || 0))}
-                        placeholder="0,00"
-                        className="w-full p-2.5 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-mono text-right font-bold"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Resumo rápido de valores na Etapa 4 */}
-                  <div className="px-4 py-3 rounded-2xl bg-wr-elevated/60 border border-wr-border flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
-                    <div className="flex flex-wrap items-center gap-3 text-wr-muted">
-                      <span>Peças: <strong className="text-wr-text">{formatCurrency(partsTotal)}</strong></span>
-                      <span>M.O: <strong className="text-wr-text">{formatCurrency(laborTotal)}</strong></span>
-                      {normalizedTravelFee > 0 && (
-                        <span>Deslocamento: <strong className="text-wr-orange">{formatCurrency(normalizedTravelFee)}</strong></span>
-                      )}
-                    </div>
-                    <span className="font-black text-sm text-wr-orange">
-                      Total: {formatCurrency(itemsGrandTotal)}
-                    </span>
-                  </div>
-
                   <div className="flex items-center justify-between">
                     <button
                       type="button"
@@ -2589,14 +2524,9 @@ export const OrdersView: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-wr-border flex flex-wrap justify-between gap-2 font-mono text-xs">
+                    <div className="pt-2 border-t border-wr-border flex justify-between font-mono text-xs">
                       <span className="text-wr-muted">Total Peças: {formatCurrency(partsTotal)}</span>
                       <span className="text-wr-muted">Total Mão de Obra: {formatCurrency(laborTotal)}</span>
-                      {normalizedTravelFee > 0 && (
-                        <span className="text-wr-orange font-bold">
-                          Taxa de Deslocamento: {formatCurrency(normalizedTravelFee)}
-                        </span>
-                      )}
                     </div>
 
                     <div className="pt-3 border-t border-wr-border flex items-center justify-between">
@@ -2676,7 +2606,7 @@ export const OrdersView: React.FC = () => {
       {finalizingOrder &&
         (() => {
           const baseSubtotal = Number(
-            ((finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0) + (finalizingOrder.travelFee || 0)).toFixed(2)
+            ((finalizingOrder.partsTotal || 0) + (finalizingOrder.laborTotal || 0)).toFixed(2)
           )
           const validDiscount = Number(
             Math.min(Math.max(0, Number(checkoutDiscount) || 0), baseSubtotal).toFixed(2)
@@ -2731,12 +2661,6 @@ export const OrdersView: React.FC = () => {
                     <span>Subtotal Mão de Obra:</span>
                     <span>{formatCurrency(finalizingOrder.laborTotal || 0)}</span>
                   </div>
-                  {(finalizingOrder.travelFee || 0) > 0 && (
-                    <div className="flex justify-between text-wr-text font-semibold">
-                      <span>Taxa de Deslocamento:</span>
-                      <span>+ {formatCurrency(finalizingOrder.travelFee || 0)}</span>
-                    </div>
-                  )}
                   <div className="flex items-center justify-between gap-2 pt-1">
                     <label className="text-wr-muted font-sans font-semibold">Desconto (R$):</label>
                     <input
@@ -3193,25 +3117,6 @@ export const OrdersView: React.FC = () => {
               </div>
             </div>
 
-            {/* Taxa de Deslocamento */}
-            <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-              <div>
-                <label className="block font-bold text-wr-orange">Taxa de Deslocamento (R$)</label>
-                <span className="text-[11px] text-wr-muted">Valor adicional de deslocamento somado ao total da OS</span>
-              </div>
-              <div className="w-full sm:w-44">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={editableTravelFee || ''}
-                  onChange={e => setEditableTravelFee(Math.max(0, Number(e.target.value) || 0))}
-                  placeholder="0,00"
-                  className="w-full p-2.5 rounded-xl bg-wr-surface text-wr-text border border-wr-border focus:border-wr-orange outline-none font-mono text-right font-bold"
-                />
-              </div>
-            </div>
-
             {/* Desconto */}
             <div className="p-4 rounded-2xl bg-wr-elevated border border-wr-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
               <div>
@@ -3235,8 +3140,7 @@ export const OrdersView: React.FC = () => {
             {(() => {
               const editParts = Number(editableItems.reduce((acc, it) => acc + (Number(it.partsCost) || 0), 0).toFixed(2))
               const editLabor = Number(editableItems.reduce((acc, it) => acc + (Number(it.laborCost) || 0), 0).toFixed(2))
-              const editTravel = Number(Math.max(0, Number(editableTravelFee) || 0).toFixed(2))
-              const editSubtotal = Number((editParts + editLabor + editTravel).toFixed(2))
+              const editSubtotal = Number((editParts + editLabor).toFixed(2))
               const editDisc = Number(Math.min(Math.max(0, Number(editableDiscount) || 0), editSubtotal).toFixed(2))
               const editFinalTotal = Number(Math.max(0, editSubtotal - editDisc).toFixed(2))
               const { paid: previouslyPaid, total: previousTotal } = getOrderPaymentSummary(editingValuesOrder)
@@ -3257,12 +3161,6 @@ export const OrdersView: React.FC = () => {
                     <span>Novo Total da Mão de Obra:</span>
                     <span>{formatCurrency(editLabor)}</span>
                   </div>
-                  {editTravel > 0 && (
-                    <div className="flex justify-between text-wr-text font-semibold">
-                      <span>Taxa de Deslocamento:</span>
-                      <span>+ {formatCurrency(editTravel)}</span>
-                    </div>
-                  )}
                   {editDisc > 0 && (
                     <div className="flex justify-between text-rose-500">
                       <span>Desconto:</span>
@@ -3600,12 +3498,6 @@ export const OrdersView: React.FC = () => {
                     <span>Mão de Obra:</span>
                     <span>{formatCurrency(pdfModalOrder.laborTotal || 0)}</span>
                   </div>
-                  {(pdfModalOrder.travelFee || 0) > 0 && (
-                    <div className="flex justify-between font-semibold text-slate-800">
-                      <span>Taxa de Deslocamento:</span>
-                      <span>+ {formatCurrency(pdfModalOrder.travelFee || 0)}</span>
-                    </div>
-                  )}
                   {pdfModalOrder.discount ? (
                     <div className="flex justify-between text-rose-600">
                       <span>Desconto:</span>

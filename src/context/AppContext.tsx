@@ -357,7 +357,6 @@ const normalizeOrder = (o: ServiceOrder): ServiceOrder => ({
   time: o.time || '',
   partsTotal: Number(o.partsTotal) || 0,
   laborTotal: Number(o.laborTotal) || 0,
-  travelFee: Number(o.travelFee) || 0,
   totalAmount: Number(o.totalAmount) || 0,
   items: Array.isArray(o.items)
     ? o.items.filter(Boolean).map(it => ({
@@ -1046,7 +1045,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!order) return
 
       const { paymentMethod, installments, discount = 0, emitNfse, dueDate, amountToPay, notes } = options
-      const rawSubtotal = (order.partsTotal || 0) + (order.laborTotal || 0) + (order.travelFee || 0)
+      const rawSubtotal = (order.partsTotal || 0) + (order.laborTotal || 0)
       const validDiscount = Math.min(Math.max(0, Number(discount) || 0), rawSubtotal)
       const finalTotal = Number(Math.max(0, rawSubtotal - validDiscount).toFixed(2))
       const previouslyPaid =
