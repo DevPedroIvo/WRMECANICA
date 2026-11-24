@@ -346,42 +346,63 @@ export async function renderNfseToCanvas(
   ctx.fillText('Documento com quitação integral registrada no sistema da oficina.', 70, totalsY + 122)
 
   // Box Valores Totais
+  const hasTravelFeePdf = (order.travelFee || 0) > 0
+  const hasDiscountPdf = (order.discount || 0) > 0
+  const totalsBoxH = hasTravelFeePdf && hasDiscountPdf ? 162 : 140
   ctx.fillStyle = '#F8FAFC'
-  ctx.fillRect(rightBoxX, totalsY, boxW, 140)
-  ctx.strokeRect(rightBoxX, totalsY, boxW, 140)
+  ctx.fillRect(rightBoxX, totalsY, boxW, totalsBoxH)
+  ctx.strokeRect(rightBoxX, totalsY, boxW, totalsBoxH)
 
+  let rowLineY = totalsY + 28
   ctx.fillStyle = '#475569'
   ctx.font = '13px sans-serif'
-  ctx.fillText('Total Serviços (M.O):', rightBoxX + 25, totalsY + 32)
-  ctx.fillText('Total Peças / Insumos:', rightBoxX + 25, totalsY + 58)
-  if ((order.discount || 0) > 0) {
-    ctx.fillStyle = '#E11D48'
-    ctx.fillText('Desconto Concedido:', rightBoxX + 25, totalsY + 84)
-  }
-
+  ctx.fillText('Total Serviços (M.O):', rightBoxX + 25, rowLineY)
   ctx.fillStyle = '#0F172A'
   ctx.font = 'bold 14px monospace'
-  ctx.fillText(formatCurrency(order.laborTotal), rightBoxX + boxW - 140, totalsY + 32)
-  ctx.fillText(formatCurrency(order.partsTotal || 0), rightBoxX + boxW - 140, totalsY + 58)
-  if ((order.discount || 0) > 0) {
+  ctx.fillText(formatCurrency(order.laborTotal), rightBoxX + boxW - 140, rowLineY)
+
+  rowLineY += 24
+  ctx.fillStyle = '#475569'
+  ctx.font = '13px sans-serif'
+  ctx.fillText('Total Peças / Insumos:', rightBoxX + 25, rowLineY)
+  ctx.fillStyle = '#0F172A'
+  ctx.font = 'bold 14px monospace'
+  ctx.fillText(formatCurrency(order.partsTotal || 0), rightBoxX + boxW - 140, rowLineY)
+
+  if (hasTravelFeePdf) {
+    rowLineY += 24
+    ctx.fillStyle = '#334155'
+    ctx.font = 'bold 13px sans-serif'
+    ctx.fillText('Taxa de Deslocamento:', rightBoxX + 25, rowLineY)
+    ctx.fillStyle = '#0F172A'
+    ctx.font = 'bold 14px monospace'
+    ctx.fillText(formatCurrency(order.travelFee || 0), rightBoxX + boxW - 140, rowLineY)
+  }
+
+  if (hasDiscountPdf) {
+    rowLineY += 24
     ctx.fillStyle = '#E11D48'
-    ctx.fillText(`- ${formatCurrency(order.discount || 0)}`, rightBoxX + boxW - 140, totalsY + 84)
+    ctx.font = '13px sans-serif'
+    ctx.fillText('Desconto Concedido:', rightBoxX + 25, rowLineY)
+    ctx.font = 'bold 14px monospace'
+    ctx.fillText(`- ${formatCurrency(order.discount || 0)}`, rightBoxX + boxW - 140, rowLineY)
   }
 
   // Linha total
+  const dividerY = totalsY + totalsBoxH - 42
   ctx.strokeStyle = '#CBD5E1'
   ctx.beginPath()
-  ctx.moveTo(rightBoxX + 20, totalsY + 98)
-  ctx.lineTo(rightBoxX + boxW - 20, totalsY + 98)
+  ctx.moveTo(rightBoxX + 20, dividerY)
+  ctx.lineTo(rightBoxX + boxW - 20, dividerY)
   ctx.stroke()
 
   ctx.fillStyle = '#0F172A'
   ctx.font = 'bold 15px sans-serif'
-  ctx.fillText('VALOR TOTAL LÍQUIDO:', rightBoxX + 25, totalsY + 125)
+  ctx.fillText('VALOR TOTAL LÍQUIDO:', rightBoxX + 25, dividerY + 27)
 
   ctx.fillStyle = '#0F172A'
   ctx.font = 'bold 22px monospace'
-  ctx.fillText(formatCurrency(order.totalAmount), rightBoxX + boxW - 160, totalsY + 125)
+  ctx.fillText(formatCurrency(order.totalAmount), rightBoxX + boxW - 160, dividerY + 27)
 
   // 5. Tributos Municipais (ISSQN)
   const taxY = 1090

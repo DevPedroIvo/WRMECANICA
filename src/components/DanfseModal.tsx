@@ -507,6 +507,12 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
                 <span>Total de Peças / Insumos:</span>
                 <span className="font-mono">{formatCurrency(order.partsTotal || 0)}</span>
               </div>
+              {(order.travelFee || 0) > 0 && (
+                <div className="flex justify-between text-slate-700 font-semibold text-[11px]">
+                  <span>Taxa de Deslocamento:</span>
+                  <span className="font-mono">{formatCurrency(order.travelFee || 0)}</span>
+                </div>
+              )}
               {(order.discount || 0) > 0 && (
                 <div className="flex justify-between text-rose-600 font-semibold text-[11px]">
                   <span>Desconto Aplicado:</span>
@@ -518,7 +524,7 @@ export const DanfseModal: React.FC<DanfseModalProps> = ({ order, settings, onClo
                   Valor Total Líquido
                 </span>
                 <span className="text-xl font-black text-slate-900 font-mono">
-                  {formatCurrency(order.totalAmount || order.laborTotal + (order.partsTotal || 0))}
+                  {formatCurrency(order.totalAmount || order.laborTotal + (order.partsTotal || 0) + (order.travelFee || 0))}
                 </span>
               </div>
             </div>
